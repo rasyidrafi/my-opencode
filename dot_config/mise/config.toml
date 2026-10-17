@@ -10,20 +10,3 @@ node = "24"
 description = "Sync Bitwarden secrets into persistent user environment or private files"
 run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/secrets/setup.mjs"'
 raw = true
-
-# Lightpanda container runtime: WSLC on Windows, Docker on Linux.
-[tasks."lightpanda:start"]
-description = "Create temporary Lightpanda: [task-id]; returns CDP URL"
-run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/lightpanda/manage.mjs" start'
-
-[tasks."lightpanda:stop"]
-description = "Stop and remove temporary Lightpanda: <task-id>"
-run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/lightpanda/manage.mjs" stop'
-
-[tasks."lightpanda:status"]
-description = "List temporary Lightpanda containers: [task-id]"
-run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/lightpanda/manage.mjs" status'
-
-[tasks."lightpanda:update"]
-description = "Pull Lightpanda nightly for future tasks"
-run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/lightpanda/manage.mjs" update'
