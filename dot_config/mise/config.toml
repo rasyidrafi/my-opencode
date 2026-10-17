@@ -10,3 +10,40 @@ node = "24"
 description = "Sync Bitwarden secrets into persistent user environment or private files"
 run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/secrets/setup.mjs"'
 raw = true
+
+[tasks."setup:cli"]
+description = "Install jq and ripgrep only when missing from PATH (Windows and Linux)"
+shell = "{% if os() == 'windows' %}powershell -NoProfile -Command{% else %}sh -c{% endif %}"
+run = '''
+{% if os() == "windows" %}
+$tools = @(
+    @{ Command = "jq"; Package = "jq@latest" },
+    @{ Command = "rg"; Package = "ripgrep@latest" }
+)
+
+foreach ($tool in $tools) {
+    $existing = Get-Command $tool.Command -CommandType Application -ErrorAction SilentlyContinue
+
+    if ($existing) {
+        Write-Host "$($tool.Command) already available: $($existing.Source)"
+        continue
+    }
+
+    mise use -g $tool.Package
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+{% else %}
+set -eu
+
+ensure_tool() {
+    if command -v "$1" >/dev/null 2>&1; then
+        printf '%s already available: %s\n' "$1" "$(command -v "$1")"
+    else
+        mise use -g "$2"
+    fi
+}
+
+ensure_tool jq jq@latest
+ensure_tool rg ripgrep@latest
+{% endif %}
+'''
