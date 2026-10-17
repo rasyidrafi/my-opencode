@@ -10,3 +10,20 @@ node = "24"
 description = "Sync Bitwarden secrets into persistent user environment or private files"
 run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/secrets/setup.mjs"'
 raw = true
+
+# Windows only: Lightpanda runs in WSL Containers, not as a native Windows binary.
+[tasks."lightpanda:start"]
+description = "Windows only: start Lightpanda via WSLC (localhost:9222)"
+run = 'node "{{ env.USERPROFILE | default(value=env.HOME) }}/.config/lightpanda/manage.mjs" start'
+
+[tasks."lightpanda:stop"]
+description = "Windows only: stop the Lightpanda WSLC container"
+run = 'node "{{ env.USERPROFILE | default(value=env.HOME) }}/.config/lightpanda/manage.mjs" stop'
+
+[tasks."lightpanda:status"]
+description = "Windows only: inspect the Lightpanda WSLC container"
+run = 'node "{{ env.USERPROFILE | default(value=env.HOME) }}/.config/lightpanda/manage.mjs" status'
+
+[tasks."lightpanda:update"]
+description = "Windows only: pull Lightpanda nightly and recreate its WSLC container"
+run = 'node "{{ env.USERPROFILE | default(value=env.HOME) }}/.config/lightpanda/manage.mjs" update'
