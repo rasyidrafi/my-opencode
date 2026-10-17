@@ -1,0 +1,3 @@
+# Generated local credentials must never enter Git.
+dot_config/secrets/generated/
+dot_config/you-search/secrets.env

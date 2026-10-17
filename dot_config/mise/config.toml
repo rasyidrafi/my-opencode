@@ -5,3 +5,8 @@ node = "24"
 "npm:@openai/codex" = "latest"
 "npm:agent-browser" = "latest"
 "npm:opensrc" = "latest"
+
+[tasks."secrets:setup"]
+description = "Sync Bitwarden secrets into persistent user environment or private files"
+run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/secrets/setup.mjs"'
+raw = true
