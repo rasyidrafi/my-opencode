@@ -1,7 +1,9 @@
 [tools]
 bitwarden = "latest"
+bun = "latest"
 chezmoi = "latest"
 node = "24"
+yarn = "latest"
 "npm:@openai/codex" = "latest"
 "npm:agent-browser" = "latest"
 "npm:opensrc" = "latest"
@@ -12,13 +14,14 @@ run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOM
 raw = true
 
 [tasks."setup:cli"]
-description = "Install jq and ripgrep only when missing from PATH (Windows and Linux)"
+description = "Install jq, ripgrep, and fastfetch only when missing from PATH (Windows and Linux)"
 shell = "{% if os() == 'windows' %}powershell -NoProfile -Command{% else %}sh -c{% endif %}"
 run = '''
 {% if os() == "windows" %}
 $tools = @(
     @{ Command = "jq"; Package = "jq@latest" },
-    @{ Command = "rg"; Package = "ripgrep@latest" }
+    @{ Command = "rg"; Package = "ripgrep@latest" },
+    @{ Command = "fastfetch"; Package = "fastfetch@latest" }
 )
 
 foreach ($tool in $tools) {
@@ -45,5 +48,6 @@ ensure_tool() {
 
 ensure_tool jq jq@latest
 ensure_tool rg ripgrep@latest
+ensure_tool fastfetch fastfetch@latest
 {% endif %}
 '''
