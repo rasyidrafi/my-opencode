@@ -1,0 +1,7 @@
+[tools]
+bitwarden = "latest"
+chezmoi = "latest"
+node = "24"
+"npm:@openai/codex" = "latest"
+"npm:agent-browser" = "latest"
+"npm:opensrc" = "latest"
