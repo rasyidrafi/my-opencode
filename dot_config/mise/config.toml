@@ -13,17 +13,17 @@ raw = true
 
 # Lightpanda container runtime: WSLC on Windows, Docker on Linux.
 [tasks."lightpanda:start"]
-description = "Start Lightpanda via WSLC (Windows) or Docker (Linux) (localhost:9222)"
+description = "Create temporary Lightpanda: [task-id]; returns CDP URL"
 run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/lightpanda/manage.mjs" start'
 
 [tasks."lightpanda:stop"]
-description = "Stop the Lightpanda container"
+description = "Stop and remove temporary Lightpanda: <task-id>"
 run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/lightpanda/manage.mjs" stop'
 
 [tasks."lightpanda:status"]
-description = "Inspect the Lightpanda container"
+description = "List temporary Lightpanda containers: [task-id]"
 run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/lightpanda/manage.mjs" status'
 
 [tasks."lightpanda:update"]
-description = "Pull Lightpanda nightly and recreate its container"
+description = "Pull Lightpanda nightly for future tasks"
 run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/lightpanda/manage.mjs" update'
