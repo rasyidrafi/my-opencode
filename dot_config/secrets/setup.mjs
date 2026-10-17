@@ -42,25 +42,30 @@ function restrictDirectory() {
       $ErrorActionPreference = 'Stop'
       $target = [Console]::In.ReadToEnd()
       $sid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
-      $acl = New-Object System.Security.AccessControl.DirectorySecurity
-      $acl.SetOwner($sid)
+      # Read/change only the DACL. A fresh descriptor can request owner/audit
+      # changes and fail with SeSecurityPrivilege on an existing directory.
+      $acl = [System.IO.Directory]::GetAccessControl($target, [System.Security.AccessControl.AccessControlSections]::Access)
       $acl.SetAccessRuleProtection($true, $false)
+      foreach ($existingRule in @($acl.Access)) {
+        $acl.RemoveAccessRuleSpecific($existingRule)
+      }
       $rule = New-Object System.Security.AccessControl.FileSystemAccessRule($sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
       $acl.AddAccessRule($rule)
-      Set-Acl -LiteralPath $target -AclObject $acl
+      [System.IO.Directory]::SetAccessControl($target, $acl)
     `;
-    powershell(script, path.join(directory, 'generated'));
+    powershell(script, path.join(directory, 'generated'), 'directory permissions');
   } else {
     fs.chmodSync(path.join(directory, 'generated'), 0o700);
   }
 }
 
-function powershell(script, input) {
+function powershell(script, input, operation = 'user environment') {
   const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
     input, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 30_000,
   });
   if (result.error || result.status !== 0) {
-    throw new Error('Windows environment/permission update failed; no secret output was printed.');
+    const reason = result.error?.code ?? `exit ${result.status}`;
+    throw new Error(`Windows ${operation} update failed (${reason}); no secret output was printed.`);
   }
 }
 
