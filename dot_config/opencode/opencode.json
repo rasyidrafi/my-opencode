@@ -1,0 +1,37 @@
+{
+  "websearch": false,
+  "provider": {
+    "openai": {
+      "models": {
+        "gpt-6.1-sol": {
+          "limit": {
+            "context": 500000,
+            "input": 372000,
+            "output": 128000
+          }
+        },
+        "gpt-6-luna": {
+          "limit": {
+            "context": 680000,
+            "input": 552000,
+            "output": 128000
+          }
+        },
+        "gpt-6-astra": {
+          "limit": {
+            "context": 400000,
+            "input": 272000,
+            "output": 128000
+          }
+        }
+      },
+      "options": {
+        "baseURL": "https://api.ccs.halotec.my.id/v1",
+        "apiKey": "{env:CCS_HALOTEC_API_KEY}"
+      }
+    }
+  },
+  "disabled_providers": [
+    "opencode"
+  ]
+}
