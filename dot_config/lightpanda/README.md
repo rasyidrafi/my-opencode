@@ -1,13 +1,20 @@
-# Lightpanda via WSL Containers (Windows only)
+# Lightpanda containers on Windows and Linux
 
-This setup applies only to Windows. Lightpanda runs as a Linux container via
-`wslc.exe`; it is not a native Windows browser. Linux/macOS tasks are not implemented.
-WSL 2.9.3+ is required (`wsl --update`, then `wslc version`). Docker Desktop is not required.
+The helper automatically selects `wslc.exe` on Windows and `docker` on Linux.
+Lightpanda runs as a Linux container on both platforms. macOS is not supported
+by this helper.
 
-Chezmoi distributes this helper and the mise tasks. WSLC manages the image and
+- Windows: WSL 2.9.3+ is required (`wsl --update`, then `wslc version`).
+  Docker Desktop is not required.
+- Linux (including a WSL Linux shell): install Docker Engine, start its daemon,
+  and ensure the current user can run `docker info` successfully without sudo.
+  Use a local Docker daemon so the CDP readiness check can reach its published port.
+  The helper does not install Docker or change user permissions.
+
+Chezmoi distributes this helper and the mise tasks. The selected runtime manages the image and
 container; mise provides the commands, rather than installing the browser binary.
 
-```powershell
+```sh
 mise run lightpanda:start
 mise run lightpanda:status
 mise run lightpanda:stop
@@ -23,7 +30,8 @@ active sessions and data in its writable layer are discarded. No persistent volu
 is configured. Start is manual after reboot; no login/autostart service is installed.
 Containers not labeled as managed by this helper are never replaced.
 
-Troubleshooting: `wslc container logs lightpanda`.
+Troubleshooting: `wslc container logs lightpanda` on Windows,
+or `docker container logs lightpanda` on Linux.
 
 Sources:
 - https://lightpanda.io/docs/run-locally/installation/docker

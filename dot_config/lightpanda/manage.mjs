@@ -3,24 +3,25 @@ import { spawnSync } from 'node:child_process';
 const name = 'lightpanda';
 const image = 'docker.io/lightpanda/browser:nightly';
 const label = 'io.my-opencode.managed=lightpanda';
+const runtime = process.platform === 'win32' ? 'wslc.exe' : 'docker';
 
-function wslc(args, capture = false) {
-  const result = spawnSync('wslc.exe', args, {
+function containerRuntime(args, capture = false) {
+  const result = spawnSync(runtime, args, {
     encoding: 'utf8', stdio: capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
   });
-  if (result.error) throw new Error(`WSLC unavailable: ${result.error.message}. Install/update WSL (2.9.3+).`);
-  if (result.status !== 0) throw new Error(`wslc ${args.slice(0, 2).join(' ')} failed (${result.status}). ${capture ? result.stderr.trim() : ''}`);
+  if (result.error) throw new Error(`${runtime} unavailable: ${result.error.message}. ${process.platform === 'win32' ? 'Install/update WSL (2.9.3+).' : 'Install Docker Engine and ensure your user can access its daemon.'}`);
+  if (result.status !== 0) throw new Error(`${runtime} ${args.slice(0, 2).join(' ')} failed (${result.status}). ${capture ? result.stderr.trim() : ''}`);
   return result.stdout;
 }
 
 async function main() {
-  if (process.platform !== 'win32') throw new Error('These Lightpanda tasks support Windows + WSLC only. Linux/macOS setup is not configured.');
+  if (!['win32', 'linux'].includes(process.platform)) throw new Error('Lightpanda tasks support Windows (WSLC) and Linux (Docker) only.');
   const action = process.argv[2];
   if (!['start', 'stop', 'status', 'update'].includes(action)) throw new Error('Usage: manage.mjs start|stop|status|update');
-  const ids = wslc(['container', 'list', '--all', '--quiet'], true).trim().split(/\s+/).filter(Boolean);
+  const ids = containerRuntime(['container', 'list', '--all', '--quiet'], true).trim().split(/\s+/).filter(Boolean);
   let existing;
   for (const id of ids) {
-    const data = JSON.parse(wslc(['container', 'inspect', id], true));
+    const data = JSON.parse(containerRuntime(['container', 'inspect', id], true));
     const container = Array.isArray(data) ? data[0] : data;
     if (container.Name?.replace(/^\//, '') === name) existing = container;
   }
@@ -32,23 +33,23 @@ async function main() {
     return;
   }
   if (action === 'stop') {
-    if (existing?.State.Running) wslc(['container', 'stop', name]);
+    if (existing?.State.Running) containerRuntime(['container', 'stop', name]);
     else console.log('Lightpanda is already stopped.');
     return;
   }
   if (action === 'update') {
     // Pull first so a failed download leaves the current container intact.
-    wslc(['image', 'pull', image]);
+    containerRuntime(['image', 'pull', image]);
     if (existing) {
-      if (existing.State.Running) wslc(['container', 'stop', name]);
-      wslc(['container', 'remove', name]);
+      if (existing.State.Running) containerRuntime(['container', 'stop', name]);
+      containerRuntime(['container', 'remove', name]);
       existing = undefined;
     }
   }
   if (!existing) {
-    wslc(['run', '-d', '--name', name, '--label', label, '-p', '127.0.0.1:9222:9222', image]);
+    containerRuntime(['run', '-d', '--name', name, '--label', label, '-p', '127.0.0.1:9222:9222', image]);
   } else if (!existing.State.Running) {
-    wslc(['container', 'start', name]);
+    containerRuntime(['container', 'start', name]);
   }
   for (let attempt = 0; attempt < 20; attempt++) {
     try {
@@ -61,7 +62,7 @@ async function main() {
     } catch {}
     await new Promise(resolve => setTimeout(resolve, 500));
   }
-  throw new Error('CDP did not become ready. Check: wslc container logs lightpanda');
+  throw new Error(`CDP did not become ready. Check: ${runtime} container logs lightpanda`);
 }
 
 main().catch(error => { console.error(error.message); process.exitCode = 1; });
