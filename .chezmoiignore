@@ -2,3 +2,4 @@
 .config/secrets/generated/**
 .config/tailscale/README.md
 .config/tailscale/setup.test.mjs
+.config/azure-mnt-cache/setup.test.mjs

@@ -1,5 +1,15 @@
 # Dotfiles
 
+Run `mise run azure-mnt-cache:setup` to opt into Linux cache redirection to
+`/mnt/cache/<username>` in new Bash/Zsh shells. The task installs shell loaders;
+it does not move or delete existing caches, configure mounts, or use sudo.
+Source `~/.config/azure-mnt-cache/cache.sh` to activate in the current shell.
+If `/mnt` is not mounted or its cache directories cannot be created/accessed,
+home cache defaults are used. An administrator may need to provision the private
+user cache directory first. This checks mount availability, not Azure disk identity.
+Temporary Azure disks can lose all cached files. Already-running applications and
+systemd services do not receive these shell environment changes automatically.
+
 Run `mise run openchamber:setup` after applying chezmoi to install and start
 OpenChamber's native user startup service on port 3000. This disables any previous
 startup service and stops the existing OpenChamber instance on that port first;

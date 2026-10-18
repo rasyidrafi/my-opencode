@@ -24,6 +24,11 @@ description = "Sync Bitwarden secrets into persistent user environment or privat
 run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/secrets/setup.mjs"'
 raw = true
 
+[tasks."azure-mnt-cache:setup"]
+description = "Persist Linux shell cache paths on /mnt, with home fallback"
+run = 'node "{{ env.HOME }}/.config/azure-mnt-cache/setup.mjs"'
+raw = true
+
 [tasks."tailscale:setup"]
 description = "Connect Tailscale to qilin-elver.ts.net, preserving other saved accounts"
 run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/tailscale/setup.mjs"'
