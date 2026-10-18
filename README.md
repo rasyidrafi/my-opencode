@@ -1,5 +1,11 @@
 # Dotfiles
 
+Run `mise run openchamber:setup` after applying chezmoi to install and start
+OpenChamber's native user startup service on port 3000. This disables any previous
+startup service and stops the existing OpenChamber instance on that port first;
+instances on other ports are left alone. It briefly interrupts an existing server.
+Check the service with `openchamber startup status`.
+
 This is a chezmoi source directory. Its `dot_codex/modify_config.toml` template
 updates `~/.codex/config.toml` in place: it enforces the Rawroute defaults while
 retaining other Codex settings, including project trust entries and Windows

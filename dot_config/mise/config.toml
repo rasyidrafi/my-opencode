@@ -28,3 +28,12 @@ raw = true
 description = "Connect Tailscale to qilin-elver.ts.net, preserving other saved accounts"
 run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/tailscale/setup.mjs"'
 raw = true
+
+[tasks."openchamber:setup"]
+description = "Replace OpenChamber on port 3000 with its native user startup service"
+run = [
+  "openchamber startup disable",
+  "openchamber stop --port 3000",
+  "openchamber startup enable --port 3000",
+]
+raw = true
