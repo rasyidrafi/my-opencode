@@ -34,6 +34,7 @@ function authenticateGitHub(token) {
   for (const args of [
     ['auth', 'login', '--hostname', 'github.com', '--with-token'],
     ['auth', 'status', '--hostname', 'github.com'],
+    ['auth', 'setup-git', '--hostname', 'github.com'],
   ]) {
     const result = spawnSync('gh', args, {
       env, input: args[1] === 'login' ? `${token}\n` : undefined,
@@ -47,7 +48,7 @@ function authenticateGitHub(token) {
   if (windows) {
     powershell("[Environment]::SetEnvironmentVariable('GH_TOKEN', $null, 'User')", '', 'GitHub environment cleanup');
   }
-  console.log('GitHub CLI authenticated for github.com. Ready in your current terminal.');
+  console.log('GitHub CLI authenticated for github.com; Git configured to use its credentials for HTTPS.');
   if (process.env.GH_TOKEN || process.env.GITHUB_TOKEN) {
     console.warn('Your shell already has GH_TOKEN/GITHUB_TOKEN set; unset it to use the saved GitHub login.');
   }

@@ -8,7 +8,7 @@ This directory contains only the helper and a manifest of references, never valu
 1. Apply this repository with chezmoi and run `mise install`.
 2. Run `mise run secrets:setup` in an interactive terminal.
 3. Enter your Bitwarden master password (and login/2FA on a new machine).
-4. GitHub CLI is ready immediately: run `gh auth status` in the same terminal.
+4. GitHub CLI and Git HTTPS authentication are ready immediately: run `gh auth status` in the same terminal.
    For other environment secrets, start a new terminal/application. On Windows, sign out/in if the parent launcher
    still has an old environment. On Linux, a new bash/zsh terminal or SSH login
    loads the generated environment.
@@ -30,6 +30,9 @@ This does not update already-running processes or the invoking shell.
 GitHub CLI authentication uses `output: "gh-auth"`: the password field of
 `github.com TOKEN` is passed over stdin to `gh auth login --hostname github.com
 --with-token`, then setup checks the saved login with `gh auth status`.
+It also runs `gh auth setup-git --hostname github.com` to configure Git's global
+credential helper for GitHub HTTPS operations, including OpenChamber's system
+credentials mode. This works on both Windows and Linux.
 GitHub CLI stores the credential using its credential store (or its normal config
 fallback if a credential store is unavailable). It works immediately in the
 current terminal. The token is not exported as an environment variable.
