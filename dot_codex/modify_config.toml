@@ -1,0 +1,47 @@
+{{- /* chezmoi:modify-template */ -}}
+{{- $config := fromToml .chezmoi.stdin -}}
+{{- $config = $config | setValueAtPath "model_provider" "rawroute" -}}
+{{- $config = $config | setValueAtPath "model" "gpt-6-luna" -}}
+{{- $config = $config | setValueAtPath "model_reasoning_effort" "xhigh" -}}
+{{- $config = $config | setValueAtPath "approval_policy" "never" -}}
+{{- $config = $config | setValueAtPath "sandbox_mode" "danger-full-access" -}}
+{{- $config = $config | setValueAtPath "model_providers.rawroute.name" "Rawroute" -}}
+{{- $config = $config | setValueAtPath "model_providers.rawroute.base_url" "https://ccs.halotec.my.id/v1" -}}
+{{- $config = $config | setValueAtPath "model_providers.rawroute.wire_api" "responses" -}}
+{{- $config = $config | setValueAtPath "model_providers.rawroute.env_key" "CCS_HALOTEC_API_KEY" -}}
+{{- $config = $config | deleteValueAtPath "model_providers.rawroute.experimental_bearer_token" -}}
+{{- $config = $config | setValueAtPath "agents.enabled" false -}}
+{{- /* Flatten the encoder's visual nesting and omit redundant parent headers.
+      Verify the result parses identically before allowing chezmoi to write it. */ -}}
+{{- $encoded := $config | toToml -}}
+{{- $lines := splitList "\n" $encoded -}}
+{{- $output := list -}}
+{{- range $index, $line := $lines -}}
+  {{- $line = trim $line -}}
+  {{- $omit := false -}}
+  {{- if and (hasPrefix "[" $line) (not (hasPrefix "[[" $line)) (hasSuffix "]" $line) -}}
+    {{- $childPrefix := printf "%s." (trimSuffix "]" $line) -}}
+    {{- $next := "" -}}
+    {{- range $following := slice $lines (add1 $index | int) -}}
+      {{- if and (eq $next "") (ne (trim $following) "") -}}
+        {{- $next = trim $following -}}
+      {{- end -}}
+    {{- end -}}
+    {{- $omit = hasPrefix $childPrefix $next -}}
+  {{- end -}}
+  {{- if not $omit -}}
+    {{- if and (hasPrefix "[" $line) (gt (len $output) 0) -}}
+      {{- if ne (last $output) "" -}}
+        {{- $output = append $output "" -}}
+      {{- end -}}
+    {{- end -}}
+    {{- $output = append $output $line -}}
+  {{- end -}}
+{{- end -}}
+{{- $formatted := join "\n" $output -}}
+{{- if ne (toJson (fromToml $formatted)) (toJson $config) -}}
+  {{- /* Preserve unusual multiline values if whitespace is significant. */ -}}
+  {{- $encoded -}}
+{{- else -}}
+  {{- $formatted -}}
+{{- end -}}
