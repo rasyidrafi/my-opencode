@@ -1,3 +1,8 @@
 Host soy
     HostName soy.qilin-elver.ts.net
     User soy
+
+Host soy-wb
+    HostName soy.qilin-elver.ts.net
+    User soy-wb
+    Port 2222
