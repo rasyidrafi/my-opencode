@@ -1,5 +1,16 @@
 # Dotfiles
 
+Run `mise run chrome:setup` after `chezmoi apply` to opt into installing Google
+Chrome Stable for `browser-use`. Currently supports Debian/Ubuntu Linux on amd64
+only; Windows, macOS, other distributions and architectures fail explicitly.
+Requires root or sudo and internet access. Downloads the official Google `.deb`
+over HTTPS and installs it with apt, including dependencies. Google's package may
+configure its apt repository for future updates. If Chrome Stable already runs,
+setup leaves it unchanged. This task does not launch Chrome, change browser
+profiles, or run automatically during `mise install`. Headless use needs no desktop.
+Test host validation without installing anything:
+`node --test dot_config/chrome/setup.test.mjs`.
+
 Run `mise run azure-mnt-cache:setup` to opt into Linux cache redirection to
 `/mnt/cache/<username>` in new Bash/Zsh shells. The task installs shell loaders;
 it does not move or delete existing caches, configure mounts, or use sudo.
