@@ -24,6 +24,11 @@ description = "Sync Bitwarden secrets into persistent user environment or privat
 run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/secrets/setup.mjs"'
 raw = true
 
+[tasks."shell:setup"]
+description = "Use configured Codex to standardize this user's Bash environment"
+run = 'node "{{ env.HOME }}/.config/shell/setup.mjs"'
+raw = true
+
 [tasks."chrome:setup"]
 description = "Opt in to installing Google Chrome Stable (Linux Debian/Ubuntu amd64 only)"
 run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/chrome/setup.mjs"'

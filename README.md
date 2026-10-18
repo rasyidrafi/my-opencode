@@ -1,5 +1,31 @@
 # Dotfiles
 
+Run `mise run shell:setup` after `chezmoi apply` and `mise install` to have
+Codex inspect and standardize your current Bash environment (Linux/macOS).
+Set up Codex's model/provider and authentication first: the launcher requires
+`codex exec` and `$CODEX_HOME/config.toml` (default `~/.codex/config.toml`).
+For this repository's Rawroute configuration, make `CCS_HALOTEC_API_KEY`
+available first via `mise run secrets:setup` and a new terminal. Custom-provider
+authentication is handled by Codex, not gated on `codex login status`.
+
+The task sends `~/.config/shell/PROMPT.txt` to `codex exec -`, rooted at your
+home directory, with `workspace-write`, no interactive approval prompts, and an
+ephemeral session. It uses your configured model/provider and makes model API
+requests. It edits your shell initialization when invoked; it is not a dry run
+and does not run during `mise install` or `chezmoi apply`.
+
+The prompt tells Codex to preserve dynamic user customizations, centralize shared
+environment loading, retain interactive-only Bash features, make private backups,
+respect chezmoi ownership, and verify multiple shell modes without exposing
+credentials. Read or customize `dot_config/shell/PROMPT.txt` before applying.
+This is AI-driven migration, not a deterministic installer; inspect its final
+verification report for partial completion or access limitations. A clean process
+without `BASH_ENV` and systemd/cron need explicit integration. Existing processes
+are not updated; open a new shell afterward.
+
+Codex references: [non-interactive mode](https://developers.openai.com/codex/noninteractive)
+and [CLI reference](https://developers.openai.com/codex/cli/reference).
+
 Run `mise run chrome:setup` after `chezmoi apply` to opt into installing Google
 Chrome Stable for `browser-use`. Currently supports Debian/Ubuntu Linux on amd64
 only; Windows, macOS, other distributions and architectures fail explicitly.

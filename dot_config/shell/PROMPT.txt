@@ -1,0 +1,124 @@
+Standardize this user's Bash environment on the current machine.
+
+This is an implementation task, not just an audit. Inspect the actual machine,
+adapt the design below to existing user configuration, make the smallest necessary
+changes, and verify them. Work autonomously without interactive questions. If a
+required decision cannot be resolved from evidence, preserve the affected behavior
+and report the precise blocker rather than guessing. Do not delegate.
+
+GOAL
+Login shells, interactive non-login shells, SSH commands, and non-interactive
+Bash children should resolve the same configured tools and receive the intended
+shared environment, credentials loaders, and cache settings. Prompt, completion,
+history, aliases, and directory-change hooks belong only in interactive shells.
+PATH strings need not be identical when mise activation and shims resolve the
+same tool versions. Do not claim every process automatically reads shell files.
+
+DISCOVERY
+1. Identify the OS, home directory, current/default shell, installed Bash and mise,
+   and relevant startup files. Inspect .profile, .bash_profile, .bash_login,
+   .bashrc, any existing BASH_ENV target, and shared environment files. Understand
+   system profile behavior without changing system files. Account for Bash using
+   only the first available login file: .bash_profile, .bash_login, then .profile.
+2. Inspect existing PATH modifications, tool managers, loader order, early returns,
+   interactive guards, and symlink targets. Preserve unrelated customizations and
+   intentional overrides. Never replace an entire profile with a generic template.
+3. Identify chezmoi ownership if chezmoi is available. Use its source-path mapping
+   for relevant files, not a guessed repository location. Inspect source templates
+   and relevant setup helpers before choosing edits. Do not run a whole-home
+   chezmoi apply, commit changes, or overwrite unrelated source changes.
+4. Never dump the full environment, credential files, or unredacted startup files
+   into tool output. Inspect files through redaction that hides secret assignments
+   and tokens. Report secret variable names and presence only, never values.
+
+TARGET CONVENTION
+5. Use ~/.config/shell/env.sh as the shared, POSIX-compatible environment loader.
+   It should be quiet, fast, and safe to source repeatedly. Keep PATH additions
+   idempotent; preserve existing user PATH priorities unless a demonstrated
+   conflict needs correction. Prefer mise shims for non-interactive tool access.
+   Discover mise's actual installation/data directory instead of assuming it.
+6. Keep ~/.bash_env as a thin wrapper sourcing the shared loader. Export BASH_ENV
+   as an absolute path to that wrapper. Adapt an existing BASH_ENV custom path or
+   preserve its behavior during migration; do not silently discard it.
+7. Make the effective login entry point load the shared environment. For an
+   interactive Bash login, also load .bashrc. Keep .profile POSIX-compatible and
+   avoid cycles between .profile, .bashrc, and the shared loader. Do not create a
+   higher-priority login file that silently shadows existing login behavior.
+8. Make .bashrc load the shared environment BEFORE its non-interactive return.
+   After that guard, retain the user's prompt, aliases, history, completion, and
+   other interactive settings. Run mise activate bash only here, only if available.
+   Avoid duplicate activation in an interactive login shell.
+9. Do not use an exported "already loaded" flag that prevents child shells from
+   initializing. Prefer idempotent operations to a once-per-session guard: login
+   startup can reset PATH and loaders may need to refresh dynamic values.
+10. Source existing managed secrets/cache loaders from the shared environment in
+    the intended order, preserving user overrides. Do not copy their values or
+    reimplement cache mount/fallback decisions. Preserve opt-in behavior: enable
+    cache redirection only if the user already opted in; the mere presence of an
+    installed cache.sh is not proof. Do not install Docker, switch builders, move
+    caches, unlock Bitwarden, or run unrelated setup tasks.
+11. If a profile contains literal credentials already supplied by the managed
+    secrets loader, consolidate only after checking locally (without printing
+    values) that the managed replacement preserves the intended credential.
+    If no equivalent replacement exists, preserve access and report the remaining
+    migration requirement. Never copy credential values into chezmoi/Git sources.
+12. Account for existing Zsh/other-shell entry points so this migration does not
+    break them. Do not impose Bash hooks or BASH_ENV behavior on other shells or
+    promise that their startup semantics match Bash.
+
+PERSISTENCE AND SCOPE
+13. Limit edits to this user's shell initialization and directly related chezmoi
+    sources/setup helpers. For already-managed files, update the source of truth
+    and apply only relevant targets after checking the diff with secrets redacted.
+    For unmanaged files, do not automatically add complete profiles containing
+    personal or secret data to chezmoi. Keep local customizations local; describe
+    what is managed versus host-local in the final report.
+14. Before changing existing files, make private backups in a timestamped user
+    state directory (directory mode 0700, files 0600), outside any source repo.
+    Preserve executable modes where appropriate on actual targets and handle
+    symlinks by inspecting their ownership/targets, not replacing them blindly.
+15. Existing secrets/cache setup helpers may append loaders to multiple profiles.
+    Where a relevant writable chezmoi source is available, adjust these helpers to
+    recognize and preserve centralized loading while retaining their behavior on
+    machines not yet standardized. Otherwise retain compatibility and explicitly
+    report that rerunning those helpers may restore duplicate loader lines.
+16. Do not change the default shell, Codex configuration/authentication, SSH daemon,
+    PAM, /etc/environment, system profiles, or running services. Discover relevant
+    cron/systemd/runner needs and explain explicit environment integration instead
+    of silently modifying or restarting them. No sudo is needed for this task.
+    If a needed source/symlink target lies outside writable access, report that
+    limitation without escalating or pretending persistence was updated.
+
+VERIFICATION
+17. Validate syntax with the relevant installed shell (sh -n for POSIX files and
+    bash -n for Bash files). Test changed helper logic when applicable.
+18. Use isolated child-process probes, including a minimal environment, for:
+    - interactive login Bash;
+    - interactive non-login Bash;
+    - non-interactive login Bash;
+    - non-interactive Bash with BASH_ENV explicitly supplied;
+    - a non-interactive child inheriting from an initialized shell;
+    - clean non-interactive Bash without BASH_ENV, as a negative control.
+    Keep HOME pointing at the actual user's home but avoid unrelated inherited
+    variables masking missing initialization. Do not persist probe environments.
+19. Compare tool resolution AND versions, relevant non-secret environment values,
+    cache paths, and secret presence only. Check repeated sourcing for duplicate
+    PATH entries/loader effects, startup recursion, and unwanted stdout output.
+    Distinguish terminal/job-control warnings from actual initialization errors.
+20. For SSH remote-command behavior, verify with a real already-authorized local
+    connection if available. Do not change host trust or authentication to enable
+    a test. Otherwise explain Bash's sshd-specific .bashrc behavior and mark actual
+    SSH execution unverified; bash -c alone is not proof of SSH startup behavior.
+21. A clean bash -c without inherited BASH_ENV does not read these files. sh, cron,
+    GUI apps, containers, and systemd have separate startup rules. Explain this
+    boundary, including how launchers can explicitly source the shared environment
+    or pass BASH_ENV to Bash. Do not feed shell syntax to systemd EnvironmentFile.
+22. Fix confirmed regressions introduced by the migration before finishing.
+    A rerun should preserve customizations and converge without duplicate loaders.
+
+FINAL REPORT
+Summarize changed files and behavior, backup location, managed/local ownership,
+the verification matrix with actual results, and any blockers or unexecuted checks.
+Explain how to activate the changes in a new shell. Existing processes and the
+parent shell are not automatically updated. Clearly distinguish partial completion
+from verified success. Never include credential values in the report.
