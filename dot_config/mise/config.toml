@@ -23,3 +23,8 @@ yarn = "latest"
 description = "Sync Bitwarden secrets into persistent user environment or private files"
 run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/secrets/setup.mjs"'
 raw = true
+
+[tasks."tailscale:setup"]
+description = "Connect Tailscale to qilin-elver.ts.net, preserving other saved accounts"
+run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/tailscale/setup.mjs"'
+raw = true
