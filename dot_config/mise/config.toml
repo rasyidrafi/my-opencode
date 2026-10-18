@@ -16,8 +16,8 @@ yarn = "latest"
 "github:iOfficeAI/OfficeCLI" = "latest"
 "npm:@openai/codex" = "latest"
 "npm:@openchamber/web" = "latest"
-"npm:agent-browser" = "latest"
 "npm:opensrc" = "latest"
+"npm:playwriter" = "latest"
 
 [tasks."secrets:setup"]
 description = "Sync Bitwarden secrets into persistent user environment or private files"
