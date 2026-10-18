@@ -8,7 +8,8 @@ This directory contains only the helper and a manifest of references, never valu
 1. Apply this repository with chezmoi and run `mise install`.
 2. Run `mise run secrets:setup` in an interactive terminal.
 3. Enter your Bitwarden master password (and login/2FA on a new machine).
-4. Start a new terminal/application. On Windows, sign out/in if the parent launcher
+4. GitHub CLI is ready immediately: run `gh auth status` in the same terminal.
+   For other environment secrets, start a new terminal/application. On Windows, sign out/in if the parent launcher
    still has an old environment. On Linux, a new bash/zsh terminal or SSH login
    loads the generated environment.
 
@@ -25,6 +26,16 @@ containers and Linux GUI sessions require their own loading configuration.
 This does not update already-running processes or the invoking shell.
 
 ## Add a secret
+
+GitHub CLI authentication uses `output: "gh-auth"`: the password field of
+`github.com TOKEN` is passed over stdin to `gh auth login --hostname github.com
+--with-token`, then setup checks the saved login with `gh auth status`.
+GitHub CLI stores the credential using its credential store (or its normal config
+fallback if a credential store is unavailable). It works immediately in the
+current terminal. The token is not exported as an environment variable.
+Setup removes the old Windows user `GH_TOKEN` variable and rebuilds the Linux
+environment file without it. If an existing shell already inherited `GH_TOKEN`
+or `GITHUB_TOKEN`, unset that variable because it overrides gh's saved login.
 
 Add a reference to `manifest.json`, apply it with chezmoi, then rerun setup:
 

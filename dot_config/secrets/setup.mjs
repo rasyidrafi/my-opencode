@@ -26,6 +26,33 @@ function bw(args, interactive = false) {
   return result.stdout ?? '';
 }
 
+function authenticateGitHub(token) {
+  const env = { ...process.env };
+  // Environment tokens override stored credentials and prevent gh auth login.
+  delete env.GH_TOKEN;
+  delete env.GITHUB_TOKEN;
+  for (const args of [
+    ['auth', 'login', '--hostname', 'github.com', '--with-token'],
+    ['auth', 'status', '--hostname', 'github.com'],
+  ]) {
+    const result = spawnSync('gh', args, {
+      env, input: args[1] === 'login' ? `${token}\n` : undefined,
+      encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 120_000,
+    });
+    if (result.error || result.status !== 0) {
+      throw new Error(`GitHub CLI ${args[1]} failed. Check gh installation, token permissions and connectivity; secret output hidden.`);
+    }
+  }
+  // Migrate the previous Windows environment-based GitHub configuration.
+  if (windows) {
+    powershell("[Environment]::SetEnvironmentVariable('GH_TOKEN', $null, 'User')", '', 'GitHub environment cleanup');
+  }
+  console.log('GitHub CLI authenticated for github.com. Ready in your current terminal.');
+  if (process.env.GH_TOKEN || process.env.GITHUB_TOKEN) {
+    console.warn('Your shell already has GH_TOKEN/GITHUB_TOKEN set; unset it to use the saved GitHub login.');
+  }
+}
+
 function privateWrite(target, content) {
   if (fs.existsSync(target) && fs.lstatSync(target).isSymbolicLink()) {
     throw new Error(`Refusing to overwrite a symbolic link: ${target}`);
@@ -98,7 +125,8 @@ function validate(manifest) {
     if (entry.name.startsWith('BW_') || ['PATH', 'HOME', 'SHELL', 'NODE_OPTIONS', 'LD_PRELOAD', 'LD_LIBRARY_PATH'].includes(entry.name)) throw new Error(`Reserved secret name: ${entry.name}`);
     if (typeof entry.item !== 'string' || !entry.item || typeof entry.field !== 'string') throw new Error(`Missing item/field for ${entry.name}.`);
     if (!['login.password', 'login.username', 'notes'].includes(entry.field) && !/^custom:.+/.test(entry.field)) throw new Error(`Unsupported field for ${entry.name}.`);
-    if (!['env', 'file'].includes(entry.output)) throw new Error(`Unsupported output for ${entry.name}.`);
+    if (!['env', 'file', 'gh-auth'].includes(entry.output)) throw new Error(`Unsupported output for ${entry.name}.`);
+    if (entry.output === 'gh-auth' && entry.name !== 'GH_TOKEN') throw new Error('gh-auth output requires the name GH_TOKEN.');
     names.add(entry.name);
   }
 }
@@ -165,10 +193,13 @@ function main() {
     for (const entry of resolved.filter(e => e.output === 'file')) {
       privateWrite(path.join(generated, entry.name), entry.value);
     }
+    for (const entry of resolved.filter(e => e.output === 'gh-auth')) {
+      authenticateGitHub(entry.value);
+    }
     console.log(`Installed ${resolved.length} secret(s); values hidden.`);
     console.log(windows
-      ? 'User ENV saved. Restart applications; sign out/in if their launcher still has the old environment.'
-      : 'ENV loader installed for bash/zsh. Open a new terminal or SSH login. Services need their own environment configuration.');
+      ? 'Other secrets: user ENV saved. Restart applications; sign out/in if their launcher still has the old environment.'
+      : 'Other secrets: ENV loader installed for bash/zsh. Open a new terminal or SSH login. Services need their own environment configuration.');
   } finally {
     if (lockRequired) {
       try { bw(['lock']); console.log('Bitwarden locked.'); }
