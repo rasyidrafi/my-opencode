@@ -10,6 +10,8 @@ export GOMODCACHE="$HOME/go/pkg/mod"
 export CARGO_TARGET_DIR="$HOME/.cache/cargo-build"
 export CCACHE_DIR="$HOME/.cache/ccache"
 export TMPDIR=/tmp
+# Only clear our own selection when falling back; preserve unrelated builders.
+if [ "${BUILDX_BUILDER:-}" = azure-mnt-cache ]; then unset BUILDX_BUILDER; fi
 
 _azure_cache_root="/mnt/cache/$(id -un)"
 if command -v mountpoint >/dev/null 2>&1 && mountpoint -q /mnt; then
@@ -35,6 +37,10 @@ if command -v mountpoint >/dev/null 2>&1 && mountpoint -q /mnt; then
             export CARGO_TARGET_DIR="$_azure_cache_root/cargo-build"
             export CCACHE_DIR="$_azure_cache_root/ccache"
             export TMPDIR="$_azure_cache_root/tmp"
+            if [ -f "$HOME/.config/azure-mnt-cache/docker-enabled" ] &&
+               (umask 077; mkdir -p "$_azure_cache_root/docker-buildkit") 2>/dev/null; then
+                export BUILDX_BUILDER=azure-mnt-cache
+            fi
         fi
     fi
 fi

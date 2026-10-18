@@ -9,6 +9,14 @@ home cache defaults are used. An administrator may need to provision the private
 user cache directory first. This checks mount availability, not Azure disk identity.
 Temporary Azure disks can lose all cached files. Already-running applications and
 systemd services do not receive these shell environment changes automatically.
+When Docker is installed, setup also creates a local `docker-container` Buildx
+builder named `azure-mnt-cache`. Its BuildKit state volume is a bind-backed local
+volume at `/mnt/cache/<username>/docker-buildkit`. New shells select this builder
+through `BUILDX_BUILDER`; builds load results into Docker by default. Image and
+application volume storage remain unchanged. Existing builder caches are not
+migrated or pruned. Run setup again after a temporary disk reset, before building.
+Docker access without sudo is required, and only a local Unix-socket context is
+supported. BuildKit runs a privileged helper container, as usual for this driver.
 
 Run `mise run openchamber:setup` after applying chezmoi to install and start
 OpenChamber's native user startup service on port 3000. This disables any previous
