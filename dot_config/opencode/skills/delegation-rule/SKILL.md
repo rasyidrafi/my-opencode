@@ -1,6 +1,11 @@
 ---
 name: delegation-rule
-description: Main-agent-only workflow for delegating repository discovery, implementation, and review. Not applicable to subagents; subagents execute their assigned scope and report to the parent.
+description: Main-agent-only workflow for delegating repository discovery,
+  implementation, and review. Not applicable to subagents; subagents execute
+  their assigned scope and report to the parent.
+disable-model-invocation: true
+metadata:
+  opencode/autoinvoke: false
 ---
 
 # Delegation Rule
