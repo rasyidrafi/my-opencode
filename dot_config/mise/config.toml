@@ -25,7 +25,7 @@ run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOM
 raw = true
 
 [tasks."shell:setup"]
-description = "Use configured Codex to standardize this user's Bash environment"
+description = "Install deterministic Bash environment hooks, preserving user customizations"
 run = 'node "{{ env.HOME }}/.config/shell/setup.mjs"'
 raw = true
 

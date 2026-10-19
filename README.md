@@ -1,30 +1,35 @@
 # Dotfiles
 
-Run `mise run shell:setup` after `chezmoi apply` and `mise install` to have
-Codex inspect and standardize your current Bash environment (Linux/macOS).
-Set up Codex's model/provider and authentication first: the launcher requires
-`codex exec` and `$CODEX_HOME/config.toml` (default `~/.codex/config.toml`).
-For this repository's Rawroute configuration, make `CCS_HALOTEC_API_KEY`
-available first via `mise run secrets:setup` and a new terminal. Custom-provider
-authentication is handled by Codex, not gated on `codex login status`.
+Run `mise run shell:setup` after `chezmoi apply` and `mise install` to install
+the deterministic Bash environment on Linux/macOS. No Codex, model, credentials,
+network access, sudo, or AI requests are needed. Setup never runs implicitly.
+Preview with `mise run shell:setup -- --dry-run`.
 
-The task sends `~/.config/shell/PROMPT.txt` to `codex exec -`, rooted at your
-home directory, with `workspace-write`, no interactive approval prompts, and an
-ephemeral session. It uses your configured model/provider and makes model API
-requests. It edits your shell initialization when invoked; it is not a dry run
-and does not run during `mise install` or `chezmoi apply`.
+The installer syntax-checks proposed files, backs up changed files privately under
+`~/.local/state/shell-init-backups`, and installs idempotent hooks in `.bashrc`,
+`.profile`, and existing `.bash_profile`/`.bash_login`. It preserves custom profile
+content; symlinks, unsupported inline loaders, invalid syntax and ambiguous hooks
+fail explicitly rather than being guessed. Existing AI-generated shared loaders
+require review and `--replace-legacy-loader` (also supported with `--dry-run`).
+Backups contain sensitive configuration: keep them private.
 
-The prompt tells Codex to preserve dynamic user customizations, centralize shared
-environment loading, retain interactive-only Bash features, make private backups,
-respect chezmoi ownership, and verify multiple shell modes without exposing
-credentials. Read or customize `dot_config/shell/PROMPT.txt` before applying.
-This is AI-driven migration, not a deterministic installer; inspect its final
-verification report for partial completion or access limitations. A clean process
-without `BASH_ENV` and systemd/cron need explicit integration. Existing processes
-are not updated; open a new shell afterward.
+The shared loader orders `~/bin`, `~/.local/bin`, mise shims, then the remaining
+PATH. Mise activation is interactive-only. Caller-provided secrets, including empty
+values, take precedence over managed defaults. Existing generated exports are
+supported using names from the secrets manifest; credentials are never parsed or
+printed by setup. Secrets/cache helper reruns recognize installed integration.
+Cache remains opt-in via `azure-mnt-cache:setup`; existing direct cache integration
+is migrated. Workboxes without opt-in remain unaffected.
 
-Codex references: [non-interactive mode](https://developers.openai.com/codex/noninteractive)
-and [CLI reference](https://developers.openai.com/codex/cli/reference).
+Keep host-specific additions in `~/.config/shell/local.sh`. Custom absolute
+`BASH_ENV` hooks are preserved through a private legacy wrapper; ambiguous cycles
+require manual migration. Templates in `dot_config/shell/templates` are the source
+of truth; rerun setup after applying updates. Generated loaders are not chezmoi
+targets, so applying the repo does not overwrite local opt-in choices.
+Open a new shell afterward. Clean Bash processes without `BASH_ENV`, systemd,
+cron and GUI launchers require explicit integration; this task changes none of
+those services. Test without editing the real home:
+`node --test dot_config/shell/setup.test.mjs dot_config/azure-mnt-cache/setup.test.mjs`.
 
 Run `mise run chrome:setup` after `chezmoi apply` to opt into installing Google
 Chrome Stable for `browser-use`. Currently supports Debian/Ubuntu Linux on amd64

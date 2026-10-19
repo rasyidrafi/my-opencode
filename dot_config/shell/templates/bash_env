@@ -1,0 +1,5 @@
+# Installed by mise run shell:setup. Non-interactive Bash entry point.
+[ ! -r "$HOME/.config/shell/env.sh" ] || . "$HOME/.config/shell/env.sh"
+[ ! -r "$HOME/.config/shell/legacy-bash-env.sh" ] || . "$HOME/.config/shell/legacy-bash-env.sh"
+BASH_ENV="$HOME/.bash_env"
+export BASH_ENV

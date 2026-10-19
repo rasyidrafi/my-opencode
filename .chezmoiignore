@@ -1,8 +1,11 @@
 README.md
 .config/secrets/README.md
+.config/secrets/setup.test.mjs
 .config/secrets/generated/**
 .config/tailscale/README.md
 .config/tailscale/setup.test.mjs
 .config/chrome/setup.test.mjs
 .config/azure-mnt-cache/setup.test.mjs
 .config/azure-mnt-cache/docker-enabled
+.config/azure-mnt-cache/shell-enabled
+.config/shell/setup.test.mjs

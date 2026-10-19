@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { centralized } from '../shell/integration.mjs';
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const home = os.homedir();
@@ -97,25 +98,33 @@ function powershell(script, input, operation = 'user environment') {
   }
 }
 
-function installShellLoader() {
-  const loader = path.join(directory, 'generated', 'env.sh');
+export function installShellLoader(homeDirectory = home, secretsDirectory = directory, zdotdir = process.env.ZDOTDIR) {
+  const loader = path.join(secretsDirectory, 'load.sh');
   const line = `[ ! -r ${shellQuote(loader)} ] || . ${shellQuote(loader)}`;
   const marker = '# Managed secrets loader (chezmoi secrets helper)';
-  const profiles = ['.profile', '.bashrc', '.zshrc', '.zprofile'];
+  const profiles = centralized(homeDirectory) ? ['.zshrc', '.zprofile'] : ['.profile', '.bashrc', '.zshrc', '.zprofile'];
   // Bash ignores .profile when one of these exists.
   for (const name of ['.bash_profile', '.bash_login']) {
-    if (fs.existsSync(path.join(home, name))) profiles.push(name);
+    if (!centralized(homeDirectory) && fs.existsSync(path.join(homeDirectory, name))) profiles.push(name);
   }
-  if (process.env.ZDOTDIR && path.resolve(process.env.ZDOTDIR) !== home) {
-    console.warn('Custom ZDOTDIR detected: source generated/env.sh from your custom zsh profile.');
+  if (zdotdir && path.resolve(zdotdir) !== homeDirectory) {
+    console.warn('Custom ZDOTDIR detected: source ~/.config/secrets/load.sh from your custom zsh profile.');
   }
   for (const name of profiles) {
-    const target = path.join(home, name);
+    const target = path.join(homeDirectory, name);
     const previous = fs.existsSync(target) ? fs.readFileSync(target, 'utf8') : '';
     if (!previous.split(/\r?\n/).includes(line)) {
       fs.appendFileSync(target, `\n${marker}\n${line}\n`, { mode: 0o600 });
     }
   }
+}
+
+export function renderEnvironment(environment) {
+  return '# Generated locally. Do not commit. Caller-provided values take precedence.\n' +
+    Object.entries(environment).map(([name, value]) => {
+      if (!/^[A-Z_][A-Z0-9_]*$/.test(name)) throw new Error('Invalid environment identifier.');
+      return `if [ "\${${name}+x}" != x ]; then export ${name}=${shellQuote(value)}; fi\n`;
+    }).join('');
 }
 
 function validate(manifest) {
@@ -187,8 +196,8 @@ function main() {
         }
       `, JSON.stringify(environment));
     } else {
-      privateWrite(path.join(generated, 'env.sh'), '# Generated locally. Do not commit.\n' +
-        Object.entries(environment).map(([name, value]) => `export ${name}=${shellQuote(value)}\n`).join(''));
+      privateWrite(path.join(generated, 'env.sh'), renderEnvironment(environment));
+      privateWrite(path.join(generated, 'names'), Object.keys(environment).map(name => `${name}\n`).join(''));
       installShellLoader();
     }
     for (const entry of resolved.filter(e => e.output === 'file')) {
@@ -210,5 +219,7 @@ function main() {
   }
 }
 
-try { main(); }
-catch (error) { console.error(error.message); process.exitCode = 1; }
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try { main(); }
+  catch (error) { console.error(error.message); process.exitCode = 1; }
+}

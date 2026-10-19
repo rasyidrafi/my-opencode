@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { centralized, privateWrite } from '../shell/integration.mjs';
 
 export function setupDocker(home, run = docker, mounted = () => spawnSync('mountpoint', ['-q', '/mnt']).status === 0, root = `/mnt/cache/${os.userInfo().username}/docker-buildkit`) {
   if (!mounted()) throw new Error('/mnt must be mounted before configuring Docker cache.');
@@ -46,8 +47,10 @@ function docker(args) {
 
 export function install(home) {
   // A task cannot change its parent shell. Install a loader for future shells.
+  privateWrite(home, path.join(home, '.config/azure-mnt-cache/shell-enabled'), '1\n');
   const loader = '[ ! -r "$HOME/.config/azure-mnt-cache/cache.sh" ] || . "$HOME/.config/azure-mnt-cache/cache.sh"';
-  for (const name of ['.bashrc', '.profile', '.zshrc', '.zprofile']) {
+  const central = centralized(home);
+  for (const name of central ? ['.zshrc', '.zprofile'] : ['.bashrc', '.profile', '.zshrc', '.zprofile']) {
     const target = path.join(home, name);
     const previous = fs.existsSync(target) ? fs.readFileSync(target, 'utf8') : '';
     if (!previous.split(/\r?\n/).includes(loader)) {
@@ -55,6 +58,7 @@ export function install(home) {
     }
   }
   // Bash skips .profile when one of these existing login files is present.
+  if (central) return;
   for (const name of ['.bash_profile', '.bash_login']) {
     const target = path.join(home, name);
     if (!fs.existsSync(target)) continue;
