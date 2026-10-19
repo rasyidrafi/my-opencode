@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { options, validateRole, guestSettings, sshFragment, restrictedKey, run } from './setup.mjs';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { options, validateRole, guestSettings, sshFragment, restrictedKey, run, migrateMise } from './setup.mjs';
 
 const guest = { role: 'guest', context: 'soy', 'ssh-alias': 'soy-docker', host: '172.16.0.4', user: 'soy', identity: '/home/test/.ssh/docker-key', 'known-hosts': '/home/test/.ssh/docker-known-hosts' };
 
@@ -44,4 +47,25 @@ test('host authorization grants only the restricted Docker transport', () => {
 test('installer script is delivered on stdin even when output is inherited', () => {
   assert.throws(() => run('/bin/sh', ['-s'], { input: 'exit 17\n' }), /failed \(17\)/);
   assert.equal(run('/bin/sh', ['-s'], { input: 'exit 0\n' }).status, 0);
+});
+
+test('native migration archives active mise installs so reshim cannot recreate Docker shims', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'docker-migration-test-'));
+  const dataRoot = path.join(root, '.local/share/mise');
+  const tool = path.join(dataRoot, 'installs/docker-cli/29/docker');
+  const shim = path.join(dataRoot, 'shims/docker');
+  try {
+    fs.mkdirSync(path.dirname(tool), { recursive: true }); fs.writeFileSync(tool, 'preserved binary');
+    fs.mkdirSync(path.dirname(shim), { recursive: true }); fs.symlinkSync(path.join(root, '.local/bin/mise'), shim);
+    const env = { root, dataRoot };
+    assert.throws(() => migrateMise(false, true, env), /migrate-mise/);
+    migrateMise(true, true, env);
+    assert.ok(fs.existsSync(tool)); assert.ok(fs.lstatSync(shim).isSymbolicLink());
+    migrateMise(true, false, env);
+    assert.equal(fs.existsSync(tool), false); assert.equal(fs.lstatSync(shim, { throwIfNoEntry: false }), undefined);
+    const backups = path.join(root, '.local/state/docker-setup-backups');
+    const backup = path.join(backups, fs.readdirSync(backups)[0]);
+    assert.equal(fs.readFileSync(path.join(backup, 'installs/docker-cli/29/docker'), 'utf8'), 'preserved binary');
+    migrateMise(false, false, env);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

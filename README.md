@@ -64,8 +64,9 @@ mise run docker:setup -- --role guest --context soy --ssh-alias soy-docker \
 The address above is the existing soy endpoint, not a universal default. Guest
 settings are saved locally, so later runs need only `--role guest`. Use
 `--dry-run` before changing anything. `--migrate-mise` backs up link metadata and
-removes only obsolete mise Docker shims/plugin symlinks; installed mise versions
-remain available for rollback. Remove active Docker mise selections explicitly
+removes only obsolete mise Docker shims/plugin symlinks; installed mise Docker
+directories are archived outside active mise installs for rollback and to prevent
+`mise reshim` from recreating old shims. Remove active Docker mise selections explicitly
 first. Unrecognized executables, conflicting contexts, package stacks and SSH
 settings stop setup rather than being silently replaced.
 

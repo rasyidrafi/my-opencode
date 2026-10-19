@@ -116,33 +116,44 @@ function backupWriter() {
   };
 }
 
-function migrateMise(enabled, dryRun) {
-  const data = process.env.MISE_DATA_DIR || path.join(process.env.XDG_DATA_HOME || path.join(home, '.local/share'), 'mise');
+export function migrateMise(enabled, dryRun, { root = home, dataRoot } = {}) {
+  const data = dataRoot || process.env.MISE_DATA_DIR || path.join(process.env.XDG_DATA_HOME || path.join(root, '.local/share'), 'mise');
   const targets = ['docker', 'docker-compose'].map(name => path.join(data, 'shims', name));
-  targets.push(path.join(home, '.docker/cli-plugins/docker-compose'), path.join(home, '.docker/cli-plugins/docker-buildx'));
+  targets.push(path.join(root, '.docker/cli-plugins/docker-compose'), path.join(root, '.docker/cli-plugins/docker-buildx'));
   const obsolete = [];
+  const installations = ['docker-cli', 'docker-compose'].map(name => path.join(data, 'installs', name)).filter(target => fs.existsSync(target));
+  for (const target of installations) {
+    assertSafe(root, path.join(target, 'migration-check'));
+    if (!fs.statSync(target).isDirectory()) throw new Error(`Expected a mise installation directory: ${target}`);
+  }
   for (const target of targets) {
     if (!fs.existsSync(target) && !fs.lstatSync(target, { throwIfNoEntry: false })) continue;
     const s = fs.lstatSync(target);
     if (!s.isSymbolicLink()) throw new Error(`Unmanaged Docker executable/plugin: ${target}. Inspect before native migration.`);
     const link = fs.readlinkSync(target);
     if (!link.includes('mise')) throw new Error(`Unmanaged Docker symlink: ${target}. Inspect before native migration.`);
+    assertSafe(root, path.join(path.dirname(target), 'migration-check'));
     obsolete.push(target);
   }
-  const mise = path.join(home, '.local/bin/mise');
+  const mise = path.join(root, '.local/bin/mise');
   if (fs.existsSync(mise)) {
     const selected = run(mise, ['ls', '--current', '--json'], { capture: true });
     const parsed = JSON.parse(selected);
     if (Object.keys(parsed).some(name => ['docker-cli', 'docker-compose', 'docker'].includes(name))) throw new Error('Docker is still selected by mise config. Remove that selection explicitly before using native Docker.');
   }
-  if (obsolete.length && !enabled) throw new Error('Obsolete mise Docker shims/plugins detected. Rerun with --migrate-mise after reviewing native migration.');
-  if (!obsolete.length) return;
-  console.log(`Migrate obsolete Docker symlinks: ${obsolete.join(', ')}`);
+  if ((obsolete.length || installations.length) && !enabled) throw new Error('Obsolete mise Docker installations/shims/plugins detected. Rerun with --migrate-mise after reviewing native migration.');
+  if (!obsolete.length && !installations.length) return;
+  if (obsolete.length) console.log(`Migrate obsolete Docker symlinks: ${obsolete.join(', ')}`);
+  if (installations.length) console.log(`Archive old mise installations to prevent shim regeneration: ${installations.join(', ')}`);
   if (dryRun) return;
-  const backup = path.join(home, '.local/state/docker-setup-backups', `${new Date().toISOString().replaceAll(':', '-')}-${process.pid}`);
-  privateWrite(home, path.join(backup, 'symlinks.json'), JSON.stringify(obsolete.map(target => ({ path: target, link: fs.readlinkSync(target) })), null, 2) + '\n');
+  const backup = path.join(root, '.local/state/docker-setup-backups', `${new Date().toISOString().replaceAll(':', '-')}-${process.pid}`);
+  privateWrite(root, path.join(backup, 'symlinks.json'), JSON.stringify(obsolete.map(target => ({ path: target, link: fs.readlinkSync(target) })), null, 2) + '\n');
+  privateWrite(root, path.join(backup, 'installations.json'), JSON.stringify(installations, null, 2) + '\n');
+  fs.mkdirSync(path.join(backup, 'installs'), { mode: 0o700 });
+  for (const target of installations) fs.renameSync(target, path.join(backup, 'installs', path.basename(target)));
   for (const target of obsolete) fs.unlinkSync(target);
-  // Installed mise versions are retained for rollback; only stale links are removed.
+  console.log(`Native migration backup: ${backup}`);
+  // Version directories are archived, not deleted. Mise must not rediscover them.
 }
 
 export function setup(argv = process.argv.slice(2)) {
@@ -160,6 +171,14 @@ export function setup(argv = process.argv.slice(2)) {
   if (saved.role && saved.role !== args.role) throw new Error('Saved Docker role differs; inspect local state before migration.');
   const config = args.role === 'guest' && !args['packages-only'] ? guestSettings({ ...saved, ...args }) : { role: args.role };
   const write = backupWriter();
+  if (args['authorize-key']) {
+    if (args.role !== 'host' || !path.isAbsolute(args['authorize-key'])) throw new Error('--authorize-key requires host mode and an absolute public key path.');
+    restrictedKey(read(args['authorize-key']));
+    run('ssh-keygen', ['-l', '-f', args['authorize-key']], { capture: true });
+  }
+  if (args.role === 'host' && fs.existsSync('/usr/bin/docker')) {
+    if (run('/usr/bin/docker', ['context', 'show'], { capture: true }) !== 'default') throw new Error('Host has a non-default Docker context selected. Switch explicitly to default before setup.');
+  }
   let fragment;
   if (args.role === 'guest' && !args['packages-only']) {
     for (const name of ['identity', 'known-hosts']) {
