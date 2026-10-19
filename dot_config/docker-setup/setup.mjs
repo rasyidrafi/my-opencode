@@ -55,8 +55,8 @@ export function restrictedKey(publicKey) {
   return `restrict,command="/usr/bin/docker system dial-stdio" ${parts[0]} ${parts[1]} docker-context\n`;
 }
 
-function run(command, args, { capture = false, allowFailure = false, ...rest } = {}) {
-  const r = spawnSync(command, args, { encoding: 'utf8', stdio: capture ? 'pipe' : 'inherit', timeout: 300_000, ...rest });
+export function run(command, args, { capture = false, allowFailure = false, ...rest } = {}) {
+  const r = spawnSync(command, args, { encoding: 'utf8', stdio: capture ? 'pipe' : (rest.input !== undefined ? ['pipe', 'inherit', 'inherit'] : 'inherit'), timeout: 300_000, ...rest });
   if (!allowFailure && (r.error || r.status !== 0)) throw new Error(`${path.basename(command)} failed (${r.error?.code || r.status}); inspect the command output. No SSH trust settings were relaxed.`);
   return capture ? (r.stdout || '').trim() : r;
 }
@@ -99,6 +99,7 @@ apt-get update
 apt-get --no-remove install -y --no-install-recommends ${missing.join(' ')}
 `;
   privileged('/bin/sh', ['-s'], { input: script });
+  if (packages.some(pkg => !installed(pkg))) throw new Error('Native package verification failed after apt installation.');
 }
 
 function backupWriter() {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { options, validateRole, guestSettings, sshFragment, restrictedKey } from './setup.mjs';
+import { options, validateRole, guestSettings, sshFragment, restrictedKey, run } from './setup.mjs';
 
 const guest = { role: 'guest', context: 'soy', 'ssh-alias': 'soy-docker', host: '172.16.0.4', user: 'soy', identity: '/home/test/.ssh/docker-key', 'known-hosts': '/home/test/.ssh/docker-known-hosts' };
 
@@ -39,4 +39,9 @@ test('SSH fragment keeps pinned trust and dedicated identity, never relaxes trus
 test('host authorization grants only the restricted Docker transport', () => {
   assert.equal(restrictedKey('ssh-ed25519 AAAA test'), 'restrict,command="/usr/bin/docker system dial-stdio" ssh-ed25519 AAAA docker-context\n');
   for (const key of ['restrict ssh-ed25519 AAAA', 'ssh-rsa AAAA', 'ssh-ed25519 AAAA\nssh-ed25519 BBBB', 'ssh-ed25519 invalid!']) assert.throws(() => restrictedKey(key));
+});
+
+test('installer script is delivered on stdin even when output is inherited', () => {
+  assert.throws(() => run('/bin/sh', ['-s'], { input: 'exit 17\n' }), /failed \(17\)/);
+  assert.equal(run('/bin/sh', ['-s'], { input: 'exit 0\n' }).status, 0);
 });
