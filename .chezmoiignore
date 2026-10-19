@@ -1,3 +1,4 @@
+README.md
 .config/secrets/README.md
 .config/secrets/generated/**
 .config/tailscale/README.md
