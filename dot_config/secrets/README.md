@@ -19,11 +19,14 @@ can prevent cleanup; use `bw lock` if a run is interrupted. No session is saved.
 On initial login, Bitwarden may ask for your master password during both login
 and unlock. On later runs only unlock is necessary.
 
-Windows uses user-scoped Registry environment values. Linux writes a mode-0600
-shell file in a mode-0700 directory and adds an idempotent loader to bash/zsh
-profiles, preserving existing content. Custom ZDOTDIR, fish, services, cron,
-containers and Linux GUI sessions require their own loading configuration.
-This does not update already-running processes or the invoking shell.
+Windows uses user-scoped Registry environment values. Linux writes mode-0600
+shell files in a mode-0700 directory (`env.sh` for Bash/Zsh and `env.fish` for
+Fish, both with the same values) and adds an idempotent loader to bash/zsh
+profiles, preserving existing content. Fish loads `env.fish` through the
+shell:setup Fish loader (`~/.config/fish/conf.d/my-opencode.fish`). Custom
+ZDOTDIR, services, cron, containers and Linux GUI sessions require their own
+loading configuration. This does not update already-running processes or the
+invoking shell.
 
 ## Add a secret
 

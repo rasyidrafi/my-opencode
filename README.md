@@ -1,9 +1,14 @@
 # Dotfiles
 
+Run `chezmoi init --source /absolute/path/to/this/checkout` (after `cd` into it;
+effectively `$(pwd)` at that moment) to generate `~/.config/chezmoi/chezmoi.toml`
+with `sourceDir` recorded by `.chezmoi.toml.tmpl`. Re-run that form after moving
+the checkout; bare `chezmoi init` without a source generates no config.
+
 Run `mise run shell:setup` after `chezmoi apply` and `mise install` to install
-the deterministic Bash environment on Linux/macOS. No Codex, model, credentials,
-network access, sudo, or AI requests are needed. Setup never runs implicitly.
-Preview with `mise run shell:setup -- --dry-run`.
+the deterministic Bash and Fish environment on Linux/macOS. No Codex, model,
+credentials, network access, sudo, or AI requests are needed. Setup never runs
+implicitly. Preview with `mise run shell:setup -- --dry-run`.
 
 The installer syntax-checks proposed files, backs up changed files privately under
 `~/.local/state/shell-init-backups`, and installs idempotent hooks in `.bashrc`,
@@ -11,6 +16,9 @@ The installer syntax-checks proposed files, backs up changed files privately und
 content; symlinks, unsupported inline loaders, invalid syntax and ambiguous hooks
 fail explicitly rather than being guessed. Existing AI-generated shared loaders
 require review and `--replace-legacy-loader` (also supported with `--dry-run`).
+Fish terminals get the same managed PATH order, secrets and cache hooks through a
+confined manager at `~/.config/fish/conf.d/my-opencode.fish`, which sources
+`~/.config/shell/env.fish`; Fish user configuration is never modified.
 Backups contain sensitive configuration: keep them private.
 
 The shared loader orders `~/bin`, `~/.local/bin`, mise shims, then the remaining
@@ -21,7 +29,9 @@ printed by setup. Secrets/cache helper reruns recognize installed integration.
 Cache remains opt-in via `azure-mnt-cache:setup`; existing direct cache integration
 is migrated. Workboxes without opt-in remain unaffected.
 
-Keep host-specific additions in `~/.config/shell/local.sh`. Custom absolute
+Keep host-specific additions in `~/.config/shell/local.sh` (Bash-only: Fish
+cannot source Bash snippets, so mirror any host-specific Fish needs in your Fish
+config). Custom absolute
 `BASH_ENV` hooks are preserved through a private legacy wrapper; ambiguous cycles
 require manual migration. Templates in `dot_config/shell/templates` are the source
 of truth; rerun setup after applying updates. Generated loaders are not chezmoi
@@ -98,9 +108,12 @@ Test without installing packages or changing Docker:
 `node --test dot_config/docker-setup/setup.test.mjs`.
 
 Run `mise run azure-mnt-cache:setup` to opt into Linux cache redirection to
-`/mnt/cache/<username>` in new Bash/Zsh shells. The task installs shell loaders;
-it does not move or delete existing caches, configure mounts, or use sudo.
-Source `~/.config/azure-mnt-cache/cache.sh` to activate in the current shell.
+`/mnt/cache/<username>` in new Bash/Zsh/Fish shells. The task installs shell
+loaders; Fish activation requires the shell:setup Fish loader and sources
+`cache.fish`. It does not move or delete existing caches, configure mounts, or
+use sudo.
+Source `~/.config/azure-mnt-cache/cache.sh` (Fish: `cache.fish`) to activate in
+the current shell.
 If `/mnt` is not mounted or its cache directories cannot be created/accessed,
 home cache defaults are used. An administrator may need to provision the private
 user cache directory first. This checks mount availability, not Azure disk identity.

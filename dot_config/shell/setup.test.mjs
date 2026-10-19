@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 import { setup } from './setup.mjs';
 import { centralized } from './integration.mjs';
-import { installShellLoader, renderEnvironment } from '../secrets/setup.mjs';
+import { installShellLoader, renderEnvironment, renderEnvironmentFish } from '../secrets/setup.mjs';
 import { install as installCache } from '../azure-mnt-cache/setup.mjs';
 
 function fixture(fn) {
@@ -116,4 +116,41 @@ test('login and interactive entry points load the shared environment quietly', (
     assert.equal(r.status, 0);
     assert.equal(r.stdout, `${home}/.bash_env|kept`);
   }
+}));
+
+const fishAvailable = !spawnSync('fish', ['--version'], { encoding: 'utf8' }).error;
+
+test('installs the Fish loader without touching Fish user configuration', () => fixture((home, write) => {
+  write('.config/fish/config.fish', '# user Fish config\nset -gx USER_FISH custom\n');
+  write('.config/fish/conf.d/user.fish', 'set -gx USER_CONF custom\n');
+  setup({ home, env: {} });
+  const wrapper = fs.readFileSync(path.join(home, '.config/fish/conf.d/my-opencode.fish'), 'utf8');
+  assert.match(wrapper, /source "\$HOME\/\.config\/shell\/env\.fish"/);
+  assert.equal(fs.readFileSync(path.join(home, '.config/fish/config.fish'), 'utf8'), '# user Fish config\nset -gx USER_FISH custom\n');
+  assert.equal(fs.readFileSync(path.join(home, '.config/fish/conf.d/user.fish'), 'utf8'), 'set -gx USER_CONF custom\n');
+  assert.deepEqual(setup({ home, env: {} }).changed, []);
+}));
+
+test('Fish runtime receives the managed PATH order, quiet output and Bash forwarding', () => fixture((home) => {
+  if (!fishAvailable) return;
+  for (const dir of ['bin', '.local/bin', '.local/share/mise/shims']) fs.mkdirSync(path.join(home, dir), { recursive: true });
+  setup({ home, env: {} });
+  const r = spawnSync('fish', ['-c', 'printf "%s\\nBASH_ENV=%s" (string join : $PATH) "$BASH_ENV"'], {
+    env: { HOME: home, PATH: '/usr/bin:/bin' }, encoding: 'utf8',
+  });
+  assert.equal(r.status, 0); assert.equal(r.stderr, '');
+  assert.equal(r.stdout, `${home}/bin:${home}/.local/bin:${home}/.local/share/mise/shims:/usr/bin:/bin\nBASH_ENV=${home}/.bash_env`);
+}));
+
+test('generated Fish defaults carry values verbatim and skip caller-provided ones', () => fixture((home, write) => {
+  if (!fishAvailable) return;
+  write('.config/secrets/generated/env.fish',
+    renderEnvironmentFish({ TEST_KEY: "managed'quoted", OTHER_KEY: 'line\nbreak', SAFE: 'plain' }));
+  setup({ home, env: {} });
+  assert.match(fs.readFileSync(path.join(home, '.config/secrets/generated/env.fish'), 'utf8'), /if not set -q TEST_KEY/);
+  const r = spawnSync('fish', ['-c', 'printf "%s|%s|%s" "$OTHER_KEY" "$TEST_KEY" "$SAFE"'], {
+    env: { HOME: home, PATH: '/usr/bin:/bin', TEST_KEY: 'caller' }, encoding: 'utf8',
+  });
+  assert.equal(r.status, 0); assert.equal(r.stderr, '');
+  assert.equal(r.stdout, `line\nbreak|caller|plain`);
 }));

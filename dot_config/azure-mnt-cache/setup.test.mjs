@@ -52,6 +52,27 @@ test('directory creation failure keeps home defaults', () => {
   assert.equal(result.stdout, '/example/.cache\n/tmp\n');
 });
 
+test('Fish mounted cache uses the current username', {
+  skip: Boolean(spawnSync('fish', ['--version']).error),
+}, () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'azure-fish-cache-test-'));
+  try {
+    // Redirect only the disk prefix, keeping the real username substitution.
+    const script = fs.readFileSync(new URL('./cache.fish', import.meta.url), 'utf8')
+      .replace('/mnt/cache/', `${root}/`);
+    const result = spawnSync('fish', ['--no-config', '-c', `
+      function mountpoint; return 0; end
+      function id; printf '%s' test-user; end
+      ${script}
+      printf '%s\\n' "$XDG_CACHE_HOME" "$GOMODCACHE" "$TMPDIR"
+    `], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stderr, '');
+    assert.equal(result.stdout, `${root}/test-user/xdg\n${root}/test-user/go-mod\n${root}/test-user/tmp\n`);
+    assert.equal(fs.statSync(path.join(root, 'test-user/tmp')).mode & 0o777, 0o700);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test('Docker setup provisions bind-backed cache and is repeatable', () => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'azure-docker-test-'));
   const root = path.join(home, 'cache');

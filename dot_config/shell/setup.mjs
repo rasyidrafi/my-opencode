@@ -10,6 +10,14 @@ const quote = value => `'${value.replaceAll("'", "'\\''")}'`;
 const blockPattern = /^# >>> my-opencode shell v1 >>>\n[\s\S]*?^# <<< my-opencode shell v1 <<<\n?/gm;
 
 function syntax(text, shell, target) {
+  if (shell === 'fish') {
+    // Hosts without Fish cannot execute these files; still validate it when Fish exists.
+    if (spawnSync('fish', ['--version'], { encoding: 'utf8' }).error) return;
+    const result = spawnSync('fish', ['-n'], { input: text, encoding: 'utf8' });
+    // Parser diagnostics can echo a credential assignment from an existing profile.
+    if (result.error || result.status !== 0) throw new Error(`Fish syntax validation failed for ${target}.`);
+    return;
+  }
   const result = spawnSync(shell, ['-n'], { input: text, encoding: 'utf8' });
   // Parser diagnostics can echo a credential assignment from an existing profile.
   if (result.error || result.status !== 0) throw new Error(`Shell syntax validation failed for ${target}; no diagnostic contents printed.`);
@@ -62,6 +70,11 @@ export function setup({ home = os.homedir(), platform = process.platform, env = 
   if (oldShared && oldShared !== shared && read(path.join(home, '.config/shell/installed-v1')) !== '1\n' && !replaceLegacy) {
     throw new Error('Existing shared env.sh is not managed by this installer. Review its customizations, then use --replace-legacy-loader to replace it with a private backup.');
   }
+  const oldSharedFish = read(path.join(home, '.config/shell/env.fish'));
+  const sharedFish = read(path.join(directory, 'templates/env.fish'));
+  if (oldSharedFish && oldSharedFish !== sharedFish && read(path.join(home, '.config/shell/installed-v1')) !== '1\n' && !replaceLegacy) {
+    throw new Error('Existing shared env.fish is not managed by this installer. Review its customizations, then use --replace-legacy-loader to replace it with a private backup.');
+  }
   const enabled = fs.existsSync(path.join(home, '.config/azure-mnt-cache/shell-enabled'))
     || fs.existsSync(path.join(home, '.config/azure-mnt-cache/docker-enabled'))
     || [...Object.values(originals), ...(oldShared !== shared ? [oldShared] : [])].some(text => text.split('\n').some(line => !line.trim().startsWith('#') && /(?:\.|source)\s+[^\n]*azure-mnt-cache\/cache\.sh/.test(line)));
@@ -99,6 +112,10 @@ export function setup({ home = os.homedir(), platform = process.platform, env = 
     }
   }
   plan('.config/shell/env.sh', shared, 'sh');
+  plan('.config/shell/env.fish', sharedFish, 'fish');
+  plan('.config/fish/conf.d/my-opencode.fish',
+    '# Installed by mise run shell:setup. Fish startup auto-sources conf.d files.\nif test -r "$HOME/.config/shell/env.fish"\n    source "$HOME/.config/shell/env.fish"\nend\n',
+    'fish');
   plan('.bash_env', wrapper, 'bash');
   const login = ['.bash_profile', '.bash_login', '.profile'].find(name => Object.hasOwn(originals, name));
   for (const name of profiles) {
@@ -135,7 +152,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       for (const target of result.changed) console.log(target);
     } else {
       console.log(result.changed.length ? `Installed deterministic Bash setup (${result.changed.length} changed files). Private backup: ${result.backup}` : 'Bash setup is already current; no changes.');
-      console.log('Open a new Bash login. Existing processes and systemd/cron need explicit environment integration.');
+      console.log('Open a new Bash or Fish login. Existing processes and systemd/cron need explicit environment integration.');
     }
   } catch (error) { console.error(error.message); process.exitCode = 1; }
 }

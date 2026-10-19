@@ -127,6 +127,17 @@ export function renderEnvironment(environment) {
     }).join('');
 }
 
+// Fish twin of renderEnvironment: same caller-precedence semantics, because
+// set -q also holds for empty values, and Fish single-quote escaping.
+const fishQuote = value => `'${value.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`;
+export function renderEnvironmentFish(environment) {
+  return '# Generated locally. Do not commit. Caller-provided values take precedence.\n' +
+    Object.entries(environment).map(([name, value]) => {
+      if (!/^[A-Z_][A-Z0-9_]*$/.test(name)) throw new Error('Invalid environment identifier.');
+      return `if not set -q ${name}; set -gx ${name} ${fishQuote(value)}; end\n`;
+    }).join('');
+}
+
 function validate(manifest) {
   if (manifest.version !== 1 || !Array.isArray(manifest.secrets)) throw new Error('Invalid manifest version or secrets list.');
   const names = new Set();
@@ -197,6 +208,7 @@ function main() {
       `, JSON.stringify(environment));
     } else {
       privateWrite(path.join(generated, 'env.sh'), renderEnvironment(environment));
+      privateWrite(path.join(generated, 'env.fish'), renderEnvironmentFish(environment));
       privateWrite(path.join(generated, 'names'), Object.keys(environment).map(name => `${name}\n`).join(''));
       installShellLoader();
     }
@@ -209,7 +221,7 @@ function main() {
     console.log(`Installed ${resolved.length} secret(s); values hidden.`);
     console.log(windows
       ? 'Other secrets: user ENV saved. Restart applications; sign out/in if their launcher still has the old environment.'
-      : 'Other secrets: ENV loader installed for bash/zsh. Open a new terminal or SSH login. Services need their own environment configuration.');
+      : 'Other secrets: ENV loader installed for bash/zsh, plus env.fish for the Fish loader from shell:setup. Open a new terminal or SSH login. Services need their own environment configuration.');
   } finally {
     if (lockRequired) {
       try { bw(['lock']); console.log('Bitwarden locked.'); }
