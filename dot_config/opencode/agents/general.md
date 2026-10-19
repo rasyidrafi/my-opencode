@@ -3,7 +3,7 @@ description: "Execute repository tasks: implement features, fix bugs, refactor,
   edit files, and run verification. Use explore for discovery and reviewer for
   assessment; if reviewer is unavailable, general can review in a separate
   read-only session."
-model: openai/gpt-6-luna#xhigh
+model: openai/gpt-6.1-sol#low
 mode: subagent
 permissions:
   - action: "*"
@@ -64,4 +64,3 @@ permissions:
     resource: "*"
     effect: deny
 ---
-
