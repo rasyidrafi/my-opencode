@@ -29,6 +29,16 @@ description = "Install deterministic Bash environment hooks, preserving user cus
 run = 'node "{{ env.HOME }}/.config/shell/setup.mjs"'
 raw = true
 
+[tasks."rawroute:local"]
+description = "Opt into local Rawroute for Codex and OpenCode on this machine"
+run = 'node "{{ env.HOME }}/.config/rawroute/setup.mjs" local'
+raw = true
+
+[tasks."rawroute:default"]
+description = "Restore the default Rawroute endpoint for Codex and OpenCode"
+run = 'node "{{ env.HOME }}/.config/rawroute/setup.mjs" default'
+raw = true
+
 [tasks."chrome:setup"]
 description = "Opt in to installing Google Chrome Stable (Linux Debian/Ubuntu amd64 only)"
 run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/chrome/setup.mjs"'

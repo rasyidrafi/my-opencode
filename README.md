@@ -127,7 +127,44 @@ retaining other Codex settings, including project trust entries and Windows
 sandbox preferences. Codex can continue to add unrelated settings without those
 being discarded on the next `chezmoi apply`.
 
-The Rawroute provider reads its credential from `CCS_HALOTEC_API_KEY`; no key is
+### Rawroute endpoint opt-in
+
+Both Codex and OpenCode default to `https://ccs.halotec.my.id/v1` using
+`CCS_HALOTEC_API_KEY`. After applying these task assets, opt into the local route
+**on this machine only**:
+
+```sh
+mise run rawroute:local -- --dry-run
+mise run rawroute:local
+# Restore the default endpoint and key reference:
+mise run rawroute:default
+```
+
+Local mode uses `https://rawroute.qilin-elver.ts.net/v1` and
+`CCS_LOCAL_API_KEY`, mapped from Bitwarden item `rawroute local API` (password).
+Run `secrets:setup` separately and open a new initialized shell first; switching
+requires the local key in the invoking environment but never prints or embeds it.
+No network/model calls or automatic secret sync are performed.
+
+Mode is stored in `~/.config/rawroute/local-enabled`, never in Git. Both templates
+check this marker, so later ordinary `chezmoi apply` preserves local mode until
+explicit opt-out. Existing machines remain default when the marker is absent.
+The task applies **only** the Codex and OpenCode targets, creates private backups
+under `~/.local/state/rawroute-backups`, and restores both target files and the
+previous marker on failure. Symlink targets and concurrent switches are refused.
+Keep backups private: pre-existing configs may contain credentials.
+
+The applied `source.json` records the actual chezmoi source used to install the
+task. If that checkout moves, reapply the task assets or pass
+`--source /absolute/path/to/checkout`; setup verifies ownership before writing.
+`--dry-run` validates inputs without creating a marker or applying any targets.
+Existing applications/services may require a separate restart to reload config
+or newly synced secrets; switching does not restart them.
+
+Tests use synthetic credentials and an isolated temporary home:
+`node --test dot_config/rawroute/setup.test.mjs` (chezmoi required for render tests).
+
+The default Rawroute provider reads its credential from `CCS_HALOTEC_API_KEY`; no key is
 stored in this repository or in `config.toml`. The existing
 `dot_config/secrets/manifest.json` already maps that environment variable from
 Bitwarden. Set it up with `mise run secrets:setup` if it is not available in new

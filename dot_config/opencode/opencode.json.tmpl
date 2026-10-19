@@ -1,3 +1,4 @@
+{{- $local := stat (joinPath .chezmoi.homeDir ".config" "rawroute" "local-enabled") -}}
 {
   "websearch": false,
   "provider": {
@@ -26,8 +27,8 @@
         }
       },
       "options": {
-        "baseURL": "https://api.ccs.halotec.my.id/v1",
-        "apiKey": "{env:CCS_HALOTEC_API_KEY}"
+        "baseURL": "{{ if $local }}https://rawroute.qilin-elver.ts.net/v1{{ else }}https://ccs.halotec.my.id/v1{{ end }}",
+        "apiKey": "{env:{{ if $local }}CCS_LOCAL_API_KEY{{ else }}CCS_HALOTEC_API_KEY{{ end }}}"
       }
     }
   },

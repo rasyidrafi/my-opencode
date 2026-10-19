@@ -10,3 +10,6 @@ README.md
 .config/azure-mnt-cache/shell-enabled
 .config/shell/setup.test.mjs
 .config/docker-setup/setup.test.mjs
+.config/rawroute/setup.test.mjs
+.config/rawroute/local-enabled
+.config/rawroute/.switch.lock

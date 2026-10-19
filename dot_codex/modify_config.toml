@@ -1,14 +1,21 @@
 {{- /* chezmoi:modify-template */ -}}
 {{- $config := fromToml .chezmoi.stdin -}}
+{{- $local := stat (joinPath .chezmoi.homeDir ".config" "rawroute" "local-enabled") -}}
+{{- $baseURL := "https://ccs.halotec.my.id/v1" -}}
+{{- $envKey := "CCS_HALOTEC_API_KEY" -}}
+{{- if $local -}}
+  {{- $baseURL = "https://rawroute.qilin-elver.ts.net/v1" -}}
+  {{- $envKey = "CCS_LOCAL_API_KEY" -}}
+{{- end -}}
 {{- $config = $config | setValueAtPath "model_provider" "rawroute" -}}
 {{- $config = $config | setValueAtPath "model" "gpt-6-luna" -}}
 {{- $config = $config | setValueAtPath "model_reasoning_effort" "xhigh" -}}
 {{- $config = $config | setValueAtPath "approval_policy" "never" -}}
 {{- $config = $config | setValueAtPath "sandbox_mode" "danger-full-access" -}}
 {{- $config = $config | setValueAtPath "model_providers.rawroute.name" "Rawroute" -}}
-{{- $config = $config | setValueAtPath "model_providers.rawroute.base_url" "https://ccs.halotec.my.id/v1" -}}
+{{- $config = $config | setValueAtPath "model_providers.rawroute.base_url" $baseURL -}}
 {{- $config = $config | setValueAtPath "model_providers.rawroute.wire_api" "responses" -}}
-{{- $config = $config | setValueAtPath "model_providers.rawroute.env_key" "CCS_HALOTEC_API_KEY" -}}
+{{- $config = $config | setValueAtPath "model_providers.rawroute.env_key" $envKey -}}
 {{- $config = $config | deleteValueAtPath "model_providers.rawroute.experimental_bearer_token" -}}
 {{- $config = $config | setValueAtPath "agents.enabled" false -}}
 {{- /* Flatten the encoder's visual nesting and omit redundant parent headers.
