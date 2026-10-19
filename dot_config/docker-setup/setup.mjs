@@ -1,0 +1,239 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { assertSafe, privateWrite, read } from '../shell/integration.mjs';
+
+const home = os.homedir();
+const stateFile = path.join(home, '.config/docker-setup/state.json');
+
+export function options(argv) {
+  const result = {};
+  const flags = new Set(['dry-run', 'packages-only', 'migrate-mise']);
+  const values = new Set(['role', 'context', 'ssh-alias', 'host', 'user', 'port', 'identity', 'known-hosts', 'authorize-key']);
+  for (let i = 0; i < argv.length; i++) {
+    const name = argv[i].replace(/^--/, '');
+    if (!argv[i].startsWith('--') || (!flags.has(name) && !values.has(name))) throw new Error(`Unknown option: ${argv[i]}`);
+    if (flags.has(name)) result[name] = true;
+    else {
+      const value = argv[++i];
+      if (!value || value.startsWith('--')) throw new Error(`Missing value for --${name}`);
+      result[name] = value;
+    }
+  }
+  return result;
+}
+
+export function validateRole(role, container) {
+  if (!['host', 'guest'].includes(role)) throw new Error('Specify --role host or --role guest.');
+  if (role === 'host' && container) throw new Error(`Refusing to install an engine inside container ${container}.`);
+  if (role === 'guest' && container !== 'systemd-nspawn') throw new Error('Guest mode currently supports systemd-nspawn only.');
+}
+
+export function guestSettings(input) {
+  const c = Object.fromEntries(['role', 'context', 'ssh-alias', 'host', 'user', 'identity', 'known-hosts'].map(key => [key, input[key]]));
+  c.port = String(input.port || '22');
+  for (const name of ['context', 'ssh-alias', 'user']) {
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(c[name] || '')) throw new Error(`Invalid or missing --${name}.`);
+  }
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9.-]*$/.test(c.host || '')) throw new Error('Specify a DNS hostname or IPv4 address with --host.');
+  if (!/^\d+$/.test(c.port) || +c.port < 1 || +c.port > 65535) throw new Error('Invalid SSH port.');
+  for (const name of ['identity', 'known-hosts']) {
+    if (!path.isAbsolute(c[name] || '') || /[\r\n"\\%]/.test(c[name])) throw new Error(`--${name} must be an absolute path without SSH expansion tokens.`);
+  }
+  return c;
+}
+
+export function sshFragment(c) {
+  return `# Managed by mise run docker:setup; local to this machine.\nHost ${c['ssh-alias']}\n    HostName ${c.host}\n    User ${c.user}\n    Port ${c.port}\n    IdentityFile "${c.identity}"\n    IdentitiesOnly yes\n    UserKnownHostsFile "${c['known-hosts']}"\n    StrictHostKeyChecking yes\n    BatchMode yes\n    ForwardAgent no\n    ClearAllForwardings yes\n`;
+}
+
+export function restrictedKey(publicKey) {
+  const parts = publicKey.trim().split(/\s+/);
+  if (parts[0] !== 'ssh-ed25519' || !/^[A-Za-z0-9+/]+=*$/.test(parts[1] || '') || publicKey.trim().includes('\n')) throw new Error('Expected a single plain Ed25519 public key, without authorization options.');
+  return `restrict,command="/usr/bin/docker system dial-stdio" ${parts[0]} ${parts[1]} docker-context\n`;
+}
+
+function run(command, args, { capture = false, allowFailure = false, ...rest } = {}) {
+  const r = spawnSync(command, args, { encoding: 'utf8', stdio: capture ? 'pipe' : 'inherit', timeout: 300_000, ...rest });
+  if (!allowFailure && (r.error || r.status !== 0)) throw new Error(`${path.basename(command)} failed (${r.error?.code || r.status}); inspect the command output. No SSH trust settings were relaxed.`);
+  return capture ? (r.stdout || '').trim() : r;
+}
+
+function privileged(command, args, rest = {}) {
+  return process.getuid() === 0 ? run(command, args, rest) : run('sudo', [command, ...args], rest);
+}
+
+function installed(pkg) {
+  return run('dpkg-query', ['-W', '-f=${Status}', pkg], { capture: true, allowFailure: true }) === 'install ok installed';
+}
+
+function installPackages(role, dryRun) {
+  const release = read('/etc/os-release');
+  const id = release.match(/^ID=["']?([a-z]+)["']?$/m)?.[1];
+  const codename = release.match(/^(?:UBUNTU_CODENAME|VERSION_CODENAME)=["']?([a-z0-9]+)["']?$/m)?.[1];
+  const arch = run('dpkg', ['--print-architecture'], { capture: true });
+  if (!['debian', 'ubuntu'].includes(id) || !codename || !['amd64', 'arm64'].includes(arch)) throw new Error('Native Docker setup supports Debian/Ubuntu amd64/arm64 only.');
+  if (role === 'guest' && (installed('docker-ce') || installed('docker.io') || fs.existsSync('/run/docker.sock'))) throw new Error('Guest already has a Docker engine/socket; inspect it before migration.');
+  const packages = ['docker-ce-cli', 'docker-compose-plugin', 'docker-buildx-plugin', ...(role === 'host' ? ['docker-ce', 'containerd.io'] : [])];
+  const missing = packages.filter(pkg => !installed(pkg));
+  console.log(`Native packages: ${missing.length ? `install ${missing.join(', ')}` : 'already installed; no upgrade or daemon restart'}.`);
+  if (!missing.length || dryRun) return;
+  for (const pkg of ['docker.io', 'docker-compose', 'docker-compose-v2', 'podman-docker', ...(role === 'host' ? ['containerd', 'runc'] : [])]) {
+    if (installed(pkg)) throw new Error(`Conflicting package ${pkg}: migrate it explicitly; no packages were removed.`);
+  }
+  const script = `set -eu
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get install -y --no-install-recommends ca-certificates curl
+if ! grep -rqs 'https://download.docker.com/linux/${id}' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null; then
+    test ! -e /etc/apt/sources.list.d/my-opencode-docker.sources
+    test ! -L /etc/apt/keyrings/my-opencode-docker.asc
+    install -d -m 755 /etc/apt/keyrings
+    curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 https://download.docker.com/linux/${id}/gpg -o /etc/apt/keyrings/my-opencode-docker.asc
+    chmod 644 /etc/apt/keyrings/my-opencode-docker.asc
+    printf '%s\\n' 'Types: deb' 'URIs: https://download.docker.com/linux/${id}' 'Suites: ${codename}' 'Components: stable' 'Architectures: ${arch}' 'Signed-By: /etc/apt/keyrings/my-opencode-docker.asc' > /etc/apt/sources.list.d/my-opencode-docker.sources
+fi
+apt-get update
+apt-get --no-remove install -y --no-install-recommends ${missing.join(' ')}
+`;
+  privileged('/bin/sh', ['-s'], { input: script });
+}
+
+function backupWriter() {
+  let directory;
+  return (target, content) => {
+    assertSafe(home, target);
+    if (fs.existsSync(target) && read(target) === content && (fs.statSync(target).mode & 0o777) === 0o600) return;
+    if (fs.existsSync(target)) {
+      directory ||= path.join(home, '.local/state/docker-setup-backups', `${new Date().toISOString().replaceAll(':', '-')}-${process.pid}`);
+      privateWrite(home, path.join(directory, path.relative(home, target)), read(target));
+      console.log(`Private backup: ${directory}`);
+    }
+    privateWrite(home, target, content);
+  };
+}
+
+function migrateMise(enabled, dryRun) {
+  const data = process.env.MISE_DATA_DIR || path.join(process.env.XDG_DATA_HOME || path.join(home, '.local/share'), 'mise');
+  const targets = ['docker', 'docker-compose'].map(name => path.join(data, 'shims', name));
+  targets.push(path.join(home, '.docker/cli-plugins/docker-compose'), path.join(home, '.docker/cli-plugins/docker-buildx'));
+  const obsolete = [];
+  for (const target of targets) {
+    if (!fs.existsSync(target) && !fs.lstatSync(target, { throwIfNoEntry: false })) continue;
+    const s = fs.lstatSync(target);
+    if (!s.isSymbolicLink()) throw new Error(`Unmanaged Docker executable/plugin: ${target}. Inspect before native migration.`);
+    const link = fs.readlinkSync(target);
+    if (!link.includes('mise')) throw new Error(`Unmanaged Docker symlink: ${target}. Inspect before native migration.`);
+    obsolete.push(target);
+  }
+  const mise = path.join(home, '.local/bin/mise');
+  if (fs.existsSync(mise)) {
+    const selected = run(mise, ['ls', '--current', '--json'], { capture: true });
+    const parsed = JSON.parse(selected);
+    if (Object.keys(parsed).some(name => ['docker-cli', 'docker-compose', 'docker'].includes(name))) throw new Error('Docker is still selected by mise config. Remove that selection explicitly before using native Docker.');
+  }
+  if (obsolete.length && !enabled) throw new Error('Obsolete mise Docker shims/plugins detected. Rerun with --migrate-mise after reviewing native migration.');
+  if (!obsolete.length) return;
+  console.log(`Migrate obsolete Docker symlinks: ${obsolete.join(', ')}`);
+  if (dryRun) return;
+  const backup = path.join(home, '.local/state/docker-setup-backups', `${new Date().toISOString().replaceAll(':', '-')}-${process.pid}`);
+  privateWrite(home, path.join(backup, 'symlinks.json'), JSON.stringify(obsolete.map(target => ({ path: target, link: fs.readlinkSync(target) })), null, 2) + '\n');
+  for (const target of obsolete) fs.unlinkSync(target);
+  // Installed mise versions are retained for rollback; only stale links are removed.
+}
+
+export function setup(argv = process.argv.slice(2)) {
+  if (process.platform !== 'linux') throw new Error('docker:setup supports Linux Debian/Ubuntu only.');
+  const args = options(argv);
+  const container = run('systemd-detect-virt', ['--container'], { capture: true, allowFailure: true });
+  validateRole(args.role, container === 'none' ? '' : container);
+  if (!args['packages-only'] && process.getuid() === 0) throw new Error('Run setup as the intended user; root may use --packages-only for package provisioning.');
+  for (const name of ['DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_CONFIG', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH']) {
+    if (process.env[name]) throw new Error(`Unset ${name} before setup so the selected context can be verified.`);
+  }
+  if (process.env.BUILDX_BUILDER) console.log('BUILDX_BUILDER is set; its selection is preserved. Daemon verification uses an explicit Docker context.');
+  const dryRun = !!args['dry-run'];
+  const saved = read(stateFile) ? JSON.parse(read(stateFile)) : {};
+  if (saved.role && saved.role !== args.role) throw new Error('Saved Docker role differs; inspect local state before migration.');
+  const config = args.role === 'guest' && !args['packages-only'] ? guestSettings({ ...saved, ...args }) : { role: args.role };
+  const write = backupWriter();
+  let fragment;
+  if (args.role === 'guest' && !args['packages-only']) {
+    for (const name of ['identity', 'known-hosts']) {
+      assertSafe(home, config[name]);
+      if (!fs.existsSync(config[name]) || !fs.statSync(config[name]).isFile()) throw new Error(`Missing ${name}: provision the key or independently verified host trust first. No key or host trust is generated automatically.`);
+    }
+    if (!read(path.join(home, '.ssh/config')).split('\n').some(line => line.trim() === 'Include config.d/docker-*.conf')) throw new Error('Apply the repository SSH config first; Docker fragment Include is missing.');
+    fragment = path.join(home, '.ssh/config.d', `docker-${config['ssh-alias']}.conf`);
+    assertSafe(home, fragment);
+    if (read(fragment) && read(fragment) !== sshFragment(config)) throw new Error('Existing Docker SSH fragment differs. Resolve it explicitly instead of overwriting its endpoint.');
+    const dockerConfig = read(path.join(home, '.docker/config.json'));
+    const active = dockerConfig ? JSON.parse(dockerConfig).currentContext : null;
+    if (active && active !== 'default' && active !== config.context) throw new Error(`Another context (${active}) is selected; switch explicitly before setup.`);
+  }
+  if (!args['packages-only']) migrateMise(!!args['migrate-mise'], true);
+  installPackages(args.role, dryRun);
+  if (args['packages-only']) return;
+  if (dryRun) {
+    console.log(`Dry run: ${args.role === 'guest' ? `verify SSH alias ${config['ssh-alias']} and context ${config.context}` : 'verify native host daemon'}; no files or packages changed.`);
+    return;
+  }
+  migrateMise(!!args['migrate-mise'], false);
+  run('/usr/bin/docker', ['--version']);
+  run('/usr/bin/docker', ['compose', 'version']);
+  run('/usr/bin/docker', ['buildx', 'version']);
+  if (args.role === 'host') {
+    const access = run('/usr/bin/docker', ['--context', 'default', 'info', '--format', '{{.ID}}'], { capture: true, allowFailure: true });
+    if (!access) throw new Error('Cannot access the native host daemon. An administrator must enable Docker and explicitly authorize this user (Docker access is host-root equivalent); open a new login after group changes.');
+    run('/usr/bin/docker', ['--context', 'default', 'info', '--format', 'Host Docker: {{.Name}} ID={{.ID}} Root={{.DockerRootDir}}']);
+    if (args['authorize-key']) {
+      const addition = restrictedKey(read(args['authorize-key']));
+      const target = path.join(home, '.ssh/authorized_keys');
+      const existing = read(target);
+      const key = read(args['authorize-key']).trim().split(/\s+/)[1];
+      const matches = existing.split('\n').filter(line => line.includes(key));
+      if (matches.length && !matches.every(line => line.startsWith('restrict,command="/usr/bin/docker system dial-stdio" '))) throw new Error('Key already has different authorization; review it manually.');
+      if (!matches.length) write(target, existing + (existing && !existing.endsWith('\n') ? '\n' : '') + addition);
+      console.log('Restricted Docker SSH authorization is ready. Docker access is equivalent to host root access.');
+    }
+  } else {
+    // Do not copy or rewrite private keys; tighten only their access mode.
+    fs.chmodSync(config.identity, 0o600);
+    write(config['known-hosts'], read(config['known-hosts']));
+    write(fragment, sshFragment(config));
+    const effective = run('ssh', ['-G', config['ssh-alias']], { capture: true });
+    const settings = Object.fromEntries(effective.split('\n').map(line => [line.split(' ')[0], line.slice(line.indexOf(' ') + 1)]));
+    const strict = ['true', 'yes'].includes(settings.stricthostkeychecking);
+    if (settings.hostname !== config.host || settings.user !== config.user || settings.port !== config.port || !strict
+      || settings.identitiesonly !== 'yes' || settings.batchmode !== 'yes'
+      || settings.userknownhostsfile !== config['known-hosts']) throw new Error('Effective SSH settings conflict with the managed fragment; inspect ssh -G.');
+    const endpoint = `ssh://${config['ssh-alias']}`;
+    const contexts = run('/usr/bin/docker', ['context', 'ls', '--format', '{{.Name}}'], { capture: true }).split('\n');
+    let created = false;
+    if (contexts.includes(config.context)) {
+      if (run('/usr/bin/docker', ['context', 'inspect', config.context, '--format', '{{.Endpoints.docker.Host}}'], { capture: true }) !== endpoint) throw new Error('Existing Docker context points elsewhere; refusing to overwrite.');
+    } else {
+      run('/usr/bin/docker', ['context', 'create', config.context, '--docker', `host=${endpoint}`]);
+      created = true;
+    }
+    try {
+      run('/usr/bin/docker', ['--context', config.context, 'info', '--format', 'Shared host Docker: {{.Name}} ID={{.ID}} Root={{.DockerRootDir}}']);
+    } catch (error) {
+      if (created) console.error(`Context ${config.context} was created but not selected; fix SSH authorization/trust and rerun.`);
+      throw error;
+    }
+    if (run('/usr/bin/docker', ['context', 'show'], { capture: true }) !== config.context) run('/usr/bin/docker', ['context', 'use', config.context]);
+    if (fs.existsSync('/run/docker.sock')) throw new Error('Guest unexpectedly has a local Docker socket.');
+    console.log('Guest uses the host daemon via SSH; bind mounts and published ports belong to the host.');
+  }
+  const which = run('/bin/sh', ['-c', 'command -v docker'], { capture: true });
+  if (which !== '/usr/bin/docker' && which !== '/bin/docker') throw new Error('A different Docker executable shadows the native CLI; inspect PATH.');
+  write(stateFile, JSON.stringify(config, null, 2) + '\n');
+  console.log('Docker setup verified. Existing workloads, daemon configuration and storage were preserved.');
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try { setup(); } catch (error) { console.error(error.message); process.exitCode = 1; }
+}

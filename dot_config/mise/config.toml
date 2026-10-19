@@ -34,6 +34,11 @@ description = "Opt in to installing Google Chrome Stable (Linux Debian/Ubuntu am
 run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/chrome/setup.mjs"'
 raw = true
 
+[tasks."docker:setup"]
+description = "Set up native Docker on a host, or native clients with a guest SSH context"
+run = 'node "{{ env.HOME }}/.config/docker-setup/setup.mjs"'
+raw = true
+
 [tasks."azure-mnt-cache:setup"]
 description = "Persist Linux shell cache paths on /mnt, with home fallback"
 run = 'node "{{ env.HOME }}/.config/azure-mnt-cache/setup.mjs"'

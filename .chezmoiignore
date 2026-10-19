@@ -9,3 +9,4 @@ README.md
 .config/azure-mnt-cache/docker-enabled
 .config/azure-mnt-cache/shell-enabled
 .config/shell/setup.test.mjs
+.config/docker-setup/setup.test.mjs

@@ -42,6 +42,60 @@ profiles, or run automatically during `mise install`. Headless use needs no desk
 Test host validation without installing anything:
 `node --test dot_config/chrome/setup.test.mjs`.
 
+## Shared native Docker
+
+`docker:setup` is opt-in and deterministic, for Debian/Ubuntu amd64/arm64.
+Mise runs the task but does not manage Docker binaries. The host uses native
+Docker CE; a systemd-nspawn guest installs only native CLI, Compose and Buildx
+packages from Docker's official apt repository. No TCP daemon or shared socket.
+
+```sh
+# On the host, as the intended Docker user:
+mise run docker:setup -- --role host --dry-run
+mise run docker:setup -- --role host
+
+# On the guest; supply independently verified SSH trust and an authorized key:
+mise run docker:setup -- --role guest --context soy --ssh-alias soy-docker \
+  --host 172.16.0.4 --user soy \
+  --identity "$HOME/.ssh/id_ed25519_docker_soy" \
+  --known-hosts "$HOME/.ssh/known_hosts_docker_soy" --migrate-mise
+```
+
+The address above is the existing soy endpoint, not a universal default. Guest
+settings are saved locally, so later runs need only `--role guest`. Use
+`--dry-run` before changing anything. `--migrate-mise` backs up link metadata and
+removes only obsolete mise Docker shims/plugin symlinks; installed mise versions
+remain available for rollback. Remove active Docker mise selections explicitly
+first. Unrecognized executables, conflicting contexts, package stacks and SSH
+settings stop setup rather than being silently replaced.
+
+Existing healthy packages are not upgraded, and a healthy daemon is not restarted.
+Missing packages require sudo. For noninteractive provisioning an administrator
+can run the installed Node helper as root with `--role guest --packages-only`,
+then run the normal task as the guest user. Host users must be explicitly authorized
+to access Docker by an administrator; group changes require a new login. Setup
+does not silently grant docker-group membership or relax socket permissions.
+
+Guest SSH fragments live under `~/.ssh/config.d/docker-*.conf`, included by the
+repo's SSH config and not overwritten by chezmoi. Host keys are never accepted
+automatically and private keys are never copied/generated. For a new dedicated
+Ed25519 key, authorize its **public** key on the host with
+`--role host --authorize-key /absolute/path/to/key.pub`. Existing authorization
+with different options requires manual review. Authorization restricts SSH to
+`/usr/bin/docker system dial-stdio`; Docker access is still **host-root equivalent**.
+Existing soy authorization and pinned trust can be reused without changes.
+
+Verification uses the actual Docker context transport, not a generic SSH shell
+(forced-command keys intentionally do not provide one). Unset Docker endpoint
+and config environment overrides before setup. A builder override is reported
+and preserved, not mistaken for a daemon endpoint. Bind mounts resolve on
+the **host filesystem**, and published ports belong to the host. Guest workspaces
+are not automatically shared. Keep cache setup separate: its Docker cache option
+requires a local daemon, not an SSH context.
+
+Test without installing packages or changing Docker:
+`node --test dot_config/docker-setup/setup.test.mjs`.
+
 Run `mise run azure-mnt-cache:setup` to opt into Linux cache redirection to
 `/mnt/cache/<username>` in new Bash/Zsh shells. The task installs shell loaders;
 it does not move or delete existing caches, configure mounts, or use sudo.

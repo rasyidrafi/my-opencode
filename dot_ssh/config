@@ -1,3 +1,6 @@
+# Machine-local Docker SSH transports, managed by mise run docker:setup.
+Include config.d/docker-*.conf
+
 Host soy
     HostName soy.qilin-elver.ts.net
     User soy
