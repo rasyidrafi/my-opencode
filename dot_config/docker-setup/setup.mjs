@@ -61,10 +61,13 @@ export function authorizeDockerKey(existing, publicKey) {
   const key = publicKey.trim().split(/\s+/)[1];
   const lines = existing.split('\n');
   const matches = lines.filter(line => line.split(/\s+/).includes(key));
-  if (matches.some(line => line !== addition && line !== `restrict,${addition}`)) {
+  const identity = publicKey.trim().split(/\s+/).slice(0, 2).join(' ');
+  const prefix = `command="/usr/bin/docker system dial-stdio" ${identity}`;
+  const managed = line => [prefix, `restrict,${prefix}`].some(start => line === start || line.startsWith(start + ' '));
+  if (matches.some(line => !managed(line))) {
     throw new Error('Key already has different authorization; review it manually.');
   }
-  if (matches.length) return lines.map(line => matches.includes(line) ? addition : line).join('\n');
+  if (matches.length) return lines.map(line => matches.includes(line) && line.startsWith('restrict,') ? line.slice('restrict,'.length) : line).join('\n');
   return existing + (existing && !existing.endsWith('\n') ? '\n' : '') + addition + '\n';
 }
 

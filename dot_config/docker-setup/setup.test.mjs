@@ -76,6 +76,9 @@ test('authorization upgrades legacy managed keys and preserves other entries', (
   const other = 'ssh-ed25519 BBBB another-key\n';
   assert.equal(authorizeDockerKey(other + 'restrict,' + current, key), other + current);
   assert.equal(authorizeDockerKey(other + current, key), other + current);
+  const imported = current.replace('docker-context', 'soy-wb-docker-soy');
+  assert.equal(authorizeDockerKey(other + 'restrict,' + imported, key), other + imported);
+  assert.equal(authorizeDockerKey(other + imported, key), other + imported);
   assert.equal(authorizeDockerKey(other.trimEnd(), key), other + current);
   assert.throws(() => authorizeDockerKey('no-port-forwarding ssh-ed25519 AAAA custom\n', key), /different authorization/);
 });
