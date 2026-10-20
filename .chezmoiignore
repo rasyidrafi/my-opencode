@@ -1,4 +1,6 @@
 README.md
+.config/skills/setup.test.mjs
+.local/share/my-opencode/optional-skills/tests/**
 .config/secrets/README.md
 .config/secrets/setup.test.mjs
 .config/secrets/generated/**

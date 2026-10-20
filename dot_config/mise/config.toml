@@ -29,6 +29,16 @@ description = "Install deterministic Bash environment hooks, preserving user cus
 run = 'node "{{ env.HOME }}/.config/shell/setup.mjs"'
 raw = true
 
+[tasks."skills:install"]
+description = "Interactively link optional skills globally or into a project"
+run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/skills/setup.mjs" install'
+raw = true
+
+[tasks."skills:list"]
+description = "List available optional skills"
+run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/skills/setup.mjs" list'
+raw = true
+
 [tasks."rawroute:local"]
 description = "Opt into local Rawroute for Codex and OpenCode on this machine"
 run = 'node "{{ env.HOME }}/.config/rawroute/setup.mjs" local'

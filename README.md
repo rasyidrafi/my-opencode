@@ -5,6 +5,53 @@ effectively `$(pwd)` at that moment) to generate `~/.config/chezmoi/chezmoi.toml
 with `sourceDir` recorded by `.chezmoi.toml.tmpl`. Re-run that form after moving
 the checkout; bare `chezmoi init` without a source generates no config.
 
+## Optional agent skills
+
+`ask-bun` and `ask-docker` are opt-in skills, adapted from the sibling
+`ai-personal` repository. Their catalog lives in
+`dot_local/share/my-opencode/optional-skills/`; `chezmoi apply` installs it at
+`~/.local/share/my-opencode/optional-skills/` without activating any skills.
+Existing always-on skills in `dot_agents/skills/` remain unchanged.
+
+After applying the catalog and task assets:
+
+```sh
+mise run skills:list
+mise run skills:install  # Select skills, project/global scope, then confirm
+mise run skills:install -- ask-bun ask-docker --global
+mise run skills:install -- ask-bun --project /absolute/path/to/project --dry-run
+mise run skills:install -- ask-bun --project /absolute/path/to/project
+```
+
+Global links go into `~/.agents/skills/`; project links go into the selected
+directory's `.agents/skills/`. The project directory must already exist.
+Relative project paths use `MISE_ORIGINAL_CWD` when available, otherwise the task's
+working directory; absolute paths are unambiguous. Interactive mode defaults to project scope
+and asks for the directory (using `MISE_ORIGINAL_CWD` as a suggestion when present).
+Noninteractive use requires explicit skill names and scope.
+
+The installer validates the entire selection, skips correct existing links, and
+refuses conflicting paths or symlinked `.agents`/`skills` parent directories.
+`--dry-run` creates nothing. No sudo, downloads, AI requests, automatic dependency
+installation, or Git configuration changes occur. Windows directory symlinks
+require Developer Mode or suitable privileges; link failures are reported.
+
+Links point to the deployed catalog, not the Git checkout: update with
+`chezmoi apply`. Activation links remain local and are not managed by chezmoi.
+Do not commit project links containing machine-specific absolute paths; optionally
+exclude individual links through that project's `.git/info/exclude`. To deactivate,
+remove only the chosen activation symlink, not its catalog directory.
+
+Both skills require Python 3.10+ and internet access, use only the Python standard
+library, and send questions to the respective public documentation AI service.
+Do not include secrets in questions. Their scripts and original mocked tests were
+ported from `ai-personal`; no live AI requests are needed to run these tests:
+
+```sh
+node --test dot_config/skills/setup.test.mjs
+python3 -B -m unittest discover -s dot_local/share/my-opencode/optional-skills/tests
+```
+
 Run `mise run shell:setup` after `chezmoi apply` and `mise install` to install
 the deterministic Bash and Fish environment on Linux/macOS. No Codex, model,
 credentials, network access, sudo, or AI requests are needed. Setup never runs
