@@ -92,9 +92,13 @@ repo's SSH config and not overwritten by chezmoi. Host keys are never accepted
 automatically and private keys are never copied/generated. For a new dedicated
 Ed25519 key, authorize its **public** key on the host with
 `--role host --authorize-key /absolute/path/to/key.pub`. Existing authorization
-with different options requires manual review. Authorization restricts SSH to
-`/usr/bin/docker system dial-stdio`; Docker access is still **host-root equivalent**.
-Existing soy authorization and pinned trust can be reused without changes.
+with different options requires manual review. Authorization keeps the forced command
+`/usr/bin/docker system dial-stdio` and allows SSH port forwarding by default;
+Docker access is still **host-root equivalent**. Rerunning host setup with
+`--authorize-key` upgrades this task's older `restrict` authorization, preserving
+unrelated keys. Rerunning guest setup upgrades its managed SSH fragment to allow
+forwarding; pinned trust, identity and endpoint are preserved. A healthy daemon
+does not need to be restarted for these SSH changes.
 
 Verification uses the actual Docker context transport, not a generic SSH shell
 (forced-command keys intentionally do not provide one). Unset Docker endpoint

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { options, validateRole, guestSettings, sshFragment, restrictedKey, run, migrateMise } from './setup.mjs';
+import { options, validateRole, guestSettings, sshFragment, dockerKey, authorizeDockerKey, run, migrateMise } from './setup.mjs';
 
 const guest = { role: 'guest', context: 'soy', 'ssh-alias': 'soy-docker', host: '172.16.0.4', user: 'soy', identity: '/home/test/.ssh/docker-key', 'known-hosts': '/home/test/.ssh/docker-known-hosts' };
 
@@ -35,13 +35,13 @@ test('saved settings exclude one-shot flags', () => {
 
 test('SSH fragment keeps pinned trust and dedicated identity, never relaxes trust', () => {
   const text = sshFragment(guestSettings(guest));
-  for (const setting of ['Host soy-docker', 'HostName 172.16.0.4', 'User soy', 'StrictHostKeyChecking yes', 'IdentitiesOnly yes', 'BatchMode yes', 'ForwardAgent no']) assert.ok(text.includes(setting));
+  for (const setting of ['Host soy-docker', 'HostName 172.16.0.4', 'User soy', 'StrictHostKeyChecking yes', 'IdentitiesOnly yes', 'BatchMode yes', 'ForwardAgent no', 'ClearAllForwardings no']) assert.ok(text.includes(setting));
   assert.ok(!text.includes('StrictHostKeyChecking no'));
 });
 
-test('host authorization grants only the restricted Docker transport', () => {
-  assert.equal(restrictedKey('ssh-ed25519 AAAA test'), 'restrict,command="/usr/bin/docker system dial-stdio" ssh-ed25519 AAAA docker-context\n');
-  for (const key of ['restrict ssh-ed25519 AAAA', 'ssh-rsa AAAA', 'ssh-ed25519 AAAA\nssh-ed25519 BBBB', 'ssh-ed25519 invalid!']) assert.throws(() => restrictedKey(key));
+test('host authorization keeps Docker transport and allows port forwarding by default', () => {
+  assert.equal(dockerKey('ssh-ed25519 AAAA test'), 'command="/usr/bin/docker system dial-stdio" ssh-ed25519 AAAA docker-context\n');
+  for (const key of ['restrict ssh-ed25519 AAAA', 'ssh-rsa AAAA', 'ssh-ed25519 AAAA\nssh-ed25519 BBBB', 'ssh-ed25519 invalid!']) assert.throws(() => dockerKey(key));
 });
 
 test('installer script is delivered on stdin even when output is inherited', () => {
@@ -68,4 +68,14 @@ test('native migration archives active mise installs so reshim cannot recreate D
     assert.equal(fs.readFileSync(path.join(backup, 'installs/docker-cli/29/docker'), 'utf8'), 'preserved binary');
     migrateMise(false, false, env);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('authorization upgrades legacy managed keys and preserves other entries', () => {
+  const key = 'ssh-ed25519 AAAA test';
+  const current = dockerKey(key);
+  const other = 'ssh-ed25519 BBBB another-key\n';
+  assert.equal(authorizeDockerKey(other + 'restrict,' + current, key), other + current);
+  assert.equal(authorizeDockerKey(other + current, key), other + current);
+  assert.equal(authorizeDockerKey(other.trimEnd(), key), other + current);
+  assert.throws(() => authorizeDockerKey('no-port-forwarding ssh-ed25519 AAAA custom\n', key), /different authorization/);
 });
