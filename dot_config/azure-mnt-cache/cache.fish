@@ -39,9 +39,6 @@ if command -v mountpoint >/dev/null 2>&1; and mountpoint -q /mnt; and mkdir -p "
         set -gx CARGO_TARGET_DIR "$_azure_cache_root/cargo-build"
         set -gx CCACHE_DIR "$_azure_cache_root/ccache"
         set -gx TMPDIR "$_azure_cache_root/tmp"
-        if test -f "$HOME/.config/azure-mnt-cache/docker-enabled"; and mkdir -p "$_azure_cache_root/docker-buildkit" 2>/dev/null
-            set -gx BUILDX_BUILDER azure-mnt-cache
-        end
     end
 end
 umask $_azure_cache_old_umask

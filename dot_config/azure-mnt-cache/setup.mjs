@@ -5,38 +5,33 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { centralized, privateWrite } from '../shell/integration.mjs';
 
-export function setupDocker(home, run = docker, mounted = () => spawnSync('mountpoint', ['-q', '/mnt']).status === 0, root = `/mnt/cache/${os.userInfo().username}/docker-buildkit`) {
-  if (!mounted()) throw new Error('/mnt must be mounted before configuring Docker cache.');
-  const builder = 'azure-mnt-cache';
-  const volume = 'buildx_buildkit_azure-mnt-cache0_state';
-  run(['info', '--format', '{{.DockerRootDir}}']);
-  // Restrict this to the local daemon: a remote daemon cannot use our /mnt.
+// The active Docker endpoint decides the role: SSH guests use the host's
+// migrated daemon and must never move local system directories.
+export function setupDocker(home, { run = docker, dryRun = false, execute = spawnSync } = {}) {
+  if (process.env.DOCKER_HOST || process.env.DOCKER_CONTEXT || process.env.DOCKER_CONFIG) {
+    throw new Error('Unset DOCKER_HOST/DOCKER_CONTEXT/DOCKER_CONFIG before setup; use an explicit saved Docker context.');
+  }
   const endpoint = run(['context', 'inspect', '--format', '{{.Endpoints.docker.Host}}']);
-  if (process.env.DOCKER_HOST || process.env.DOCKER_CONTEXT || !endpoint.startsWith('unix://')) {
-    throw new Error('Docker cache setup requires a local Unix-socket context without DOCKER_HOST/DOCKER_CONTEXT overrides.');
+  if (endpoint.startsWith('ssh://')) {
+    const id = run(['info', '--format', '{{.ID}}']);
+    console.log(`Remote Docker ${endpoint} (daemon ${id}): migrate storage on that host. No guest daemon/storage changes.`);
+    return { remote: true, endpoint };
   }
-  fs.mkdirSync(root, { recursive: true, mode: 0o700 });
-  const volumes = run(['volume', 'ls', '--format', '{{.Name}}']).split('\n');
-  if (volumes.includes(volume)) {
-    const [existing] = JSON.parse(run(['volume', 'inspect', volume]));
-    if (existing.Driver !== 'local' || existing.Options?.device !== root || existing.Options?.o !== 'bind' || existing.Options?.type !== 'none') {
-      throw new Error(`Volume ${volume} already exists with different settings; refusing to modify it.`);
-    }
-  } else {
-    run(['volume', 'create', '--driver', 'local', '--opt', 'type=none', '--opt', `device=${root}`, '--opt', 'o=bind', volume]);
+  if (!['unix:///var/run/docker.sock', 'unix:///run/docker.sock'].includes(endpoint)) {
+    throw new Error('Only the native local Docker socket or an SSH context is supported.');
   }
-  const builders = run(['buildx', 'ls', '--format', '{{json .}}']).split('\n').filter(Boolean).map(line => JSON.parse(line));
-  const existing = builders.find(item => item.Name === builder);
-  if (existing) {
-    if (existing.Driver !== 'docker-container' || existing.Nodes?.length !== 1 || existing.Nodes[0].Name !== 'azure-mnt-cache0' || existing.Nodes[0].Endpoint !== endpoint) {
-      throw new Error(`Builder ${builder} already exists with different settings; refusing to modify it.`);
-    }
-  } else {
-    run(['buildx', 'create', '--name', builder, '--node', 'azure-mnt-cache0', '--driver', 'docker-container', '--driver-opt', 'default-load=true', endpoint]);
-  }
-  run(['buildx', 'inspect', builder, '--bootstrap']);
-  fs.writeFileSync(path.join(home, '.config/azure-mnt-cache/docker-enabled'), `${builder}\n`, { mode: 0o600 });
-  console.log(`Docker BuildKit cache enabled at ${root}. Other builders and application data were left untouched.`);
+  const helper = fileURLToPath(new URL('./docker-storage.mjs', import.meta.url));
+  const args = dryRun ? [process.execPath, helper, '--dry-run']
+    : ['/usr/bin/flock', '--nonblock', '/run/lock/azure-mnt-cache-docker.lock', process.execPath, helper, '--apply'];
+  const root = process.getuid() === 0;
+  const result = execute(root ? args[0] : 'sudo', root ? args.slice(1) : ['--', ...args], { stdio: 'inherit' });
+  if (result.error || result.status !== 0) throw new Error('Docker storage migration failed; inspect the message above.');
+  return { remote: false, endpoint };
+}
+
+export function options(argv) {
+  if (argv.some(arg => arg !== '--dry-run')) throw new Error('Usage: azure-mnt-cache:setup [--dry-run]');
+  return { dryRun: argv.includes('--dry-run') };
 }
 
 function docker(args) {
@@ -73,13 +68,15 @@ export function install(home) {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     if (process.platform !== 'linux') throw new Error('This task supports Linux only.');
-    install(os.homedir());
-    if (spawnSync('docker', ['--version'], { encoding: 'utf8' }).status === 0) setupDocker(os.homedir());
-    console.log('Installed cache loader for new Bash/Zsh shells. Existing caches were not moved or deleted.');
-    console.log('Activate in this shell: . "$HOME/.config/azure-mnt-cache/cache.sh"');
-    console.log('Uses /mnt only when mounted and writable; otherwise uses home defaults.');
-    console.log('If /mnt/cache is not writable, ask an administrator to create /mnt/cache/<your-user> owned by you.');
-    console.log('Files stored on an Azure temporary disk can disappear when that disk is reset.');
+    const { dryRun } = options(process.argv.slice(2));
+    if (spawnSync('docker', ['--version'], { encoding: 'utf8' }).status === 0) setupDocker(os.homedir(), { dryRun });
+    if (!dryRun) {
+      install(os.homedir());
+      // The default builder now stores data on /mnt too; retire our old override.
+      const marker = path.join(os.homedir(), '.config/azure-mnt-cache/docker-enabled');
+      if (fs.existsSync(marker)) fs.unlinkSync(marker);
+    }
+    console.log(dryRun ? 'Dry run complete; no migration or shell changes.' : 'Storage setup complete. Open a new shell to refresh cache paths and builder selection.');
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

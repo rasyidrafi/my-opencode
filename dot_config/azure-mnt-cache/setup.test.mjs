@@ -4,7 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
-import { install, setupDocker } from './setup.mjs';
+import { install, setupDocker, options } from './setup.mjs';
+import { migrate, moveStore, checkInventory, systemdFiles } from './docker-storage.mjs';
 
 test('installation preserves startup files and is idempotent', () => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'azure-cache-test-'));
@@ -73,29 +74,100 @@ test('Fish mounted cache uses the current username', {
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test('Docker setup provisions bind-backed cache and is repeatable', () => {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'azure-docker-test-'));
-  const root = path.join(home, 'cache');
+test('SSH guests verify the existing daemon without sudo or local migration', () => {
   const calls = [];
-  let volume = false;
-  let builder = false;
-  fs.mkdirSync(path.join(home, '.config/azure-mnt-cache'), { recursive: true });
-  const run = args => {
-    calls.push(args);
-    if (args[0] === 'context') return 'unix:///var/run/docker.sock';
-    if (args[0] === 'volume' && args[1] === 'ls') return volume ? 'buildx_buildkit_azure-mnt-cache0_state' : '';
-    if (args[0] === 'volume' && args[1] === 'create') volume = true;
-    if (args[0] === 'volume' && args[1] === 'inspect') return JSON.stringify([{ Driver: 'local', Options: { device: root, o: 'bind', type: 'none' } }]);
-    if (args[0] === 'buildx' && args[1] === 'ls') return builder ? JSON.stringify({ Name: 'azure-mnt-cache', Driver: 'docker-container', Nodes: [{ Name: 'azure-mnt-cache0', Endpoint: 'unix:///var/run/docker.sock' }] }) : '';
-    if (args[0] === 'buildx' && args[1] === 'create') builder = true;
-    return '';
-  };
-  try {
-    setupDocker(home, run, () => true, root);
-    setupDocker(home, run, () => true, root);
-    assert.equal(calls.filter(args => args[0] === 'volume' && args[1] === 'create').length, 1);
-    assert.equal(calls.filter(args => args[0] === 'buildx' && args[1] === 'create').length, 1);
-    assert.equal(fs.readFileSync(path.join(home, '.config/azure-mnt-cache/docker-enabled'), 'utf8'), 'azure-mnt-cache\n');
-    assert.throws(() => setupDocker(home, run, () => false, root), /must be mounted/);
-  } finally { fs.rmSync(home, { recursive: true, force: true }); }
+  const result = setupDocker('/unused', {
+    run: args => { calls.push(args); return args[0] === 'context' ? 'ssh://soy-docker' : 'host-daemon-id'; },
+    execute: () => assert.fail('guest must not execute the privileged helper'),
+  });
+  assert.equal(result.remote, true);
+  assert.equal(calls[1][0], 'info');
+});
+
+test('local setup invokes a dry-run helper or a locked privileged migration', () => {
+  for (const dryRun of [true, false]) {
+    setupDocker('/unused', {
+      dryRun, run: () => 'unix:///var/run/docker.sock',
+      execute: (command, args) => {
+        assert.ok([command, ...args].includes(dryRun ? '--dry-run' : '--apply'));
+        assert.equal([command, ...args].includes('/usr/bin/flock'), !dryRun);
+        return { status: 0 };
+      },
+    });
+  }
+  assert.throws(() => setupDocker('/unused', { run: () => 'tcp://other:2375' }), /Only the native/);
+  assert.throws(() => options(['--unknown']), /Usage/);
+});
+
+function operations({ complete = false, fail } = {}) {
+  const calls = [];
+  const io = Object.fromEntries(['preflight', 'prepare', 'stop', 'move', 'mount', 'start', 'verify', 'finish', 'verifyMounts'].map(name => [name, () => {
+    calls.push(name);
+    if (name === fail) throw new Error('simulated ' + name + ' failure');
+    if (name === 'preflight') return { complete };
+  }]));
+  return { calls, io };
+}
+
+test('migration stops workloads before moving storage and commits only after verification', async () => {
+  const { calls, io } = operations();
+  assert.equal((await migrate(io)).complete, true);
+  assert.deepEqual(calls, ['preflight', 'prepare', 'stop', 'move', 'mount', 'start', 'verify', 'finish']);
+});
+
+test('dry run and a verified repeat do not stop or move workloads', async () => {
+  const preview = operations();
+  await migrate(preview.io, { dryRun: true });
+  assert.deepEqual(preview.calls, ['preflight']);
+  const repeat = operations({ complete: true });
+  await migrate(repeat.io);
+  assert.deepEqual(repeat.calls, ['preflight', 'verifyMounts']);
+});
+
+test('failed transfer never mounts or restarts incomplete storage; failed verification never commits', async () => {
+  for (const fail of ['move', 'verify']) {
+    const { calls, io } = operations({ fail });
+    await assert.rejects(migrate(io), /not rolled back.*Rerun/);
+    assert.ok(!calls.includes('finish'));
+    if (fail === 'move') assert.ok(!calls.includes('start') && !calls.includes('mount'));
+  }
+});
+
+test('inventory verification detects missing volumes, images, containers and stopped workloads', () => {
+  const before = { id: 'daemon', containers: ['a', 'b'], running: ['a'], images: ['image'], volumes: ['db'] };
+  checkInventory(before, structuredClone(before));
+  for (const key of ['containers', 'images', 'volumes', 'running']) {
+    assert.throws(() => checkInventory(before, { ...before, [key]: [] }));
+  }
+  assert.throws(() => checkInventory(before, { ...before, id: 'new-daemon' }));
+});
+
+test('both service roots require /mnt mounts and a completed-migration marker at boot', () => {
+  const units = systemdFiles();
+  for (const name of ['docker', 'containerd']) {
+    assert.match(units[`/etc/systemd/system/var-lib-${name}.mount`], /Requires=mnt.mount/);
+    assert.ok(units[`/etc/systemd/system/var-lib-${name}.mount`].includes(`What=/mnt/docker-storage/${name}`));
+    const dropin = units[`/etc/systemd/system/${name}.service.d/azure-mnt-storage.conf`];
+    assert.ok(dropin.includes(`Requires=var-lib-${name}.mount`));
+    assert.match(dropin, /ExecStartPre=\/usr\/bin\/test -f \/mnt\/docker-storage\/\.ready/);
+  }
+});
+
+test('real transfer preserves content, modes, symlinks and hardlinks with no old files; resume repairs partial copies', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'docker-storage-transfer-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const source = path.join(root, 'source');
+  const target = path.join(root, 'target');
+  fs.mkdirSync(path.join(source, 'volume'), { recursive: true });
+  fs.mkdirSync(path.join(target, 'volume'), { recursive: true });
+  fs.writeFileSync(path.join(source, 'volume/db'), 'database-content', { mode: 0o640 });
+  fs.linkSync(path.join(source, 'volume/db'), path.join(source, 'hardlink'));
+  fs.symlinkSync('volume/db', path.join(source, 'symlink'));
+  fs.writeFileSync(path.join(target, 'volume/db'), 'incomplete');
+  moveStore({ source, target });
+  assert.deepEqual(fs.readdirSync(source), []);
+  assert.equal(fs.readFileSync(path.join(target, 'volume/db'), 'utf8'), 'database-content');
+  assert.equal(fs.statSync(path.join(target, 'volume/db')).mode & 0o777, 0o640);
+  assert.equal(fs.statSync(path.join(target, 'volume/db')).ino, fs.statSync(path.join(target, 'hardlink')).ino);
+  assert.equal(fs.readlinkSync(path.join(target, 'symlink')), 'volume/db');
 });

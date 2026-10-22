@@ -163,32 +163,59 @@ Verification uses the actual Docker context transport, not a generic SSH shell
 and config environment overrides before setup. A builder override is reported
 and preserved, not mistaken for a daemon endpoint. Bind mounts resolve on
 the **host filesystem**, and published ports belong to the host. Guest workspaces
-are not automatically shared. Keep cache setup separate: its Docker cache option
-requires a local daemon, not an SSH context.
+are not automatically shared. Run storage migration on the Docker host; SSH guests continue using that daemon.
 
 Test without installing packages or changing Docker:
 `node --test dot_config/docker-setup/setup.test.mjs`.
 
-Run `mise run azure-mnt-cache:setup` to opt into Linux cache redirection to
-`/mnt/cache/<username>` in new Bash/Zsh/Fish shells. The task installs shell
-loaders; Fish activation requires the shell:setup Fish loader and sources
-`cache.fish`. It does not move or delete existing caches, configure mounts, or
-use sudo.
-Source `~/.config/azure-mnt-cache/cache.sh` (Fish: `cache.fish`) to activate in
-the current shell.
-If `/mnt` is not mounted or its cache directories cannot be created/accessed,
-home cache defaults are used. An administrator may need to provision the private
-user cache directory first. This checks mount availability, not Azure disk identity.
-Temporary Azure disks can lose all cached files. Already-running applications and
-systemd services do not receive these shell environment changes automatically.
-When Docker is installed, setup also creates a local `docker-container` Buildx
-builder named `azure-mnt-cache`. Its BuildKit state volume is a bind-backed local
-volume at `/mnt/cache/<username>/docker-buildkit`. New shells select this builder
-through `BUILDX_BUILDER`; builds load results into Docker by default. Image and
-application volume storage remain unchanged. Existing builder caches are not
-migrated or pruned. Run setup again after a temporary disk reset, before building.
-Docker access without sudo is required, and only a local Unix-socket context is
-supported. BuildKit runs a privileged helper container, as usual for this driver.
+Run `mise run azure-mnt-cache:setup` to move **all native Docker-managed persistent
+storage** to `/mnt/docker-storage` and enable shell caches at
+`/mnt/cache/<username>`. Preview with `mise run azure-mnt-cache:setup -- --dry-run`.
+Apply the repo first so the task and its `docker-storage.mjs` helper are installed.
+
+On a native Linux/systemd host, the task uses sudo and requires `rsync`
+(`sudo apt-get install rsync` on Debian/Ubuntu). It supports the standard
+`/var/lib/docker` and `/var/lib/containerd` layout. Both trees are moved to
+`/mnt/docker-storage/docker` and `/mnt/docker-storage/containerd`, then mounted
+back at their original paths using systemd bind mounts. Images, writable layers,
+Docker volumes (including databases), container logs and the default builder's
+cache therefore reside on `/mnt`. Runtime binaries/configuration stay on root;
+sockets and running-process state stay in `/run`.
+
+Migration stops running containers, Docker and containerd, transfers files with
+permissions, owners, hardlinks and extended attributes, and restarts the same
+containers. It verifies daemon identity, container/image/volume inventories and
+running containers before marking the migration complete. Source files are removed
+after successful transfer: **no rollback copy or old storage tree is retained**.
+An interrupted migration is resumed forward by rerunning the task. Do not remove
+`/etc/azure-mnt-cache/docker-storage.json` or the destination while it is unfinished.
+Completed reruns verify mounts without restarting workloads. Mount dependencies
+and a readiness marker prevent Docker/containerd from silently storing data on root
+when `/mnt` is unavailable or a migration is incomplete.
+
+Existing unrelated systemd overrides are preserved. Conflicting storage mounts,
+custom containerd roots/services, non-Docker containerd namespaces, auto-remove or
+paused/restarting containers, and external bind/volume data outside `/mnt` require
+explicit resolution before migration. Project bind mounts are not relocated by
+this task; their backing filesystem must already be `/mnt`. The host setup verifies
+that condition, including binds exposed at other paths such as `/home/soy-wb/projects`.
+
+For an SSH Docker context (for example `soy-wb` using `ssh://soy-docker`), the task
+checks the remote daemon and installs only the guest's shell cache integration.
+It never migrates guest system directories or installs a guest daemon. Run the
+migration once on the host: all clients then use its relocated storage.
+
+The previous `azure-mnt-cache` Buildx builder and its data already on `/mnt` remain
+usable; the task no longer creates or forces that special builder. Ordinary Docker
+builds also use `/mnt` after host migration. Shell loaders clear the old managed
+`BUILDX_BUILDER` override and the task removes its obsolete `docker-enabled` marker.
+
+Shell integration still falls back to home cache paths when `/mnt` is unavailable;
+it does not migrate old language/package caches. Fish requires `shell:setup` and
+loads `cache.fish`; Bash/Zsh load `cache.sh`. Open a new shell after applying the
+updated loaders. Test with
+`node --test dot_config/azure-mnt-cache/setup.test.mjs dot_config/shell/setup.test.mjs`
+(the real isolated file-transfer test requires rsync).
 
 Run `mise run openchamber:setup` after applying chezmoi to install and start
 OpenChamber's native user startup service on port 3000. This disables any previous
