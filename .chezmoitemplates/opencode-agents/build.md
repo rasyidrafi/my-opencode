@@ -58,4 +58,3 @@ permissions:
     resource: "*"
     effect: deny
 ---
-

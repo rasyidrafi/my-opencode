@@ -1,0 +1,14 @@
+{{- /* Refresh managed instructions/permissions, preserving the local model. */ -}}
+{{- $pattern := "(?s)\\A---[ \\t]*\\r?\\n(.*?)\\r?\\n---[ \\t]*(?:\\r?\\n|\\z)" -}}
+{{- $existing := regexFind $pattern .existing -}}
+{{- $defaults := regexFind $pattern .defaults -}}
+{{- $config := regexReplaceAll $pattern $defaults "${1}" | fromYaml -}}
+{{- if ne $existing "" -}}
+  {{- $local := regexReplaceAll $pattern $existing "${1}" | fromYaml -}}
+  {{- if hasKey $local "model" -}}
+    {{- $config = setValueAtPath "model" $local.model $config -}}
+  {{- end -}}
+{{- end -}}
+---
+{{ $config | toYaml }}---
+{{ trimPrefix $defaults .defaults }}

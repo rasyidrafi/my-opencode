@@ -1,0 +1,12 @@
+{{- /* chezmoi:modify-template */ -}}
+{{- $config := dict -}}
+{{- if ne (trim .chezmoi.stdin) "" -}}
+  {{- $config = fromJson .chezmoi.stdin -}}
+{{- end -}}
+{{- $managed := includeTemplate "opencode.json.tmpl" . | fromJson -}}
+{{- /* Keep local model/agent selections and unrelated settings. The repo owns
+      provider routing and model limits, and adds its disabled provider. */ -}}
+{{- $disabled := concat (get $config "disabled_providers" | default list) $managed.disabled_providers | uniq -}}
+{{- $config = mustMergeOverwrite $config $managed -}}
+{{- $config = setValueAtPath "disabled_providers" $disabled $config -}}
+{{- $config | toPrettyJson }}

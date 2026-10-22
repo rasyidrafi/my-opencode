@@ -2,7 +2,7 @@
 description: "Read-only codebase discovery: locate files and symbols, trace
   flows, explain existing behavior, and gather facts. Use general for changes
   and reviewer for judgments or recommendations."
-model: openai/gpt-6.1-sol#low
+model: openai/gpt-6-luna-fast#xhigh
 mode: subagent
 permissions:
   - action: "*"

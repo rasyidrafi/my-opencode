@@ -231,6 +231,22 @@ being discarded on the next `chezmoi apply`.
 The model defaults to `gpt-6-luna` only when the `model` field is absent;
 an existing local model selection is preserved, including during Rawroute switches.
 
+OpenCode follows the same modify-in-place pattern. `dot_config/opencode/modify_opencode.json`
+updates managed provider routing and model limits while retaining local model choices,
+agent configuration, and unrelated settings. Rawroute switches use this merge too.
+`gpt-6-luna-fast` shares Luna's limits: 680,000 context, 552,000 input, 128,000 output.
+
+The `dot_config/opencode/agents/modify_*.md` templates refresh repo-managed agent
+instructions and permissions while preserving each existing frontmatter `model`
+(including its variant). Missing model fields use the defaults in
+`.chezmoitemplates/opencode-agents/`: `general` and `explore` default to
+`openai/gpt-6-luna-fast#xhigh`, and `reviewer` to `openai/gpt-6-astra#low`.
+Build and plan inherit the session model unless a local model is set.
+Existing selections, including older repo defaults, stay selected; remove an
+agent's `model` field to adopt the current repo default on the next apply.
+
+Verify with `node --test tests/opencode-config.test.mjs dot_config/rawroute/setup.test.mjs`.
+
 ### Rawroute endpoint opt-in
 
 Both Codex and OpenCode default to `https://ccs.halotec.my.id/v1` using

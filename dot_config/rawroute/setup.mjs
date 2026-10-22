@@ -11,7 +11,7 @@ export const modes = {
   default: { baseURL: 'https://ccs.halotec.my.id/v1', envKey: 'CCS_HALOTEC_API_KEY' },
 };
 const targets = ['.codex/config.toml', '.config/opencode/opencode.json'];
-const sources = ['dot_codex/modify_config.toml', 'dot_config/opencode/opencode.json.tmpl'];
+const sources = ['dot_codex/modify_config.toml', 'dot_config/opencode/modify_opencode.json'];
 
 export function options(argv) {
   const mode = argv[0];
