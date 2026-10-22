@@ -8,7 +8,10 @@
   {{- $envKey = "CCS_LOCAL_API_KEY" -}}
 {{- end -}}
 {{- $config = $config | setValueAtPath "model_provider" "rawroute" -}}
-{{- $config = $config | setValueAtPath "model" "gpt-6-luna" -}}
+{{- /* Seed the repo default without replacing the user's selected model. */ -}}
+{{- if not (hasKey $config "model") -}}
+  {{- $config = $config | setValueAtPath "model" "gpt-6-luna" -}}
+{{- end -}}
 {{- $config = $config | setValueAtPath "model_reasoning_effort" "xhigh" -}}
 {{- $config = $config | setValueAtPath "approval_policy" "never" -}}
 {{- $config = $config | setValueAtPath "sandbox_mode" "danger-full-access" -}}

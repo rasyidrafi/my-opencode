@@ -1,0 +1,62 @@
+{{- /* chezmoi:modify-template */ -}}
+{{- /* SSH uses the first matching value. Keep owned endpoints first, and
+      preserve local options (including IdentityAgent) in their original scope. */ -}}
+{{- $begin := "# >>> my-opencode SSH aliases >>>" -}}
+{{- $end := "# <<< my-opencode SSH aliases <<<" -}}
+{{- $existing := .chezmoi.stdin -}}
+{{- $blocks := regexFindAll "(?m)^# >>> my-opencode SSH aliases >>>$" $existing -1 -}}
+{{- $ends := regexFindAll "(?m)^# <<< my-opencode SSH aliases <<<$" $existing -1 -}}
+{{- if or (gt (len $blocks) 1) (ne (len $blocks) (len $ends)) -}}
+  {{- fail "Ambiguous managed SSH block; repair its markers before applying." -}}
+{{- end -}}
+
+{{- $owned := false -}}
+{{- $global := true -}}
+{{- $lines := list -}}
+{{- $section := list "Host *" -}}
+{{- $content := false -}}
+{{- range $line := splitList "\n" $existing -}}
+  {{- if regexMatch "(?i)^\\s*(host|match)(\\s|=)" $line -}}
+    {{- if $content -}}{{- $lines = concat $lines $section -}}{{- end -}}
+    {{- $section = list $line -}}
+    {{- $content = false -}}
+    {{- $global = false -}}
+    {{- $owned = regexMatch "(?i)^\\s*host[\\s=]+\"?(soy|soy-wb|bull|bull-wb)\"?\\s*(#.*)?$" $line -}}
+  {{- end -}}
+  {{- $endpoint := and $owned (regexMatch "(?i)^\\s*(hostname|user|port)(\\s|=)" $line) -}}
+  {{- $include := and $global (regexMatch "(?i)^\\s*include\\s+config\\.d/docker-\\*\\.conf\\s*$" $line) -}}
+  {{- $comment := or (eq $line $begin) (eq $line $end) (eq $line "# Machine-local Docker SSH transports, managed by mise run docker:setup.") (eq $line "# Restore global scope for the preserved user configuration below.") -}}
+  {{- if not (or $endpoint $include $comment (regexMatch "(?i)^\\s*(host|match)(\\s|=)" $line)) -}}
+    {{- $section = append $section $line -}}
+    {{- if ne (trim $line) "" -}}{{- $content = true -}}{{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- if $content -}}{{- $lines = concat $lines $section -}}{{- end -}}
+{{ $begin }}
+# Machine-local Docker SSH transports, managed by mise run docker:setup.
+Include config.d/docker-*.conf
+
+Host soy
+    HostName soy.qilin-elver.ts.net
+    User soy
+    Port 22
+
+Host soy-wb
+    HostName soy.qilin-elver.ts.net
+    User soy-wb
+    Port 2222
+
+Host bull
+    HostName bull.qilin-elver.ts.net
+    User bull
+    Port 22
+
+Host bull-wb
+    HostName bull.qilin-elver.ts.net
+    User bull-wb
+    Port 2222
+
+# Restore global scope for the preserved user configuration below.
+Host *
+{{ $end }}
+{{ join "\n" $lines | trimAll "\n" }}

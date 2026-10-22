@@ -86,11 +86,13 @@ test('symlink targets and concurrent switches are refused', () => fixture(({ put
 test('real chezmoi renders both modes, survives reapply and preserves unrelated Codex values', { skip: !chezmoi && 'Set CHEZMOI_TEST_BINARY to a real chezmoi executable.' }, () => fixture(({ put, ...args }) => {
   put('.codex/config.toml', 'custom_setting = "keep-me"\n[projects."/example"]\ntrust_level = "trusted"\n');
   put('.config/unrelated-file', 'must stay untouched\n');
+  let expectedModel = 'gpt-6-luna';
   const readConfigs = mode => {
     const json = JSON.parse(fs.readFileSync(path.join(args.home, '.config/opencode/opencode.json'), 'utf8'));
     assert.equal(json.provider.openai.options.baseURL, modes[mode].baseURL);
     assert.equal(json.provider.openai.options.apiKey, `{env:${modes[mode].envKey}}`);
     const toml = fs.readFileSync(path.join(args.home, '.codex/config.toml'), 'utf8');
+    assert.match(toml, new RegExp(`^model = ['"]${expectedModel}['"]$`, 'm'));
     assert.ok(toml.includes(modes[mode].baseURL)); assert.ok(toml.includes(modes[mode].envKey));
     assert.ok(toml.includes('keep-me')); assert.ok(toml.includes('trusted'));
     assert.ok(!toml.includes('synthetic-test-value')); assert.ok(!JSON.stringify(json).includes('synthetic-test-value'));
@@ -98,6 +100,9 @@ test('real chezmoi renders both modes, survives reapply and preserves unrelated 
   };
   configure({ ...args, mode: 'default', env: { ...args.env, CCS_LOCAL_API_KEY: '' } });
   readConfigs('default');
+  const codexFile = path.join(args.home, '.codex/config.toml');
+  put('.codex/config.toml', fs.readFileSync(codexFile, 'utf8').replace(/^model = .*$/m, 'model = "gpt-6-astra"'));
+  expectedModel = 'gpt-6-astra';
   configure({ ...args, mode: 'local' });
   const local = readConfigs('local');
   const r = spawnSync(chezmoi, ['--source', repository, '--destination', args.home, '--no-tty', 'apply', '--force'], { env: args.env, encoding: 'utf8', timeout: 60_000 });

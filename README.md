@@ -1,5 +1,16 @@
 # Dotfiles
 
+SSH configuration uses `dot_ssh/modify_config` to preserve local options and
+unrelated aliases. A leading managed block owns HostName, User and Port for
+`soy`, `soy-wb`, `bull` and `bull-wb`, plus the Docker SSH fragment Include.
+Local IdentityAgent settings (including Bitwarden sockets), IdentityFile and
+other options survive `chezmoi apply`, whether in individual or shared Host
+blocks. Old endpoint fields in single-alias blocks are removed; shared and
+wildcard blocks remain intact, with managed endpoints taking precedence.
+The ordinary host ports are explicitly 22; workbox ports are 2222.
+Edit the modifier to change these managed endpoints. Test with
+`node --test tests/ssh-config.test.mjs` (chezmoi and OpenSSH required).
+
 Run `chezmoi init --source /absolute/path/to/this/checkout` (after `cd` into it;
 effectively `$(pwd)` at that moment) to generate `~/.config/chezmoi/chezmoi.toml`
 with `sourceDir` recorded by `.chezmoi.toml.tmpl`. Re-run that form after moving
@@ -190,6 +201,8 @@ updates `~/.codex/config.toml` in place: it enforces the Rawroute defaults while
 retaining other Codex settings, including project trust entries and Windows
 sandbox preferences. Codex can continue to add unrelated settings without those
 being discarded on the next `chezmoi apply`.
+The model defaults to `gpt-6-luna` only when the `model` field is absent;
+an existing local model selection is preserved, including during Rawroute switches.
 
 ### Rawroute endpoint opt-in
 
