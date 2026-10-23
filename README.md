@@ -16,6 +16,47 @@ effectively `$(pwd)` at that moment) to generate `~/.config/chezmoi/chezmoi.toml
 with `sourceDir` recorded by `.chezmoi.toml.tmpl`. Re-run that form after moving
 the checkout; bare `chezmoi init` without a source generates no config.
 
+## Tool version cleanup
+
+After `chezmoi apply`, preview unused older Mise installations on Linux:
+
+```sh
+mise run tools:cleanup
+mise run tools:cleanup -- --dry-run
+mise run tools:cleanup -- --apply
+```
+
+Preview is the default. Global configured versions must already be installed.
+The helper protects global selections (including resolved ranges such as Node 24)
+and versions required by any configuration Mise has tracked. Only numeric releases
+older than a globally selected, installed replacement are candidates. Newer,
+unconfigured tools, refs and prereleases are left alone. No config edits, upgrades,
+cache sweeps, service restarts or process termination are performed.
+
+Before uninstalling anything, the task performs a read-only `/proc` scan
+using `sudo -n /usr/bin/python3` (root inspection is required even for preview).
+The task first runs `sudo -v` with inherited terminal input/output, so sudo asks
+for a password interactively when required; the helper never reads the password.
+The scan checks executables, working directories, absolute arguments, mapped files and open files;
+inode matching through each process root detects shared nspawn bind mounts too.
+Busy old versions are skipped with tool/PID information only. Versions Mise does
+not consider prunable and unverifiable/symlinked install paths are skipped too.
+Configurations and process use are checked again immediately before each explicit
+`mise uninstall tool@version`. If one uninstall fails, other eligible versions are
+still attempted. A summary reports removed, skipped and failed counts; uninstall
+failures return a nonzero exit status after processing the remaining candidates.
+Busy/protected skips alone are not errors. Authentication, inventory and process
+inspection failures stop cleanup because eligibility cannot safely be established.
+
+This is not an atomic transaction: processes/configs can change after preflight,
+and a backend uninstall failure can leave that version partially removed. Run during
+a quiet period; stop old services yourself first. Projects never tracked by Mise,
+relative script arguments, future uses from an idle shell's PATH, and independent
+guest installations are not covered. Run the task separately inside a guest to
+clean its own Mise installations. The helper never scans or cleans cache storage.
+
+Test: `node --test dot_config/tools-cleanup/setup.test.mjs`.
+
 ## Optional agent skills
 
 `ask-bun` and `ask-docker` are opt-in skills, adapted from the sibling

@@ -1,5 +1,7 @@
 README.md
 tests/**
+.config/tools-cleanup/*.test.mjs
+.config/tools-cleanup/__pycache__/**
 .config/skills/setup.test.mjs
 .local/share/my-opencode/optional-skills/tests/**
 .config/secrets/README.md

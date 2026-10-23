@@ -22,6 +22,11 @@ yarn = "4.18.1"
 "npm:opensrc" = "0.7.3"
 "npm:playwriter" = "0.9.0"
 
+[tasks."tools:cleanup"]
+description = "Preview or safely remove unused older mise tool versions (Linux)"
+run = 'node "{{ env.HOME }}/.config/tools-cleanup/setup.mjs"'
+raw = true
+
 [tasks."secrets:setup"]
 description = "Sync Bitwarden secrets into persistent user environment or private files"
 run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/secrets/setup.mjs"'
