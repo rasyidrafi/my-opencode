@@ -18,13 +18,36 @@ the checkout; bare `chezmoi init` without a source generates no config.
 
 ## Restart the Cloudflare tunnel
 
-After `chezmoi apply`, run `mise run cloudflared:restart` on Linux/systemd to
-restart the existing system `cloudflared.service`. The task refuses missing,
-inactive, failed or non-running services; it does not install, enable or start
-an inactive tunnel. Restart briefly interrupts the tunnel. It uses systemd
-`try-restart` and verifies the service is running afterward (not tunnel connectivity).
-Non-root users use sudo with interactive terminal input when a password is needed;
-root runs systemctl directly. No tunnel credentials or unit contents are printed.
+After `chezmoi apply` and `mise install`, integrate an existing, running system
+`cloudflared.service` on Linux/systemd once, then switch it to the global Mise pin:
+
+```sh
+mise run cloudflared:setup
+mise run cloudflared:restart
+mise run tools:cleanup -- --apply
+```
+
+Setup adds `/etc/systemd/system/cloudflared.service.d/90-my-opencode.conf` without
+editing the original service. It reloads systemd but does not restart the tunnel;
+reruns are idempotent. Restart requires setup, refreshes the executable path to
+the installed global Mise version, then uses `try-restart`. It verifies both
+running state and the new PID's executable path/identity, not just `--version`
+or tunnel connectivity. This briefly interrupts the tunnel. After upgrades, run
+`mise install`, `cloudflared:restart`, then cleanup; old install paths are no
+longer held by this service.
+
+Both tasks refuse missing/inactive/non-running services. No tunnel installation,
+enablement or token provisioning occurs. Existing command arguments are preserved
+privately. Only a single direct cloudflared ExecStart with `--no-autoupdate` is
+supported; unrelated drop-ins, modified managed files, unsafe permissions and
+unsupported command syntax require manual review rather than guessing. The drop-in
+is root-owned mode 0600 because arguments may contain credentials. A system lock
+serializes setup/restart. On failure, the previous drop-in is restored (or a new
+one removed); after a restart attempt, service recovery is attempted too. Recovery
+is best effort and cannot guarantee the tunnel comes back if its old binary or
+configuration is broken. Non-root users authenticate with interactive sudo when
+needed; passwordless sudo needs no prompt. No credentials or unit contents are
+printed. Cleanup remains a separate, explicit operation.
 
 Test without restarting anything: `node --test dot_config/cloudflared/restart.test.mjs`.
 

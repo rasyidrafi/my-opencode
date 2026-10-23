@@ -1,6 +1,8 @@
 README.md
 tests/**
 .config/cloudflared/*.test.mjs
+.config/cloudflared/*_test.py
+.config/cloudflared/__pycache__/**
 .config/tools-cleanup/*.test.mjs
 .config/tools-cleanup/__pycache__/**
 .config/skills/setup.test.mjs

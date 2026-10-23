@@ -23,8 +23,13 @@ yarn = "4.18.1"
 "npm:playwriter" = "0.9.0"
 
 [tasks."cloudflared:restart"]
-description = "Restart the existing running cloudflared system service (Linux/systemd)"
+description = "Switch the running cloudflared service to the global Mise version and restart"
 run = 'node "{{ env.HOME }}/.config/cloudflared/restart.mjs"'
+raw = true
+
+[tasks."cloudflared:setup"]
+description = "Integrate an existing cloudflared service with global Mise using a systemd drop-in"
+run = 'node "{{ env.HOME }}/.config/cloudflared/setup.mjs"'
 raw = true
 
 [tasks."tools:cleanup"]
