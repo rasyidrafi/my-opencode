@@ -35,8 +35,9 @@ cache sweeps, service restarts or process termination are performed.
 
 Before uninstalling anything, the task performs a read-only `/proc` scan
 using `sudo -n /usr/bin/python3` (root inspection is required even for preview).
-The task first runs `sudo -v` with inherited terminal input/output, so sudo asks
-for a password interactively when required; the helper never reads the password.
+The task first probes noninteractive sudo access. If authentication is needed,
+it runs `sudo -v` with inherited terminal input/output so sudo asks for a password
+interactively; the helper never reads the password. Passwordless sudo needs no prompt.
 The scan checks executables, working directories, absolute arguments, mapped files and open files;
 inode matching through each process root detects shared nspawn bind mounts too.
 Busy old versions are skipped with tool/PID information only. Versions Mise does

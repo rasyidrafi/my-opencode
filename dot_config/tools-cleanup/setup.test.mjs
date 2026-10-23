@@ -54,7 +54,7 @@ test('Linux process scan detects a process using a candidate working directory',
   }
 });
 
-for (const mode of ['preview', 'busy', 'denied', 'apply', 'uninstall-failure', 'not-prunable', 'config-changed', 'scan-denied']) {
+for (const mode of ['preview', 'busy', 'denied', 'interactive-auth', 'apply', 'uninstall-failure', 'not-prunable', 'config-changed', 'scan-denied']) {
   test(`CLI ${mode}: safe preflight before uninstall`, () => {
     const dir = mkdtempSync(join(tmpdir(), 'tools-cleanup-cli-'));
     try {
@@ -80,8 +80,12 @@ if(a[0]==='uninstall') {
 `, { mode: 0o700 });
       writeFileSync(join(dir, 'sudo'), `#!${process.execPath}
 const fs=require('fs'), mode=${JSON.stringify(mode)};
+if(process.argv[3]==='/usr/bin/true') {
+  fs.writeFileSync(${JSON.stringify(join(dir, 'authenticated'))},'probed');
+  process.exit(['denied','interactive-auth'].includes(mode)?1:0);
+}
 if(process.argv[2]==='-v') {
-  fs.writeFileSync(${JSON.stringify(join(dir, 'authenticated'))},'yes');
+  fs.writeFileSync(${JSON.stringify(join(dir, 'authenticated'))},'prompted');
   process.exit(mode==='denied'?1:0);
 }
 if(mode==='scan-denied') process.exit(1);
@@ -97,6 +101,7 @@ console.log(JSON.stringify(mode==='busy' && targets.some(r=>r.id==='demo@1')?[{i
         assert.throws(run, error => { output = error.stdout; return true; });
       } else output = run();
       assert.equal(existsSync(join(dir, 'authenticated')), true);
+      assert.equal(readFileSync(join(dir, 'authenticated'), 'utf8'), ['denied', 'interactive-auth'].includes(mode) ? 'prompted' : 'probed');
       const attempted = existsSync(marker) ? readFileSync(marker, 'utf8').trim().split('\n') : [];
       if (['preview', 'denied', 'scan-denied', 'config-changed'].includes(mode)) assert.deepEqual(attempted, []);
       else if (['busy', 'not-prunable'].includes(mode)) {

@@ -73,8 +73,14 @@ function main() {
     return false;
   });
   if (!candidates.length) return console.log(`Summary: 0 removed, ${skipped} skipped, 0 failed.`);
-  // Authenticate on the terminal, never capture or handle the sudo password.
-  execFileSync('sudo', ['-v'], { stdio: 'inherit' });
+  // sudo -v can require a password even with NOPASSWD permissions. Probe an
+  // actual command first; only authenticate interactively when necessary.
+  try {
+    execFileSync('sudo', ['-n', '/usr/bin/true'], { stdio: 'ignore' });
+  } catch {
+    // Authenticate on the terminal, never capture or handle the sudo password.
+    execFileSync('sudo', ['-v'], { stdio: 'inherit' });
+  }
   const scanner = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'scan.py'), 'utf8');
   const check = rows => {
     const result = JSON.parse(execFileSync('sudo', ['-n', '/usr/bin/python3', '-c', scanner], {
