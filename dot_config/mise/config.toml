@@ -22,6 +22,11 @@ yarn = "4.18.1"
 "npm:opensrc" = "0.7.3"
 "npm:playwriter" = "0.9.0"
 
+[tasks."cloudflared:restart"]
+description = "Restart the existing running cloudflared system service (Linux/systemd)"
+run = 'node "{{ env.HOME }}/.config/cloudflared/restart.mjs"'
+raw = true
+
 [tasks."tools:cleanup"]
 description = "Preview or safely remove unused older mise tool versions (Linux)"
 run = 'node "{{ env.HOME }}/.config/tools-cleanup/setup.mjs"'

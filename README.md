@@ -16,6 +16,18 @@ effectively `$(pwd)` at that moment) to generate `~/.config/chezmoi/chezmoi.toml
 with `sourceDir` recorded by `.chezmoi.toml.tmpl`. Re-run that form after moving
 the checkout; bare `chezmoi init` without a source generates no config.
 
+## Restart the Cloudflare tunnel
+
+After `chezmoi apply`, run `mise run cloudflared:restart` on Linux/systemd to
+restart the existing system `cloudflared.service`. The task refuses missing,
+inactive, failed or non-running services; it does not install, enable or start
+an inactive tunnel. Restart briefly interrupts the tunnel. It uses systemd
+`try-restart` and verifies the service is running afterward (not tunnel connectivity).
+Non-root users use sudo with interactive terminal input when a password is needed;
+root runs systemctl directly. No tunnel credentials or unit contents are printed.
+
+Test without restarting anything: `node --test dot_config/cloudflared/restart.test.mjs`.
+
 ## Tool version cleanup
 
 After `chezmoi apply`, preview unused older Mise installations on Linux:
