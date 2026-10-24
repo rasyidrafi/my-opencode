@@ -46,7 +46,7 @@
       },
       "options": {
         "baseURL": "{{ if $local }}https://rawroute.qilin-elver.ts.net/v1{{ else }}https://ccs.halotec.my.id/v1{{ end }}",
-        "apiKey": "{env:{{ if $local }}CCS_LOCAL_API_KEY{{ else }}CCS_HALOTEC_API_KEY{{ end }}}"
+        "apiKey": "{env:{{ if $local }}CCS_HALOTEC_LOCAL_API_KEY{{ else }}CCS_HALOTEC_API_KEY{{ end }}}"
       }
     }
   },

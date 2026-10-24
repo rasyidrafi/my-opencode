@@ -7,7 +7,7 @@ import { assertSafe, privateWrite } from '../shell/integration.mjs';
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 export const modes = {
-  local: { baseURL: 'https://rawroute.qilin-elver.ts.net/v1', envKey: 'CCS_LOCAL_API_KEY' },
+  local: { baseURL: 'https://rawroute.qilin-elver.ts.net/v1', envKey: 'CCS_HALOTEC_LOCAL_API_KEY' },
   default: { baseURL: 'https://ccs.halotec.my.id/v1', envKey: 'CCS_HALOTEC_API_KEY' },
 };
 export const rawrouteModes = {

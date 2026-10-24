@@ -14,7 +14,7 @@ const chezmoi = process.env.CHEZMOI_TEST_BINARY || (located.status === 0 ? locat
 function fixture(fn) {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rawroute-test-'));
   const put = (name, text) => { const p = path.join(home, name); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, text); };
-  const env = { HOME: home, PATH: process.env.PATH, LANG: 'C.UTF-8', CCS_LOCAL_API_KEY: 'synthetic-test-value', XDG_CONFIG_HOME: path.join(home, '.config'), XDG_CACHE_HOME: path.join(home, '.cache'), XDG_STATE_HOME: path.join(home, '.local/state'), XDG_DATA_HOME: path.join(home, '.local/share') };
+  const env = { HOME: home, PATH: process.env.PATH, LANG: 'C.UTF-8', CCS_HALOTEC_LOCAL_API_KEY: 'synthetic-test-value', XDG_CONFIG_HOME: path.join(home, '.config'), XDG_CACHE_HOME: path.join(home, '.cache'), XDG_STATE_HOME: path.join(home, '.local/state'), XDG_DATA_HOME: path.join(home, '.local/share') };
   try { fn({ home, put, env, source: repository, chezmoi }); }
   finally { fs.rmSync(home, { recursive: true, force: true }); }
 }
@@ -64,7 +64,7 @@ test('real Rawroute switches preserve Codex, provider routing and model selectio
 }));
 
 test('missing local credential fails without creating a marker', () => fixture(({ home, ...args }) => {
-  assert.throws(() => configure({ ...args, home, mode: 'local', env: {} }), /CCS_LOCAL_API_KEY is missing/);
+  assert.throws(() => configure({ ...args, home, mode: 'local', env: {} }), /CCS_HALOTEC_LOCAL_API_KEY is missing/);
   assert.equal(fs.existsSync(path.join(home, '.config/rawroute/local-enabled')), false);
 }));
 
@@ -127,7 +127,7 @@ test('real chezmoi renders both modes, survives reapply and preserves local Code
     assert.ok(!toml.includes('synthetic-test-value')); assert.ok(!JSON.stringify(json).includes('synthetic-test-value'));
     return [toml, JSON.stringify(json)];
   };
-  configure({ ...args, mode: 'default', env: { ...args.env, CCS_LOCAL_API_KEY: '' } });
+  configure({ ...args, mode: 'default', env: { ...args.env, CCS_HALOTEC_LOCAL_API_KEY: '' } });
   readConfigs('default');
   const codexFile = path.join(args.home, '.codex/config.toml');
   put('.codex/config.toml', fs.readFileSync(codexFile, 'utf8').replace(/^model = .*$/m, 'model = "gpt-6-astra"'));

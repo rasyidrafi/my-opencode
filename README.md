@@ -338,7 +338,7 @@ mise run provider:default
 ```
 
 Local mode uses `https://rawroute.qilin-elver.ts.net/v1` and
-`CCS_LOCAL_API_KEY`, mapped from Bitwarden item `rawroute local API` (password).
+`CCS_HALOTEC_LOCAL_API_KEY`, mapped from Bitwarden item `ccs.halotec local API` (password).
 Run `secrets:setup` separately and open a new initialized shell first; switching
 requires the local key in the invoking environment but never prints or embeds it.
 No network/model calls or automatic secret sync are performed.

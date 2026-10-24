@@ -5,7 +5,7 @@
 {{- $envKey := "CCS_HALOTEC_API_KEY" -}}
 {{- if $local -}}
   {{- $baseURL = "https://rawroute.qilin-elver.ts.net/v1" -}}
-  {{- $envKey = "CCS_LOCAL_API_KEY" -}}
+  {{- $envKey = "CCS_HALOTEC_LOCAL_API_KEY" -}}
 {{- end -}}
 {{- $config = $config | setValueAtPath "model_provider" "rawroute" -}}
 {{- /* Seed the repo default without replacing the user's selected model. */ -}}

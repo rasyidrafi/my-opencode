@@ -70,9 +70,12 @@ explicitly accept password files, but does not configure SSH authentication.
 Rerun setup after changing a value in Bitwarden. Existing local values are
 overwritten only after all references have been retrieved and validated.
 Writes across multiple destinations are not a transaction.
-Removing an entry does not remove old Windows user variables, existing file
-outputs, or variables inherited by running processes. Remove those explicitly;
-on Linux the generated export file is rebuilt with the current entries.
+After successful setup, removed managed environment names are deleted from Windows
+user ENV and unset by the generated Bash/Zsh and Fish loaders. The helper tracks
+previously managed names and also retires the legacy `CCS_LOCAL_API_KEY` name.
+Unrelated environment variables are not removed. Existing file outputs and
+variables inherited by already-running processes must still be removed explicitly;
+a child setup process cannot unset variables in its parent shell.
 If chezmoi manages your shell profiles, keep the generated loader block in those
 source files too so a later apply does not remove it.
 

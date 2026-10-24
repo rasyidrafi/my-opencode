@@ -119,8 +119,18 @@ export function installShellLoader(homeDirectory = home, secretsDirectory = dire
   }
 }
 
-export function renderEnvironment(environment) {
+export function retiredEnvironmentNames(current, previous = [], retired = []) {
+  const active = new Set(current);
+  const names = [...new Set(['CCS_LOCAL_API_KEY', ...previous, ...retired])];
+  if (names.some(name => !/^[A-Z_][A-Z0-9_]*$/.test(name) || name.startsWith('BW_') || ['PATH', 'HOME', 'SHELL', 'NODE_OPTIONS', 'LD_PRELOAD', 'LD_LIBRARY_PATH'].includes(name))) {
+    throw new Error('Invalid managed environment identifier.');
+  }
+  return names.filter(name => !active.has(name));
+}
+
+export function renderEnvironment(environment, retired = []) {
   return '# Generated locally. Do not commit. Caller-provided values take precedence.\n' +
+    retiredEnvironmentNames(Object.keys(environment), [], retired).map(name => `unset ${name}\n`).join('') +
     Object.entries(environment).map(([name, value]) => {
       if (!/^[A-Z_][A-Z0-9_]*$/.test(name)) throw new Error('Invalid environment identifier.');
       return `if [ "\${${name}+x}" != x ]; then export ${name}=${shellQuote(value)}; fi\n`;
@@ -130,8 +140,9 @@ export function renderEnvironment(environment) {
 // Fish twin of renderEnvironment: same caller-precedence semantics, because
 // set -q also holds for empty values, and Fish single-quote escaping.
 const fishQuote = value => `'${value.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`;
-export function renderEnvironmentFish(environment) {
+export function renderEnvironmentFish(environment, retired = []) {
   return '# Generated locally. Do not commit. Caller-provided values take precedence.\n' +
+    retiredEnvironmentNames(Object.keys(environment), [], retired).map(name => `set -e ${name}\n`).join('') +
     Object.entries(environment).map(([name, value]) => {
       if (!/^[A-Z_][A-Z0-9_]*$/.test(name)) throw new Error('Invalid environment identifier.');
       return `if not set -q ${name}; set -gx ${name} ${fishQuote(value)}; end\n`;
@@ -197,6 +208,12 @@ function main() {
     fs.mkdirSync(generated, { recursive: true, mode: 0o700 });
     restrictDirectory();
     const environment = Object.fromEntries(resolved.filter(e => e.output === 'env').map(e => [e.name, e.value]));
+    const readNames = name => {
+      const target = path.join(generated, name);
+      return fs.existsSync(target) ? fs.readFileSync(target, 'utf8').split(/\r?\n/).filter(Boolean) : [];
+    };
+    const retired = retiredEnvironmentNames(Object.keys(environment),
+      [...readNames('managed-env-names'), ...readNames('names')], readNames('retired-env-names'));
     if (windows) {
       // Send values over stdin, never command-line arguments or printed output.
       powershell(`
@@ -207,8 +224,8 @@ function main() {
         }
       `, JSON.stringify(environment));
     } else {
-      privateWrite(path.join(generated, 'env.sh'), renderEnvironment(environment));
-      privateWrite(path.join(generated, 'env.fish'), renderEnvironmentFish(environment));
+      privateWrite(path.join(generated, 'env.sh'), renderEnvironment(environment, retired));
+      privateWrite(path.join(generated, 'env.fish'), renderEnvironmentFish(environment, retired));
       privateWrite(path.join(generated, 'names'), Object.keys(environment).map(name => `${name}\n`).join(''));
       installShellLoader();
     }
@@ -218,6 +235,18 @@ function main() {
     for (const entry of resolved.filter(e => e.output === 'gh-auth')) {
       authenticateGitHub(entry.value);
     }
+    // Retire only names previously managed by this helper, after installation succeeds.
+    if (windows) {
+      powershell(`
+        $ErrorActionPreference = 'Stop'
+        $names = [Console]::In.ReadToEnd() | ConvertFrom-Json
+        foreach ($name in $names) {
+          [Environment]::SetEnvironmentVariable([string]$name, $null, 'User')
+        }
+      `, JSON.stringify(retired), 'retired environment cleanup');
+    }
+    privateWrite(path.join(generated, 'retired-env-names'), retired.map(name => `${name}\n`).join(''));
+    privateWrite(path.join(generated, 'managed-env-names'), Object.keys(environment).map(name => `${name}\n`).join(''));
     console.log(`Installed ${resolved.length} secret(s); values hidden.`);
     console.log(windows
       ? 'Other secrets: user ENV saved. Restart applications; sign out/in if their launcher still has the old environment.'
