@@ -331,10 +331,10 @@ Both Codex and OpenCode default to `https://ccs.halotec.my.id/v1` using
 **on this machine only**:
 
 ```sh
-mise run rawroute:local -- --dry-run
-mise run rawroute:local
+mise run provider:local -- --dry-run
+mise run provider:local
 # Restore the default endpoint and key reference:
-mise run rawroute:default
+mise run provider:default
 ```
 
 Local mode uses `https://rawroute.qilin-elver.ts.net/v1` and
@@ -342,6 +342,22 @@ Local mode uses `https://rawroute.qilin-elver.ts.net/v1` and
 Run `secrets:setup` separately and open a new initialized shell first; switching
 requires the local key in the invoking environment but never prints or embeds it.
 No network/model calls or automatic secret sync are performed.
+
+The separate OpenCode `rawroute` provider has its own endpoint switch:
+
+```sh
+mise run rawroute:default
+mise run rawroute:local -- --dry-run
+mise run rawroute:local
+```
+
+Default mode uses `https://rawroute.qzz.io/v1` with `RAWROUTE_API_KEY`.
+Local mode uses `https://rawroute.tail8da2f2.ts.net/v1` with
+`RAWROUTE_LOCAL_API_KEY`, which must already be in the invoking environment.
+These tasks only apply OpenCode configuration; they do not switch Codex,
+the `openai` provider route controlled by `provider:*`, or model selections.
+The separate local-mode marker persists across chezmoi applies. Backups,
+rollback, and `--dry-run` work like `provider:*`; no models are added.
 
 Mode is stored in `~/.config/rawroute/local-enabled`, never in Git. Both templates
 check this marker, so later ordinary `chezmoi apply` preserves local mode until

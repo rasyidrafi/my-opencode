@@ -57,14 +57,24 @@ description = "List available optional skills"
 run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/skills/setup.mjs" list'
 raw = true
 
-[tasks."rawroute:local"]
+[tasks."provider:local"]
 description = "Opt into local Rawroute for Codex and OpenCode on this machine"
 run = 'node "{{ env.HOME }}/.config/rawroute/setup.mjs" local'
 raw = true
 
-[tasks."rawroute:default"]
+[tasks."provider:default"]
 description = "Restore the default Rawroute endpoint for Codex and OpenCode"
 run = 'node "{{ env.HOME }}/.config/rawroute/setup.mjs" default'
+raw = true
+
+[tasks."rawroute:default"]
+description = "Use the public Rawroute provider endpoint in OpenCode"
+run = 'node "{{ env.HOME }}/.config/rawroute/setup.mjs" default --rawroute'
+raw = true
+
+[tasks."rawroute:local"]
+description = "Use the local Rawroute provider endpoint in OpenCode"
+run = 'node "{{ env.HOME }}/.config/rawroute/setup.mjs" local --rawroute'
 raw = true
 
 [tasks."chrome:setup"]

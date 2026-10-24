@@ -5,7 +5,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
-import { configure, modes, options } from './setup.mjs';
+import { configure, modes, rawrouteModes, options } from './setup.mjs';
 
 const repository = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const located = spawnSync('mise', ['which', 'chezmoi'], { encoding: 'utf8' });
@@ -34,9 +34,34 @@ function fakeRunner(home, apply) {
 }
 
 test('mode and CLI options are explicit', () => {
+  assert.deepEqual(options(['local', '--rawroute']), { mode: 'local', rawroute: true });
   assert.deepEqual(options(['local', '--dry-run', '--source', '/repo']), { mode: 'local', dryRun: true, source: '/repo' });
   for (const args of [[], ['other'], ['local', '--force'], ['local', '--source']]) assert.throws(() => options(args));
 });
+
+test('Rawroute local requires its own credential', () => fixture(args => {
+  assert.throws(() => configure({ ...args, mode: 'local', rawroute: true }), /RAWROUTE_LOCAL_API_KEY is missing/);
+  assert.deepEqual(fs.readdirSync(args.home), []);
+}));
+
+test('real Rawroute switches preserve Codex, provider routing and model selections', { skip: !chezmoi && 'Set CHEZMOI_TEST_BINARY to a real chezmoi executable.' }, () => fixture(({ put, ...args }) => {
+  put('.codex/config.toml', 'untouched = true\n');
+  put('.config/rawroute/local-enabled', '1\n');
+  put('.config/opencode/opencode.json', JSON.stringify({ model: 'custom/main', providers: { rawroute: { models: { custom: { name: 'Keep' } } } } }));
+  const env = { ...args.env, RAWROUTE_LOCAL_API_KEY: 'synthetic-rawroute-secret' };
+  for (const mode of ['default', 'local', 'default']) {
+    configure({ ...args, env, mode, rawroute: true });
+    const json = JSON.parse(fs.readFileSync(path.join(args.home, '.config/opencode/opencode.json'), 'utf8'));
+    assert.equal(json.providers.rawroute.settings.baseURL, rawrouteModes[mode].baseURL);
+    assert.deepEqual(json.providers.rawroute.env, [rawrouteModes[mode].envKey]);
+    assert.equal(json.providers.rawroute.models.custom.name, 'Keep');
+    assert.equal(json.model, 'custom/main');
+    assert.equal(json.provider.openai.options.baseURL, modes.local.baseURL);
+    assert.equal(fs.readFileSync(path.join(args.home, '.codex/config.toml'), 'utf8'), 'untouched = true\n');
+    assert.equal(fs.readFileSync(path.join(args.home, '.config/rawroute/local-enabled'), 'utf8'), '1\n');
+    assert.ok(!JSON.stringify(json).includes('synthetic-rawroute-secret'));
+  }
+}));
 
 test('missing local credential fails without creating a marker', () => fixture(({ home, ...args }) => {
   assert.throws(() => configure({ ...args, home, mode: 'local', env: {} }), /CCS_LOCAL_API_KEY is missing/);

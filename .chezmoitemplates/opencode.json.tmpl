@@ -1,6 +1,17 @@
 {{- $local := stat (joinPath .chezmoi.homeDir ".config" "rawroute" "local-enabled") -}}
+{{- $rawrouteLocal := stat (joinPath .chezmoi.homeDir ".config" "rawroute" "rawroute-local-enabled") -}}
 {
   "websearch": false,
+  "providers": {
+    "rawroute": {
+      "name": "RawRoute",
+      "env": ["{{ if $rawrouteLocal }}RAWROUTE_LOCAL_API_KEY{{ else }}RAWROUTE_API_KEY{{ end }}"],
+      "package": "@opencode/ai/providers/openai-compatible",
+      "settings": {
+        "baseURL": "{{ if $rawrouteLocal }}https://rawroute.tail8da2f2.ts.net/v1{{ else }}https://rawroute.qzz.io/v1{{ end }}"
+      }
+    }
+  },
   "provider": {
     "openai": {
       "models": {
