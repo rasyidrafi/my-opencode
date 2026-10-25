@@ -97,6 +97,11 @@ description = "Connect Tailscale to qilin-elver.ts.net, preserving other saved a
 run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/tailscale/setup.mjs"'
 raw = true
 
+[tasks."codex:setup"]
+description = "Start the Codex app-server daemon, or restart it if already running"
+run = "codex app-server daemon restart"
+raw = true
+
 [tasks."openchamber:setup"]
 description = "Replace OpenChamber on port 3000 with its native user startup service"
 run = [

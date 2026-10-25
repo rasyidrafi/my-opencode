@@ -294,6 +294,11 @@ updated loaders. Test with
 `node --test dot_config/azure-mnt-cache/setup.test.mjs dot_config/shell/setup.test.mjs`
 (the real isolated file-transfer test requires rsync).
 
+Run `mise run codex:setup` after applying chezmoi and installing tools with Mise
+to start the native Codex app-server daemon, or restart it if already running.
+This briefly interrupts an existing daemon. Check its status and versions with
+`codex app-server daemon version`.
+
 Run `mise run openchamber:setup` after applying chezmoi to install and start
 OpenChamber's native user startup service on port 3000. This disables any previous
 startup service and stops the existing OpenChamber instance on that port first;
