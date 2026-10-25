@@ -305,6 +305,50 @@ startup service and stops the existing OpenChamber instance on that port first;
 instances on other ports are left alone. It briefly interrupts an existing server.
 Check the service with `openchamber startup status`.
 
+### OpenChamber preferences
+
+Chezmoi merges the approved OpenChamber preferences into
+`~/.config/openchamber/preferences.json` and selected instance settings into
+`~/.config/openchamber/settings.json`. Edit the allowlists in
+`.chezmoitemplates/openchamber/`: `preferences.json` owns the model defaults,
+hidden models and selected UI/notification preferences,
+including the explicitly pinned `showReasoningTraces: true`; `settings.json`
+owns the five disabled agent tools, PWA name and default permission mode.
+**The managed permission mode is `auto` (Accept everything).**
+
+**The repository is authoritative for every allowlisted key.** Each apply
+overwrites conflicting local values, including booleans set to `false`, and
+replaces the hidden-model list rather than combining it with local choices.
+A newer local preference timestamp does not give a local value priority.
+Only keys outside the allowlists are preserved (except the retired overrides
+explicitly removed below). This precedence applies to OpenChamber; the separate
+Codex/OpenCode local-model preservation rules are described below.
+
+The `modify_private_*.json` templates preserve unrelated keys, credentials,
+projects and session state. Themes are not managed: existing choices on every
+surface are left alone, and fresh installs use OpenChamber's defaults.
+Sidebar project sort order is also unmanaged (the app default is `manual`).
+Small-model selection uses OpenChamber's default resolver, following OpenCode's
+configured `agents.title.model`. Apply removes the retired `smallModelUseDefault`,
+`smallModelOverride` and `smallModelVariant` keys from both files so old overrides
+cannot win over that default; no custom small-model value is stored.
+They do not introduce empty/default preferences (except the explicitly pinned
+reasoning display), recent history, or device-only
+state. Other unmanaged entries are left alone, not deleted. Both files are
+private (0600 on Unix). Preference timestamps are generated only when a managed
+value changes, not copied from the original machine or refreshed on every apply.
+Malformed JSON and unsupported preference document versions are refused.
+
+Apply with `chezmoi apply ~/.config/openchamber/preferences.json ~/.config/openchamber/settings.json`,
+then reload clients to pick up the stored preferences. UI changes to managed
+values are local edits until the next apply restores the allowlist; update the
+allowlists to make those changes permanent. This targets the default data
+directory, not a custom `OPENCHAMBER_DATA_DIR`. Back up existing files outside
+Git before applying on another machine, and avoid simultaneous UI saves while
+applying; the two-file update does not lock the running OpenChamber server.
+
+Verify with `node --test tests/openchamber-config.test.mjs`.
+
 This is a chezmoi source directory. Its `dot_codex/modify_config.toml` template
 updates `~/.codex/config.toml` in place: it enforces the Rawroute defaults while
 retaining other Codex settings, including project trust entries and Windows
@@ -357,7 +401,7 @@ mise run rawroute:local
 ```
 
 Default mode uses `https://rawroute.qzz.io/v1` with `RAWROUTE_API_KEY`.
-Local mode uses `https://rawroute.tail8da2f2.ts.net/v1` with
+Local mode uses `https://rawroute.qilin-elver.ts.net/v1` with
 `RAWROUTE_LOCAL_API_KEY`, which must already be in the invoking environment.
 These tasks only apply OpenCode configuration; they do not switch Codex,
 the `openai` provider route controlled by `provider:*`, or model selections.

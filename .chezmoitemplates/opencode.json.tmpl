@@ -2,13 +2,45 @@
 {{- $rawrouteLocal := stat (joinPath .chezmoi.homeDir ".config" "rawroute" "rawroute-local-enabled") -}}
 {
   "websearch": false,
+  "agents": {
+    "title": {
+      "model": "openai/gpt-6-luna"
+    }
+  },
   "providers": {
     "rawroute": {
       "name": "RawRoute",
       "env": ["{{ if $rawrouteLocal }}RAWROUTE_LOCAL_API_KEY{{ else }}RAWROUTE_API_KEY{{ end }}"],
       "package": "@opencode/ai/providers/openai-compatible",
       "settings": {
-        "baseURL": "{{ if $rawrouteLocal }}https://rawroute.tail8da2f2.ts.net/v1{{ else }}https://rawroute.qzz.io/v1{{ end }}"
+        "baseURL": "{{ if $rawrouteLocal }}https://rawroute.qilin-elver.ts.net/v1{{ else }}https://rawroute.qzz.io/v1{{ end }}"
+      },
+      "models": {
+        "step-5-preview": {
+          "name": "Step 5 Preview",
+          "releaseDate": "2026-09-16",
+          "capabilities": {
+            "tools": true,
+            "input": ["text", "image", "video"],
+            "output": ["text"],
+            "reasoning": {
+              "supported": true,
+              "effort": ["low", "medium", "high"]
+            }
+          },
+          "compatibility": {
+            "reasoningField": "reasoning_content"
+          },
+          "limit": {
+            "context": 1000000,
+            "input": 1000000,
+            "output": 65536
+          },
+          "cost": {
+            "input": 1.04613,
+            "output": 2.98895
+          }
+        }
       }
     }
   },

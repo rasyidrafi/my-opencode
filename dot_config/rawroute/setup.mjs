@@ -11,7 +11,7 @@ export const modes = {
   default: { baseURL: 'https://ccs.halotec.my.id/v1', envKey: 'CCS_HALOTEC_API_KEY' },
 };
 export const rawrouteModes = {
-  local: { baseURL: 'https://rawroute.tail8da2f2.ts.net/v1', envKey: 'RAWROUTE_LOCAL_API_KEY' },
+  local: { baseURL: 'https://rawroute.qilin-elver.ts.net/v1', envKey: 'RAWROUTE_LOCAL_API_KEY' },
   default: { baseURL: 'https://rawroute.qzz.io/v1', envKey: 'RAWROUTE_API_KEY' },
 };
 const targets = ['.codex/config.toml', '.config/opencode/opencode.json'];

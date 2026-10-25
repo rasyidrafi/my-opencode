@@ -51,6 +51,31 @@ test('fresh installs seed agent models and identical Luna limits; reapply is sta
   assert.deepEqual(models['gpt-6-luna-fast'].limit, { context: 680000, input: 552000, output: 128000 });
 });
 
+test('title generation uses GPT 6 Luna with the default variant', t => {
+  const { apply, read } = fixture(t);
+  const first = apply();
+  assert.equal(JSON.parse(read('opencode.json')).agents.title.model, 'openai/gpt-6-luna');
+  assert.deepEqual(apply(), first);
+});
+
+test('RawRoute includes official StepFun Step 5 Preview metadata', t => {
+  const { apply, read } = fixture(t);
+  const first = apply();
+  const model = JSON.parse(read('opencode.json')).providers.rawroute.models['step-5-preview'];
+  assert.equal(model.name, 'Step 5 Preview');
+  assert.equal(model.releaseDate, '2026-09-16');
+  assert.deepEqual(model.limit, { context: 1000000, input: 1000000, output: 65536 });
+  assert.deepEqual(model.capabilities, {
+    tools: true,
+    input: ['text', 'image', 'video'],
+    output: ['text'],
+    reasoning: { supported: true, effort: ['low', 'medium', 'high'] },
+  });
+  assert.deepEqual(model.compatibility, { reasoningField: 'reasoning_content' });
+  assert.deepEqual(model.cost, { input: 1.04613, output: 2.98895 });
+  assert.deepEqual(apply(), first);
+});
+
 test('all managed agents preserve custom models while refreshing repo instructions and permissions', t => {
   const { apply, put, read, agent } = fixture(t);
   for (const name of agents) put(`agents/${name}.md`, `---\r\nmodel: 'custom/${name}#high' # local selection\r\npermissions: []\r\n---\r\nOld instructions\r\n`);
@@ -90,7 +115,7 @@ test('OpenCode merges owned limits and routing while preserving user models and 
   const first = apply();
   const config = JSON.parse(read('opencode.json'));
   assert.equal(config.model, 'custom/main');
-  assert.deepEqual(config.agents, selections);
+  assert.deepEqual(config.agents, { ...selections, title: { model: 'openai/gpt-6-luna' } });
   assert.deepEqual(config.disabled_providers, ['other', 'opencode']);
   assert.deepEqual(config.provider.custom, { models: { personal: {} } });
   assert.equal(config.provider.openai.options.timeout, 1234);

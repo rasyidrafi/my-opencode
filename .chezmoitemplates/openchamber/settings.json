@@ -1,0 +1,9 @@
+{
+  "agentControlToolEnabled": false,
+  "agentScheduleToolEnabled": false,
+  "agentWebToolEnabled": false,
+  "agentKnowledgeToolEnabled": false,
+  "agentRenderToolEnabled": false,
+  "pwaAppName": "Chamber: Soywb",
+  "permissionDefaultMode": "auto"
+}

@@ -1,0 +1,35 @@
+{{- /* chezmoi:modify-template */ -}}
+{{- $config := dict "version" 1 "fields" (dict) -}}
+{{- if ne (trim .chezmoi.stdin) "" -}}
+  {{- $config = mustFromJson .chezmoi.stdin -}}
+{{- end -}}
+{{- if not (kindIs "map" $config) -}}
+  {{- fail "OpenChamber preferences.json must be a JSON object" -}}
+{{- end -}}
+{{- if or (ne (toString $config.version) "1") (not (kindIs "map" $config.fields)) -}}
+  {{- fail "OpenChamber preferences.json must be a version-1 preferences document" -}}
+{{- end -}}
+{{- $fields := $config.fields -}}
+{{- /* Retire the old custom small model; absent keys use OpenCode's default. */ -}}
+{{- range list "smallModelUseDefault" "smallModelOverride" "smallModelVariant" -}}
+  {{- $_ := unset $fields . -}}
+{{- end -}}
+{{- $stamp := (now).UnixMilli -}}
+{{- $managed := includeTemplate "openchamber/preferences.json" . | mustFromJson -}}
+{{- range $key, $value := $managed -}}
+  {{- $entry := dict -}}
+  {{- if hasKey $fields $key -}}
+    {{- $entry = get $fields $key -}}
+    {{- if not (kindIs "map" $entry) -}}
+      {{- fail (printf "OpenChamber preference %s must be an object" $key) -}}
+    {{- end -}}
+  {{- end -}}
+  {{- /* The repo wins even over newer local values. Timestamps are metadata,
+        not precedence; retain them only when the managed value is unchanged. */ -}}
+  {{- if or (not (hasKey $entry "value")) (ne (toJson $entry.value) (toJson $value)) -}}
+    {{- $_ := set $entry "value" $value -}}
+    {{- $_ := set $entry "updatedAt" $stamp -}}
+  {{- end -}}
+  {{- $_ := set $fields $key $entry -}}
+{{- end -}}
+{{- $config | toPrettyJson }}
