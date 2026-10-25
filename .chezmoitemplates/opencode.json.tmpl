@@ -16,16 +16,19 @@
         "baseURL": "{{ if $rawrouteLocal }}https://rawroute.qilin-elver.ts.net/v1{{ else }}https://rawroute.qzz.io/v1{{ end }}"
       },
       "models": {
-        "step-5-preview": {
-          "name": "Step 5 Preview",
-          "releaseDate": "2026-09-16",
+        "deepseek-v4.1-flash-1017": {
+          "name": "DeepSeek V4.1 Flash 1017",
+          "family": "deepseek-flash",
+          "releaseDate": "2026-10-17",
           "capabilities": {
             "tools": true,
-            "input": ["text", "image", "video"],
+            "input": ["text", "image"],
             "output": ["text"],
+            "temperature": true,
             "reasoning": {
               "supported": true,
-              "effort": ["low", "medium", "high"]
+              "toggle": true,
+              "effort": ["low", "high", "max"]
             }
           },
           "compatibility": {
@@ -33,12 +36,47 @@
           },
           "limit": {
             "context": 1000000,
-            "input": 1000000,
+            "input": 737856,
+            "output": 262144
+          },
+          "cost": {
+            "input": 0.15,
+            "output": 0.6,
+            "cache": {
+              "read": 0.003
+            }
+          }
+        },
+        "atria-dawn": {
+          "name": "Atria Dawn",
+          "family": "glm",
+          "releaseDate": "2026-06-13",
+          "capabilities": {
+            "tools": true,
+            "input": ["text"],
+            "output": ["text"],
+            "temperature": true,
+            "reasoning": {
+              "supported": true,
+              "toggle": true,
+              "effort": ["high", "max"]
+            }
+          },
+          "compatibility": {
+            "reasoningField": "reasoning_content"
+          },
+          "limit": {
+            "context": 512000,
+            "input": 446464,
             "output": 65536
           },
           "cost": {
-            "input": 1.04613,
-            "output": 2.98895
+            "input": 1.19516,
+            "output": 4.18306,
+            "cache": {
+              "read": 0.29879,
+              "write": 0
+            }
           }
         }
       }

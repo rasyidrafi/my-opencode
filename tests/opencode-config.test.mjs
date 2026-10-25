@@ -58,21 +58,71 @@ test('title generation uses GPT 6 Luna with the default variant', t => {
   assert.deepEqual(apply(), first);
 });
 
-test('RawRoute includes official StepFun Step 5 Preview metadata', t => {
+test('RawRoute includes Atria Dawn with GLM 5.2 fallback metadata and a 512K context', t => {
   const { apply, read } = fixture(t);
   const first = apply();
-  const model = JSON.parse(read('opencode.json')).providers.rawroute.models['step-5-preview'];
-  assert.equal(model.name, 'Step 5 Preview');
-  assert.equal(model.releaseDate, '2026-09-16');
-  assert.deepEqual(model.limit, { context: 1000000, input: 1000000, output: 65536 });
+  const models = JSON.parse(read('opencode.json')).providers.rawroute.models;
+  assert.ok(!Object.hasOwn(models, 'step-5-preview'));
+  const model = models['atria-dawn'];
+  assert.equal(model.name, 'Atria Dawn');
+  assert.equal(model.family, 'glm');
+  assert.equal(model.releaseDate, '2026-06-13');
+  assert.deepEqual(model.limit, { context: 512000, input: 446464, output: 65536 });
+  assert.equal(model.limit.input, model.limit.context - model.limit.output);
   assert.deepEqual(model.capabilities, {
     tools: true,
-    input: ['text', 'image', 'video'],
+    input: ['text'],
     output: ['text'],
-    reasoning: { supported: true, effort: ['low', 'medium', 'high'] },
+    temperature: true,
+    reasoning: { supported: true, toggle: true, effort: ['high', 'max'] },
   });
   assert.deepEqual(model.compatibility, { reasoningField: 'reasoning_content' });
-  assert.deepEqual(model.cost, { input: 1.04613, output: 2.98895 });
+  assert.deepEqual(model.cost, { input: 1.19516, output: 4.18306, cache: { read: 0.29879, write: 0 } });
+  assert.deepEqual(apply(), first);
+});
+
+test('RawRoute includes DeepSeek V4.1 Flash 1017 with exact 1M context and image input', t => {
+  const { apply, put, read } = fixture(t);
+  put('opencode.json', JSON.stringify({ providers: { rawroute: { models: {
+    'deepseek-v4.1-flash-1017': {
+      limit: { context: 1048576, input: 1048576, output: 65536 },
+      capabilities: { input: ['text'] },
+    },
+  } } } }));
+  const first = apply();
+  const models = JSON.parse(read('opencode.json')).providers.rawroute.models;
+  const model = models['deepseek-v4.1-flash-1017'];
+  assert.equal(model.name, 'DeepSeek V4.1 Flash 1017');
+  assert.equal(model.family, 'deepseek-flash');
+  assert.equal(model.releaseDate, '2026-10-17');
+  assert.deepEqual(model.limit, { context: 1000000, input: 737856, output: 262144 });
+  assert.equal(model.limit.input, model.limit.context - model.limit.output);
+  assert.deepEqual(model.capabilities, {
+    tools: true,
+    input: ['text', 'image'],
+    output: ['text'],
+    temperature: true,
+    reasoning: { supported: true, toggle: true, effort: ['low', 'high', 'max'] },
+  });
+  assert.deepEqual(model.compatibility, { reasoningField: 'reasoning_content' });
+  assert.deepEqual(model.cost, { input: 0.15, output: 0.6, cache: { read: 0.003 } });
+  assert.equal(models['atria-dawn'].limit.context, 512000);
+  assert.deepEqual(apply(), first);
+});
+
+test('applying removes retired Step 5 Preview without removing other local RawRoute models', t => {
+  const { apply, put, read } = fixture(t);
+  put('opencode.json', JSON.stringify({
+    providers: { rawroute: { models: {
+      'step-5-preview': { name: 'Retired local entry', limit: { context: 1000000 } },
+      personal: { name: 'Keep local model' },
+    } } },
+  }));
+  const first = apply();
+  const models = JSON.parse(read('opencode.json')).providers.rawroute.models;
+  assert.ok(!Object.hasOwn(models, 'step-5-preview'));
+  assert.equal(models['atria-dawn'].limit.context, 512000);
+  assert.deepEqual(models.personal, { name: 'Keep local model' });
   assert.deepEqual(apply(), first);
 });
 

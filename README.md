@@ -362,6 +362,23 @@ updates managed provider routing and model limits while retaining local model ch
 agent configuration, and unrelated settings. Rawroute switches use this merge too.
 `gpt-6-luna-fast` shares Luna's limits: 680,000 context, 552,000 input, 128,000 output.
 
+RawRoute includes `atria-dawn` in place of the retired `step-5-preview` (removed
+from existing configs on apply). Atria Dawn was not listed in models.dev when
+configured, so its metadata uses the official `zhipuai/glm-5.2` entry from
+`https://models.dev/api.json` as a fallback, with context overridden to 512,000
+tokens, max output to 65,536 tokens, and input to 446,464 tokens (context minus
+max output). This includes text-only input/output,
+tools, temperature, reasoning toggle and high/max effort, release date and
+pricing metadata. These are fallback estimates, not verified Atria Dawn
+capabilities, release date or RawRoute prices.
+
+RawRoute also includes `deepseek-v4.1-flash-1017`, using the official DeepSeek
+`deepseek-flash` metadata from `https://models.dev/api.json` (canonical model
+`deepseek/deepseek-v4.1-flash-1017`). Context is explicitly 1,000,000 tokens,
+max output is overridden to 262,144 tokens, and input is 737,856 tokens (context minus output).
+It accepts text and images and supports tools, reasoning toggle and low/high/max
+effort. Pricing is copied from the DeepSeek entry, not verified RawRoute pricing.
+
 The `dot_config/opencode/agents/modify_*.md` templates refresh repo-managed agent
 instructions and permissions while preserving each existing frontmatter `model`
 (including its variant). Missing model fields use the defaults in

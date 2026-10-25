@@ -8,5 +8,7 @@
       provider routing and model limits, and adds its disabled provider. */ -}}
 {{- $disabled := concat (get $config "disabled_providers" | default list) $managed.disabled_providers | uniq -}}
 {{- $config = mustMergeOverwrite $config $managed -}}
+{{- /* Step 5 Preview is retired: a merge alone would retain its old entry. */ -}}
+{{- $_ := unset $config.providers.rawroute.models "step-5-preview" -}}
 {{- $config = setValueAtPath "disabled_providers" $disabled $config -}}
 {{- $config | toPrettyJson }}
