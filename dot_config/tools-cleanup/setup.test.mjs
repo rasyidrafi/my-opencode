@@ -54,6 +54,22 @@ test('Linux process scan detects a process using a candidate working directory',
   }
 });
 
+test('scanner skips permission-denied zombies but refuses inaccessible live processes', () => {
+  const scanner = fileURLToPath(new URL('./scan.py', import.meta.url));
+  const code = `import runpy,sys,errno,io
+from unittest.mock import patch
+scan=runpy.run_path(sys.argv[1])['scan']
+for state in ['Z', 'S']:
+    with patch('os.listdir', return_value=['123']), patch('os.readlink', side_effect=PermissionError(errno.EACCES, 'denied')), patch('builtins.open', return_value=io.StringIO('State:\\t'+state+' (state)\\n')):
+        try:
+            assert scan([]) == []
+            assert state == 'Z'
+        except PermissionError:
+            assert state == 'S'
+`;
+  execFileSync('python3', ['-B', '-c', code, scanner]);
+});
+
 for (const mode of ['preview', 'busy', 'denied', 'interactive-auth', 'apply', 'uninstall-failure', 'not-prunable', 'config-changed', 'scan-denied']) {
   test(`CLI ${mode}: safe preflight before uninstall`, () => {
     const dir = mkdtempSync(join(tmpdir(), 'tools-cleanup-cli-'));

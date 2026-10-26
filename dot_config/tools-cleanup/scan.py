@@ -58,6 +58,19 @@ def scan(targets, proc='/proc'):
                         raise
         except OSError as error:
             if error.errno not in (errno.ENOENT, errno.ESRCH):
+                # Zombies have released their files and address space, but
+                # their /proc/PID/fd can still return EACCES. Check again
+                # here because a process may exit during inspection.
+                if error.errno in (errno.EACCES, errno.EPERM):
+                    try:
+                        with open(f'{base}/status') as stream:
+                            if any(line.startswith('State:') and line.split()[1] == 'Z'
+                                   for line in stream):
+                                continue
+                    except OSError as status_error:
+                        if status_error.errno in (errno.ENOENT, errno.ESRCH):
+                            continue
+                        raise
                 raise
     return [dict(id=tool, pid=pid, kind=kind) for tool, pid, kind in sorted(hits)]
 
