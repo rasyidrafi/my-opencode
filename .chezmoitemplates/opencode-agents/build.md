@@ -42,6 +42,9 @@ permissions:
   - action: openchamber
     resource: "*"
     effect: deny
+  - action: openchamber_schedule
+    resource: "*"
+    effect: deny
   - action: openchamber_web
     resource: "*"
     effect: deny

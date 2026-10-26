@@ -313,7 +313,9 @@ Chezmoi merges the approved OpenChamber preferences into
 `.chezmoitemplates/openchamber/`: `preferences.json` owns the model defaults,
 hidden models and selected UI/notification preferences,
 including the explicitly pinned `showReasoningTraces: true`; `settings.json`
-owns the five disabled agent tools, PWA name and default permission mode.
+owns the five disabled agent tools and default permission mode.
+The PWA app name (`pwaAppName`) is unmanaged and can differ on each machine;
+existing local names are preserved and fresh installs use the app default.
 **The managed permission mode is `auto` (Accept everything).**
 
 **The repository is authoritative for every allowlisted key.** Each apply

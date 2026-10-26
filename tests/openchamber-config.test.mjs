@@ -37,6 +37,7 @@ test('fresh installs seed only approved values and private files without theme o
   const before = Date.now();
   const first = apply();
   assert.deepEqual(JSON.parse(read('settings.json')), settings);
+  assert.ok(!Object.hasOwn(settings, 'pwaAppName'));
   const config = JSON.parse(read('preferences.json'));
   assert.equal(config.version, 1);
   assert.deepEqual(Object.keys(config.fields).sort(), Object.keys(preferences).sort());
@@ -158,6 +159,16 @@ test('retired small-model overrides and legacy copies are removed so the default
   }
   assert.equal(config.keepLocal, true);
   assert.deepEqual(apply(), first);
+});
+
+test('PWA app names remain machine-local across applies and local edits', t => {
+  const { put, read, apply } = fixture(t);
+  for (const pwaAppName of ['Chamber: This Machine', 'My Local Chamber']) {
+    put('settings.json', { pwaAppName });
+    const first = apply();
+    assert.equal(JSON.parse(read('settings.json')).pwaAppName, pwaAppName);
+    assert.deepEqual(apply(), first);
+  }
 });
 
 test('existing theme choices and timestamps are left entirely unmanaged', t => {

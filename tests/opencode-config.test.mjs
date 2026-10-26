@@ -51,6 +51,17 @@ test('fresh installs seed agent models and identical Luna limits; reapply is sta
   assert.deepEqual(models['gpt-6-luna-fast'].limit, { context: 680000, input: 552000, output: 128000 });
 });
 
+test('all managed agents explicitly deny OpenChamber tools including scheduling', t => {
+  const { apply, agent } = fixture(t);
+  apply();
+  for (const name of agents) {
+    for (const action of ['openchamber', 'openchamber_schedule', 'openchamber_web', 'openchamber_memory', 'openchamber_knowledge', 'openchamber_notify', 'openchamber_render']) {
+      assert.deepEqual(agent(name).permissions.filter(rule => rule.action === action),
+        [{ action, resource: '*', effect: 'deny' }], `${name} must explicitly deny ${action}`);
+    }
+  }
+});
+
 test('title generation uses GPT 6 Luna with the default variant', t => {
   const { apply, read } = fixture(t);
   const first = apply();
