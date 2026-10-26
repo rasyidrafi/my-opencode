@@ -33,8 +33,8 @@ invoking shell.
 GitHub CLI authentication uses `output: "gh-auth"`: the password field of
 `github.com TOKEN` is passed over stdin to `gh auth login --hostname github.com
 --with-token`, then setup checks the saved login with `gh auth status`.
-It also runs `gh auth setup-git --hostname github.com` to configure Git's global
-credential helper for GitHub HTTPS operations, including OpenChamber's system
+It also configures Git's global credential helpers through the stable Mise `gh`
+shim (the same logic as `mise run github:setup`) for GitHub HTTPS operations, including OpenChamber's system
 credentials mode. This works on both Windows and Linux.
 GitHub CLI stores the credential using its credential store (or its normal config
 fallback if a credential store is unavailable). It works immediately in the

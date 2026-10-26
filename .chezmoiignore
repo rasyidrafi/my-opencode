@@ -1,5 +1,6 @@
 README.md
 tests/**
+.config/github/setup.test.mjs
 .config/cloudflared/*.test.mjs
 .config/cloudflared/*_test.py
 .config/cloudflared/__pycache__/**

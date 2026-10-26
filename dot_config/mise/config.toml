@@ -42,6 +42,11 @@ description = "Sync Bitwarden secrets into persistent user environment or privat
 run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/secrets/setup.mjs"'
 raw = true
 
+[tasks."github:setup"]
+description = "Configure GitHub HTTPS credentials through the stable Mise gh shim"
+run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/github/setup.mjs"'
+raw = true
+
 [tasks."shell:setup"]
 description = "Install deterministic Bash environment hooks, preserving user customizations"
 run = 'node "{{ env.HOME }}/.config/shell/setup.mjs"'

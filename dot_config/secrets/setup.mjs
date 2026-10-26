@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { centralized } from '../shell/integration.mjs';
+import { configure as configureGitHub } from '../github/setup.mjs';
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const home = os.homedir();
@@ -35,7 +36,6 @@ function authenticateGitHub(token) {
   for (const args of [
     ['auth', 'login', '--hostname', 'github.com', '--with-token'],
     ['auth', 'status', '--hostname', 'github.com'],
-    ['auth', 'setup-git', '--hostname', 'github.com'],
   ]) {
     const result = spawnSync('gh', args, {
       env, input: args[1] === 'login' ? `${token}\n` : undefined,
@@ -45,6 +45,7 @@ function authenticateGitHub(token) {
       throw new Error(`GitHub CLI ${args[1]} failed. Check gh installation, token permissions and connectivity; secret output hidden.`);
     }
   }
+  configureGitHub({ env });
   // Migrate the previous Windows environment-based GitHub configuration.
   if (windows) {
     powershell("[Environment]::SetEnvironmentVariable('GH_TOKEN', $null, 'User')", '', 'GitHub environment cleanup');

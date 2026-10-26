@@ -1,5 +1,17 @@
 # Dotfiles
 
+## GitHub HTTPS credentials
+
+After `chezmoi apply` and `mise install`, run `mise run github:setup` once
+to migrate GitHub and Gist credential helpers to the stable Mise `gh` shim.
+This repairs stale version-specific paths without sudo, Bitwarden access or
+logging in again. It preserves other hosts and refuses custom GitHub helpers.
+Reruns are idempotent; normal tool upgrades/cleanup need no rerun because the
+shim selects the active version. Keep Mise's shims installed (`mise reshim`).
+`secrets:setup` uses the same integration after authenticating GitHub.
+Do not subsequently run `gh auth setup-git`, which records a version-specific
+executable path again. Test: `node --test dot_config/github/setup.test.mjs`.
+
 SSH configuration uses `dot_ssh/modify_config` to preserve local options and
 unrelated aliases. A leading managed block owns HostName, User and Port for
 `soy`, `soy-wb`, `bull` and `bull-wb`, plus the Docker SSH fragment Include.
