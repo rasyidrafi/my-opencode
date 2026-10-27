@@ -14,7 +14,7 @@ gh = "2.103.2"
 kubectl = "1.37.1"
 mysql-client = "9.7.4"
 node = "24"
-opencode = { version = "2.1.4", allow_builds = ["@opencode/cli"] }
+opencode = { version = "2.1.4", allow_builds = ["@opencode/cli"], allow_low_downloads = true }
 yarn = "4.18.1"
 "github:iOfficeAI/OfficeCLI" = "1.0.158"
 "npm:@openai/codex" = "0.164.0"
