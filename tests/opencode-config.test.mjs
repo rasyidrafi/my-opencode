@@ -36,13 +36,24 @@ function fixture(t) {
     assert.ok(frontmatter, 'valid Markdown frontmatter');
     return JSON.parse(cm(['execute-template', '--with-stdin', '{{ .chezmoi.stdin | fromYaml | toJson }}'], frontmatter[1]));
   };
-  return { apply, put, read, agent };
+  return { apply, put, read, agent, directory };
 }
+
+test('applying retires the explicit allowlist path without changing other plugins', t => {
+  const { apply, put, read, directory } = fixture(t);
+  const others = ['another-plugin', { package: 'custom-plugin', options: { keep: true } }];
+  put('opencode.json', JSON.stringify({ plugins: [others[0], path.join(directory, 'plugins/openai-allowlist'), others[1]] }));
+  const first = apply();
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, others);
+  assert.deepEqual(apply(), first);
+});
 
 test('fresh installs seed agent models and identical Luna limits; reapply is stable', t => {
   const { apply, read, agent } = fixture(t);
   const first = apply();
   assert.deepEqual(apply(), first);
+  const config = JSON.parse(read('opencode.json'));
+  assert.ok(!Object.hasOwn(config, 'plugins'));
   assert.equal(agent('general').model, 'openai/gpt-6-luna-fast#max');
   assert.equal(agent('explore').model, 'openai/gpt-6-luna-fast#xhigh');
   assert.equal(agent('reviewer').model, 'openai/gpt-6-astra');

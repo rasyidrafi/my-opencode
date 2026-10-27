@@ -7,6 +7,8 @@
   {{- fail "OpenChamber settings.json must be a JSON object" -}}
 {{- end -}}
 {{- /* Also remove the legacy copies of the retired small-model override. */ -}}
+{{- /* Catalog filtering is now handled by the OpenCode allowlist plugin. */ -}}
+{{- $_ := unset $config "hiddenModels" -}}
 {{- range list "smallModelUseDefault" "smallModelOverride" "smallModelVariant" -}}
   {{- $_ := unset $config . -}}
 {{- end -}}

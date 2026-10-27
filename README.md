@@ -63,6 +63,18 @@ printed. Cleanup remains a separate, explicit operation.
 
 Test without restarting anything: `node --test dot_config/cloudflared/restart.test.mjs`.
 
+## OpenAI model allowlist
+
+The managed OpenCode V2 plugin at
+`dot_config/opencode/plugins/openai-allowlist/index.js` limits OpenAI to
+GPT-6.1 Terra, GPT-6.1 Sol, GPT-6 Luna, GPT-6 Luna Fast and GPT-6 Astra.
+Other OpenAI models, including future catalog additions, are disabled on every
+catalog rebuild. Other providers are unchanged. Edit the plugin's `allowedModels`
+set to change the selection, then run `chezmoi apply`. The redundant OpenChamber
+`hiddenModels` list is removed from preferences and legacy settings on apply.
+
+Test: `node --test tests/openai-allowlist.test.mjs tests/opencode-config.test.mjs`.
+
 ## Tool version cleanup
 
 After `chezmoi apply`, preview unused older Mise installations on Linux:

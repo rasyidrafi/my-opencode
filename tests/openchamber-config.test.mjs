@@ -13,11 +13,9 @@ const managed = name => JSON.parse(fs.readFileSync(path.join(repository, '.chezm
 const preferences = managed('preferences.json');
 const settings = managed('settings.json');
 
-test('OpenAI Terra Fast and Pro are hidden without hiding the base model', () => {
-  const hidden = preferences.hiddenModels.filter(model => model.providerID === 'openai').map(model => model.modelID);
-  assert.ok(hidden.includes('gpt-6.1-terra-fast'));
-  assert.ok(hidden.includes('gpt-6.1-terra-pro'));
-  assert.ok(!hidden.includes('gpt-6.1-terra'));
+test('OpenChamber no longer manages a redundant model denylist', () => {
+  assert.ok(!Object.hasOwn(preferences, 'hiddenModels'));
+  assert.ok(!Object.hasOwn(settings, 'hiddenModels'));
 });
 
 function fixture(t) {
@@ -100,12 +98,28 @@ test('managed preferences replace only their values, retain unchanged timestamps
   assert.equal(config.fields.showReasoningTraces.value, true);
   assert.ok(config.fields.showReasoningTraces.updatedAt > 1);
   assert.deepEqual(config.fields.defaultModel, { value: preferences.defaultModel, updatedAt: 2, extra: 'keep' });
-  assert.deepEqual(config.fields.hiddenModels.value, preferences.hiddenModels);
+  assert.ok(!Object.hasOwn(config.fields, 'hiddenModels'));
   assert.deepEqual(config.fields.recentModels, { value: [{ providerID: 'custom', modelID: 'recent' }], updatedAt: 4 });
   assert.deepEqual(config.fields.notificationTemplates, untouched);
   assert.deepEqual(config.fields.responseStyleCustomInstructions, { value: '', updatedAt: 5 });
   assert.deepEqual(config.fields.sidebarProjectSortOrder, { value: 'manual', updatedAt: 6 });
   assert.deepEqual(JSON.parse(read('settings.json')), { ...local, ...settings });
+  assert.deepEqual(apply(), first);
+});
+
+test('applying removes hiddenModels from both documents and preserves unrelated values', t => {
+  const { put, read, apply } = fixture(t);
+  const hiddenModels = [{ providerID: 'openai', modelID: 'legacy' }];
+  const untouched = { value: 'keep', updatedAt: 123 };
+  put('preferences.json', { version: 1, fields: { hiddenModels: { value: hiddenModels, updatedAt: 1 }, custom: untouched } });
+  put('settings.json', { hiddenModels, custom: 'keep' });
+  const first = apply();
+  const profile = JSON.parse(read('preferences.json'));
+  const instance = JSON.parse(read('settings.json'));
+  assert.ok(!Object.hasOwn(profile.fields, 'hiddenModels'));
+  assert.ok(!Object.hasOwn(instance, 'hiddenModels'));
+  assert.deepEqual(profile.fields.custom, untouched);
+  assert.equal(instance.custom, 'keep');
   assert.deepEqual(apply(), first);
 });
 

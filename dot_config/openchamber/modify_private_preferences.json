@@ -10,6 +10,8 @@
   {{- fail "OpenChamber preferences.json must be a version-1 preferences document" -}}
 {{- end -}}
 {{- $fields := $config.fields -}}
+{{- /* Catalog filtering is now handled by the OpenCode allowlist plugin. */ -}}
+{{- $_ := unset $fields "hiddenModels" -}}
 {{- /* Retire the old custom small model; absent keys use OpenCode's default. */ -}}
 {{- range list "smallModelUseDefault" "smallModelOverride" "smallModelVariant" -}}
   {{- $_ := unset $fields . -}}
