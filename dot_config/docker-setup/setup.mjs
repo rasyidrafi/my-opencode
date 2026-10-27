@@ -263,6 +263,7 @@ export function setup(argv = process.argv.slice(2)) {
     if (run('/usr/bin/docker', ['context', 'show'], { capture: true }) !== config.context) run('/usr/bin/docker', ['context', 'use', config.context]);
     if (fs.existsSync('/run/docker.sock')) throw new Error('Guest unexpectedly has a local Docker socket.');
     console.log('Guest uses the host daemon via SSH; bind mounts and published ports belong to the host.');
+    console.log('Optional localhost access: mise run docker:forward:setup -- --dry-run, then mise run docker:forward:setup.');
   }
   const which = run('/bin/sh', ['-c', 'command -v docker'], { capture: true });
   if (which !== '/usr/bin/docker' && which !== '/bin/docker') throw new Error('A different Docker executable shadows the native CLI; inspect PATH.');

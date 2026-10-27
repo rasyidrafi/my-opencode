@@ -257,6 +257,58 @@ are not automatically shared. Run storage migration on the Docker host; SSH gues
 Test without installing packages or changing Docker:
 `node --test dot_config/docker-setup/setup.test.mjs`.
 
+### Guest localhost forwarding
+
+After `chezmoi apply` and guest `docker:setup`, opt into automatic localhost
+access to the remote Docker host's published TCP ports:
+
+```sh
+mise run docker:forward:setup -- --dry-run
+mise run docker:forward:setup
+systemctl status workbox-docker-forward.service
+journalctl -u workbox-docker-forward.service -f
+```
+
+The task reads `~/.config/docker-setup/state.json`, validates the saved SSH
+context, and installs a system service running as the invoking guest user.
+There are no hardcoded host IPs, SSH aliases, or application port numbers.
+Run as that user; sudo is requested only for installation/service management.
+Dry run validates prerequisites and connectivity without writing files.
+
+The service discovers published ports roughly every 10 seconds, creates IPv4
+and IPv6 loopback SSH forwards, retries failed tunnels, and removes forwards
+when publications disappear. Docker discovery failures preserve existing
+tunnels until a complete snapshot is available. It starts at boot without
+requiring an interactive login. SSH keys must work noninteractively with the
+guest's existing pinned host trust and forwarding authorization.
+
+Rerunning setup updates the existing `workbox-docker-forward.service` and
+`/usr/local/libexec/workbox-docker-forward.py` in place, including installations
+created before this task. It restarts the service only when installed assets
+change; unchanged setup ensures it is enabled and started. After a repo update,
+apply chezmoi and rerun setup to update the installed service code. The task
+does not restart Docker or modify containers.
+
+Scope is **all running containers on the saved context**, regardless of which
+machine created them. Only published TCP ports (`-p`, Compose `ports`) are
+forwarded: `EXPOSE` alone, UDP, and host-network listeners are not discovered.
+Occupied local ports are reported and left untouched, then retried; remove
+obsolete manual tunnels separately if the service should manage their ports.
+Low ports such as 80/443 depend on the guest user's bind permissions. Multiple
+distinct host addresses publishing the same port cannot be represented by one
+localhost port; discovery reports that ambiguity instead of picking a target.
+Each loopback forward currently uses its own SSH connection. Logs distinguish
+tunnel startup from application readiness; verify your app with curl.
+
+To disable forwarding: `sudo systemctl disable --now workbox-docker-forward.service`.
+
+Tests (no sudo, Docker changes, or service installation):
+
+```sh
+node --test dot_config/docker-forward/setup.test.mjs
+python3 -m unittest discover -s dot_config/docker-forward -p '*_test.py'
+```
+
 Run `mise run azure-mnt-cache:setup` to move **all native Docker-managed persistent
 storage** to `/mnt/docker-storage` and enable shell caches at
 `/mnt/cache/<username>`. Preview with `mise run azure-mnt-cache:setup -- --dry-run`.

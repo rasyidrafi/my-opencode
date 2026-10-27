@@ -92,6 +92,11 @@ description = "Set up native Docker on a host, or native clients with a guest SS
 run = 'node "{{ env.HOME }}/.config/docker-setup/setup.mjs"'
 raw = true
 
+[tasks."docker:forward:setup"]
+description = "Mirror remote Docker published TCP ports to guest localhost with a persistent systemd service"
+run = 'node "{{ env.HOME }}/.config/docker-forward/setup.mjs"'
+raw = true
+
 [tasks."azure-mnt-cache:setup"]
 description = "Move host Docker storage to /mnt and install shell cache paths; SSH guests keep using their host"
 run = 'node "{{ env.HOME }}/.config/azure-mnt-cache/setup.mjs"'

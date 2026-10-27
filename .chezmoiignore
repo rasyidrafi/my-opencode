@@ -19,6 +19,9 @@ tests/**
 .config/azure-mnt-cache/shell-enabled
 .config/shell/setup.test.mjs
 .config/docker-setup/setup.test.mjs
+.config/docker-forward/setup.test.mjs
+.config/docker-forward/*_test.py
+.config/docker-forward/__pycache__/**
 .config/rawroute/setup.test.mjs
 .config/rawroute/local-enabled
 .config/rawroute/.switch.lock
