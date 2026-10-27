@@ -1,6 +1,10 @@
 [settings]
 minimum_release_age = "0s"
 
+[plugins]
+# Override the embedded gcloud plugin missing lib/python.lua in mise 2026.10.21.
+"vfox:gcloud" = "https://github.com/jdx/vfox-gcloud#8bc2e33aa741c0935f219e0d5791f0dc92569ed9"
+
 [tools]
 agy = "1.4.8"
 azure = "2.91.0"
