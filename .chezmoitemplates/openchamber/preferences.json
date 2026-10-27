@@ -12,6 +12,8 @@
   "notifyOnSubtasks": false,
   "showDeletionDialog": false,
   "hiddenModels": [
+    { "providerID": "openai", "modelID": "gpt-6.1-terra-fast" },
+    { "providerID": "openai", "modelID": "gpt-6.1-terra-pro" },
     { "providerID": "openai", "modelID": "gpt-6-astra-fast" },
     { "providerID": "openai", "modelID": "gpt-6.1-sol-fast" },
     { "providerID": "openai", "modelID": "gpt-6.1-sol-pro" },

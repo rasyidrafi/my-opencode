@@ -3,7 +3,7 @@ description: "Read-only review and consultation: assess code, diffs, plans, and
   designs; identify concrete issues, validate correctness, and recommend
   approaches. Includes investigation needed for the assessment. Use explore for
   pure discovery and general for changes."
-model: openai/gpt-6-astra#low
+model: openai/gpt-6-astra
 mode: subagent
 permissions:
   - action: "*"

@@ -43,12 +43,15 @@ test('fresh installs seed agent models and identical Luna limits; reapply is sta
   const { apply, read, agent } = fixture(t);
   const first = apply();
   assert.deepEqual(apply(), first);
-  for (const name of ['general', 'explore']) assert.equal(agent(name).model, 'openai/gpt-6-luna-fast#xhigh');
-  assert.equal(agent('reviewer').model, 'openai/gpt-6-astra#low');
+  assert.equal(agent('general').model, 'openai/gpt-6-luna-fast#max');
+  assert.equal(agent('explore').model, 'openai/gpt-6-luna-fast#xhigh');
+  assert.equal(agent('reviewer').model, 'openai/gpt-6-astra');
   for (const name of ['build', 'plan']) assert.ok(!Object.hasOwn(agent(name), 'model'));
   const models = JSON.parse(read('opencode.json')).provider.openai.models;
   assert.deepEqual(models['gpt-6-luna-fast'].limit, models['gpt-6-luna'].limit);
   assert.deepEqual(models['gpt-6-luna-fast'].limit, { context: 680000, input: 552000, output: 128000 });
+  assert.deepEqual(models['gpt-6.1-terra'].limit, models['gpt-6.1-sol'].limit);
+  assert.deepEqual(models['gpt-6.1-terra'].limit, { context: 500000, input: 372000, output: 128000 });
 });
 
 test('all managed agents explicitly deny OpenChamber tools including scheduling', t => {
@@ -158,7 +161,7 @@ test('missing model fields get defaults and structured model selections survive'
   put('agents/explore.md', 'Old instructions without frontmatter\n');
   put('agents/reviewer.md', '---\nmodel:\n  providerID: custom\n  model: review\n  variant: high\n---\n');
   apply();
-  assert.equal(agent('general').model, 'openai/gpt-6-luna-fast#xhigh');
+  assert.equal(agent('general').model, 'openai/gpt-6-luna-fast#max');
   assert.equal(agent('explore').model, 'openai/gpt-6-luna-fast#xhigh');
   assert.deepEqual(agent('reviewer').model, { providerID: 'custom', model: 'review', variant: 'high' });
 });

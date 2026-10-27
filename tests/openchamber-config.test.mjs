@@ -13,6 +13,13 @@ const managed = name => JSON.parse(fs.readFileSync(path.join(repository, '.chezm
 const preferences = managed('preferences.json');
 const settings = managed('settings.json');
 
+test('OpenAI Terra Fast and Pro are hidden without hiding the base model', () => {
+  const hidden = preferences.hiddenModels.filter(model => model.providerID === 'openai').map(model => model.modelID);
+  assert.ok(hidden.includes('gpt-6.1-terra-fast'));
+  assert.ok(hidden.includes('gpt-6.1-terra-pro'));
+  assert.ok(!hidden.includes('gpt-6.1-terra'));
+});
+
 function fixture(t) {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-config-test-'));
   t.after(() => fs.rmSync(home, { recursive: true, force: true }));
