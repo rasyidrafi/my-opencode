@@ -433,3 +433,29 @@ test('read-only check does not execute an inherited BASH_ENV hook', () => fixtur
   assert.equal(fs.existsSync(path.join(home, 'bash-env-ran')), false);
   assert.equal(fs.existsSync(path.join(home, '.profile')), false);
 }));
+
+const previousInteractiveProfile = "# >>> my-opencode shell v1 >>>\n[ ! -r \"$HOME/.config/shell/env.sh\" ] || . \"$HOME/.config/shell/env.sh\"\n# <<< my-opencode shell v1 <<<\n# Compatibility entry point for login shells.\n# Keep this file POSIX-compatible for other Bourne-compatible login shells.\n# Bash login shells use .bashrc as the single loader for interactive startup.\nif [ -n \"${BASH_VERSION-}\" ]; then\n    case $- in\n        *i*) [ ! -r \"$HOME/.bashrc\" ] || . \"$HOME/.bashrc\" ;;\n        *)\n            # A non-interactive Bash has already loaded this wrapper through BASH_ENV.\n            if [ \"${BASH_ENV-}\" != \"$HOME/.bash_env\" ]; then\n                :\n            fi\n            ;;\n    esac\nelse\n    :\nfi\n";
+
+test('upgrades the existing interactive compatibility profile and remains idempotent', () => fixture((home, write) => {
+  write('.profile', previousInteractiveProfile);
+  write('.bashrc', 'printf x >> "$HOME/rc-count"\n');
+  setup({ home, env: {} });
+  const profile = fs.readFileSync(path.join(home, '.profile'), 'utf8');
+  assert.equal(profile.split('*i*) [ ! -r "$HOME/.bashrc" ]').length - 1, 1);
+  assert.ok(profile.includes('# Compatibility entry point for login shells.'));
+  assert.deepEqual(setup({ home, env: {} }).changed, []);
+  for (const interactive of [false, true]) {
+    const r = runBash(home, ['--noprofile', '--norc', ...(interactive ? ['-i'] : []), '-c'], '. "$HOME/.profile"');
+    assert.equal(r.status, 0, r.stderr);
+    if (!interactive) assert.equal(fs.existsSync(path.join(home, 'rc-count')), false);
+  }
+  assert.equal(fs.readFileSync(path.join(home, 'rc-count'), 'utf8'), 'x');
+}));
+
+test('compatibility profile with a custom condition is still refused before writes', () => fixture((home, write) => {
+  const profile = previousInteractiveProfile.replace('case $- in', 'case $CUSTOM in');
+  write('.profile', profile);
+  assert.throws(() => setup({ home, env: {} }), /Unsupported inline or conditional .bashrc source/);
+  assert.equal(fs.readFileSync(path.join(home, '.profile'), 'utf8'), profile);
+  assert.equal(fs.existsSync(path.join(home, '.bashrc')), false);
+}));

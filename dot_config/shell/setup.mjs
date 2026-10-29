@@ -249,6 +249,36 @@ function knownSimpleFileGuardIndexes(lines, home, relative) {
   return removed;
 }
 
+// Earlier installations kept this interactive-only delegation outside the
+// managed block. Match the complete structure so custom conditions still fail.
+function knownInteractiveBashrcIndexes(lines) {
+  const prefix = [
+    'if [ -n "${BASH_VERSION-}" ]; then',
+    'case $- in',
+    '*i*) [ ! -r "$HOME/.bashrc" ] || . "$HOME/.bashrc" ;;',
+  ];
+  const forms = [
+    [...prefix, 'esac', 'fi'],
+    [...prefix, '*)', 'if [ "${BASH_ENV-}" != "$HOME/.bash_env" ]; then',
+      ':', 'fi', ';;', 'esac', 'else', ':', 'fi'],
+  ];
+  const meaningful = lines.map((line, index) => ({ line: line.trim(), index }))
+    .filter(({ line }) => line && !line.startsWith('#'));
+  const recognized = new Set();
+  let depth = 0;
+  for (let i = 0; i < meaningful.length; i++) {
+    const form = depth === 0 && forms.find(form =>
+      form.every((line, offset) => meaningful[i + offset]?.line === line));
+    if (form) {
+      for (let offset = 0; offset < form.length; offset++) recognized.add(meaningful[i + offset].index);
+      i += form.length - 1;
+    } else {
+      depth = controlDepthChange(meaningful[i].line, depth);
+    }
+  }
+  return recognized;
+}
+
 function knownBashrcConditionalIndexes(lines, home) {
   const sourceCommands = sourceCommandsForBashrc(home);
   const sourceTokens = [...sourceCommands];
@@ -269,7 +299,8 @@ function knownBashrcConditionalIndexes(lines, home) {
       depth = controlDepthChange(meaningful[i].line, depth);
     }
   }
-  return new Set([...removed, ...knownSimpleFileGuardIndexes(lines, home, '.bashrc')]);
+  return new Set([...removed, ...knownSimpleFileGuardIndexes(lines, home, '.bashrc'),
+    ...knownInteractiveBashrcIndexes(lines)]);
 }
 
 function sourceCommandsForBashrc(home) {
