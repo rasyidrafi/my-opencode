@@ -1,5 +1,12 @@
 # Installed by mise run shell:setup. Non-interactive Bash entry point.
 [ ! -r "$HOME/.config/shell/env.sh" ] || . "$HOME/.config/shell/env.sh"
-[ ! -r "$HOME/.config/shell/legacy-bash-env.sh" ] || . "$HOME/.config/shell/legacy-bash-env.sh"
+if [ -n "${BASH_VERSION-}" ]; then
+    # Keep this guard local to this Bash process so child Bash hooks still run.
+    export -n _MY_OPENCODE_LEGACY_BASH_ENV_LOADED 2>/dev/null || :
+    if [ "${_MY_OPENCODE_LEGACY_BASH_ENV_LOADED-}" != 1 ]; then
+        _MY_OPENCODE_LEGACY_BASH_ENV_LOADED=1
+        [ ! -r "$HOME/.config/shell/legacy-bash-env.sh" ] || . "$HOME/.config/shell/legacy-bash-env.sh"
+    fi
+fi
 BASH_ENV="$HOME/.bash_env"
 export BASH_ENV

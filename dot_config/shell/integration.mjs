@@ -3,7 +3,10 @@ import path from 'node:path';
 
 export const start = '# >>> my-opencode shell v1 >>>';
 export const end = '# <<< my-opencode shell v1 <<<';
+export const pathStart = '# >>> my-opencode shell path v1 >>>';
+export const pathEnd = '# <<< my-opencode shell path v1 <<<';
 export const loader = '[ ! -r "$HOME/.config/shell/env.sh" ] || . "$HOME/.config/shell/env.sh"';
+export const pathLoader = '[ ! -r "$HOME/.config/shell/path.sh" ] || . "$HOME/.config/shell/path.sh"';
 
 export function read(target) {
   try { return fs.readFileSync(target, 'utf8'); }

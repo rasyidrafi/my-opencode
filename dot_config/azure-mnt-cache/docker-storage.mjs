@@ -9,10 +9,20 @@ export const stores = ['docker', 'containerd'].map(name => ({
 }));
 const stateFile = '/etc/azure-mnt-cache/docker-storage.json';
 const readyFile = `${storageRoot}/.ready`;
+const transferFile = `${storageRoot}/.transfer-complete`;
 
-// Bind mounts preserve Docker's existing absolute volume/layer paths. Both
-// services fail closed if /mnt or the completed migration marker is missing.
+// Bind mounts preserve Docker's existing absolute volume/layer paths. A
+// transfer marker gates the mounts; the later ready marker gates the services.
 export function systemdFiles() {
+  const files = {};
+  for (const store of stores) {
+    files[`/etc/systemd/system/${store.unit}`] = `[Unit]\nDescription=Docker storage on /mnt (${store.name})\nRequires=mnt.mount\nAfter=mnt.mount\nBefore=${store.name}.service\nConditionPathExists=${transferFile}\n\n[Mount]\nWhat=${store.target}\nWhere=${store.source}\nType=none\nOptions=bind\n`;
+    files[`/etc/systemd/system/${store.name}.service.d/azure-mnt-storage.conf`] = `[Unit]\nRequires=${store.unit}\nAfter=${store.unit}\n\n[Service]\nExecStartPre=/usr/bin/test -f ${readyFile}\n`;
+  }
+  return files;
+}
+
+function previousSystemdFiles() {
   const files = {};
   for (const store of stores) {
     files[`/etc/systemd/system/${store.unit}`] = `[Unit]\nDescription=Docker storage on /mnt (${store.name})\nRequires=mnt.mount\nAfter=mnt.mount\nBefore=${store.name}.service\n\n[Mount]\nWhat=${store.target}\nWhere=${store.source}\nType=none\nOptions=bind\n`;
@@ -94,6 +104,12 @@ export function checkInventory(before, after) {
   if (!before.running.every(id => after.running.includes(id))) throw new Error('Some previously running containers did not restart.');
 }
 
+export function assertBoundMigrationSafe(saved, transferComplete, store) {
+  if (saved?.status === 'moving' && (saved.phase !== 'transferred' || !transferComplete)) {
+    throw new Error(`Unexpected bind mount at ${store.source} during an unfinished storage transfer. Do not start Docker/containerd; stop them, unmount only after confirming they are stopped, inspect the underlying source and destination, and repair the migration state before rerunning.`);
+  }
+}
+
 export function moveStore(store, execute = run) {
   // rsync validates each transfer before removing its source. Checksums also
   // detect a partially copied destination on a subsequent forward-only retry.
@@ -109,7 +125,11 @@ export function moveStore(store, execute = run) {
 export async function migrate(io, { dryRun = false } = {}) {
   const plan = io.preflight();
   if (dryRun) return { ...plan, dryRun: true };
-  if (plan.complete) { io.verifyMounts(); return plan; }
+  if (plan.complete) {
+    io.verifyMounts();
+    io.ensureCompleteBootGuards?.();
+    return plan;
+  }
   io.prepare(plan);
   try {
     io.stop();
@@ -136,11 +156,18 @@ export function runtime() {
       if (fs.statSync('/mnt').dev === fs.statSync('/').dev) throw new Error('/mnt must use a different filesystem from root.');
       run('rsync', ['--version']);
       for (const target of [storageRoot, ...stores.flatMap(s => [s.source, s.target]), ...Object.keys(systemdFiles())]) safePath(target);
+      safePath(transferFile);
       saved = state();
       if (saved && (saved.version !== 1 || saved.root !== storageRoot || !['moving', 'complete'].includes(saved.status))) throw new Error('Unrecognized Docker storage migration state.');
+      if (saved?.status === 'moving' && saved.phase !== undefined && !['copying', 'transferred'].includes(saved.phase)) throw new Error('Unrecognized Docker storage migration phase.');
       if (!saved && fs.existsSync(storageRoot) && fs.readdirSync(storageRoot).length) throw new Error(`${storageRoot} already contains unrelated data.`);
+      const transferMarked = fs.existsSync(transferFile);
+      if (transferMarked && fs.readFileSync(transferFile, 'utf8') !== '1\n') throw new Error('Invalid Docker storage transfer marker.');
+      if (saved?.status === 'moving' && transferMarked && saved.phase !== 'transferred') throw new Error('Docker storage state and transfer marker disagree; inspect the migration before continuing.');
+      const previousFiles = previousSystemdFiles();
       for (const [target, content] of Object.entries(systemdFiles())) {
-        if (fs.existsSync(target) && fs.readFileSync(target, 'utf8') !== content) throw new Error(`Conflicting systemd configuration: ${target}`);
+        if (fs.existsSync(target) && fs.readFileSync(target, 'utf8') !== content
+          && (!saved || fs.readFileSync(target, 'utf8') !== previousFiles[target])) throw new Error(`Conflicting systemd configuration: ${target}`);
       }
       if (saved?.status === 'complete') {
         this.verifyMounts();
@@ -185,7 +212,8 @@ export function runtime() {
       for (const store of stores) {
         if (!fs.existsSync(store.source)) throw new Error(`Missing native storage: ${store.source}`);
         if (!saved && mounts().some(m => m.target === store.source)) throw new Error(`Existing mount at ${store.source} is not managed by this task.`);
-        if (!isBound(store)) bytes += Number(run('du', ['--summarize', '--one-file-system', '--block-size=1', store.source]).split(/\s/)[0]);
+        if (isBound(store)) assertBoundMigrationSafe(saved, transferMarked, store);
+        else bytes += Number(run('du', ['--summarize', '--one-file-system', '--block-size=1', store.source]).split(/\s/)[0]);
       }
       const free = fs.statfsSync('/mnt');
       const available = free.bavail * free.bsize;
@@ -195,9 +223,10 @@ export function runtime() {
     prepare() {
       fs.mkdirSync(storageRoot, { recursive: true, mode: 0o700 });
       for (const store of stores) fs.mkdirSync(store.target, { recursive: true, mode: 0o700 });
-      write(stateFile, JSON.stringify({ version: 1, status: 'moving', root: storageRoot, inventory: before }) + '\n');
-      // Install boot guards before moving the first byte. Missing readiness keeps
-      // Docker/containerd stopped after an interrupted migration or reboot.
+      const phase = saved?.phase === 'transferred' ? 'transferred' : 'copying';
+      write(stateFile, JSON.stringify({ version: 1, status: 'moving', phase, root: storageRoot, inventory: before }) + '\n');
+      // Install the transfer gate before moving the first byte. A reboot during
+      // copying must not bind an incomplete destination over the native source.
       for (const [target, content] of Object.entries(systemdFiles())) write(target, content);
       run('systemctl', ['daemon-reload']);
     },
@@ -215,10 +244,16 @@ export function runtime() {
     },
     move() {
       for (const store of stores) {
-        if (isBound(store)) continue;
+        if (isBound(store)) {
+          assertBoundMigrationSafe(state(), fs.existsSync(transferFile), store);
+          continue;
+        }
         // Nested mounts were refused; remove all old files before hiding the root directory.
         moveStore(store);
       }
+      run('sync', []);
+      write(stateFile, JSON.stringify({ version: 1, status: 'moving', phase: 'transferred', root: storageRoot, inventory: before }) + '\n');
+      write(transferFile, '1\n');
     },
     mount() {
       run('systemctl', ['start', ...stores.map(s => s.unit)]);
@@ -243,6 +278,24 @@ export function runtime() {
     },
     finish() {
       write(stateFile, JSON.stringify({ version: 1, status: 'complete', root: storageRoot }) + '\n');
+    },
+    ensureCompleteBootGuards() {
+      this.verifyMounts();
+      // A prior release marked complete only after full inventory verification.
+      // Establish the new boot gate before reloading its guarded unit files.
+      if (!fs.existsSync(transferFile)) {
+        run('sync', []);
+        write(transferFile, '1\n');
+      }
+      if (!fs.existsSync(readyFile)) write(readyFile, '1\n');
+      let changed = false;
+      for (const [target, content] of Object.entries(systemdFiles())) {
+        if (!fs.existsSync(target) || fs.readFileSync(target, 'utf8') !== content) {
+          write(target, content);
+          changed = true;
+        }
+      }
+      if (changed) run('systemctl', ['daemon-reload']);
     },
   };
 }

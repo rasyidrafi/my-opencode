@@ -5,7 +5,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 import { install, setupDocker, options } from './setup.mjs';
-import { migrate, moveStore, checkInventory, systemdFiles } from './docker-storage.mjs';
+import { migrate, moveStore, checkInventory, systemdFiles, assertBoundMigrationSafe } from './docker-storage.mjs';
 
 test('installation preserves startup files and is idempotent', () => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'azure-cache-test-'));
@@ -101,7 +101,7 @@ test('local setup invokes a dry-run helper or a locked privileged migration', ()
 
 function operations({ complete = false, fail } = {}) {
   const calls = [];
-  const io = Object.fromEntries(['preflight', 'prepare', 'stop', 'move', 'mount', 'start', 'verify', 'finish', 'verifyMounts'].map(name => [name, () => {
+  const io = Object.fromEntries(['preflight', 'prepare', 'stop', 'move', 'mount', 'start', 'verify', 'finish', 'verifyMounts', 'ensureCompleteBootGuards'].map(name => [name, () => {
     calls.push(name);
     if (name === fail) throw new Error('simulated ' + name + ' failure');
     if (name === 'preflight') return { complete };
@@ -115,13 +115,13 @@ test('migration stops workloads before moving storage and commits only after ver
   assert.deepEqual(calls, ['preflight', 'prepare', 'stop', 'move', 'mount', 'start', 'verify', 'finish']);
 });
 
-test('dry run and a verified repeat do not stop or move workloads', async () => {
+test('dry run and a verified repeat only reconcile complete boot guards', async () => {
   const preview = operations();
   await migrate(preview.io, { dryRun: true });
   assert.deepEqual(preview.calls, ['preflight']);
   const repeat = operations({ complete: true });
   await migrate(repeat.io);
-  assert.deepEqual(repeat.calls, ['preflight', 'verifyMounts']);
+  assert.deepEqual(repeat.calls, ['preflight', 'verifyMounts', 'ensureCompleteBootGuards']);
 });
 
 test('failed transfer never mounts or restarts incomplete storage; failed verification never commits', async () => {
@@ -142,15 +142,70 @@ test('inventory verification detects missing volumes, images, containers and sto
   assert.throws(() => checkInventory(before, { ...before, id: 'new-daemon' }));
 });
 
-test('both service roots require /mnt mounts and a completed-migration marker at boot', () => {
+test('boot bind mounts require completed transfer; services additionally require readiness', () => {
   const units = systemdFiles();
   for (const name of ['docker', 'containerd']) {
-    assert.match(units[`/etc/systemd/system/var-lib-${name}.mount`], /Requires=mnt.mount/);
-    assert.ok(units[`/etc/systemd/system/var-lib-${name}.mount`].includes(`What=/mnt/docker-storage/${name}`));
+    const mount = units[`/etc/systemd/system/var-lib-${name}.mount`];
+    assert.match(mount, /Requires=mnt.mount/);
+    assert.match(mount, /ConditionPathExists=\/mnt\/docker-storage\/\.transfer-complete/);
+    assert.ok(mount.includes(`What=/mnt/docker-storage/${name}`));
     const dropin = units[`/etc/systemd/system/${name}.service.d/azure-mnt-storage.conf`];
     assert.ok(dropin.includes(`Requires=var-lib-${name}.mount`));
     assert.match(dropin, /ExecStartPre=\/usr\/bin\/test -f \/mnt\/docker-storage\/\.ready/);
   }
+});
+
+test('an already-bound unfinished legacy migration fails closed unless transfer was recorded', () => {
+  const docker = { name: 'docker', source: '/var/lib/docker' };
+  for (const saved of [
+    { status: 'moving' },
+    { status: 'moving', phase: 'copying' },
+    { status: 'moving', phase: 'transferred' },
+  ]) assert.throws(() => assertBoundMigrationSafe(saved, false, docker), /Unexpected bind mount.*unfinished storage transfer/);
+  assert.doesNotThrow(() => assertBoundMigrationSafe({ status: 'moving', phase: 'transferred' }, true, docker));
+});
+
+test('interrupted transfer cannot bind at mocked boot; retry completes before mount and then stays complete', async () => {
+  const mountUnit = systemdFiles()['/etc/systemd/system/var-lib-docker.mount'];
+  let transferComplete = false;
+  let sourceBound = false;
+  let failTransfer = true;
+  let complete = false;
+  const calls = [];
+  const io = {
+    preflight() { calls.push('preflight'); return { complete }; },
+    prepare() { calls.push('prepare'); },
+    stop() { calls.push('stop'); },
+    move() {
+      calls.push('move');
+      if (failTransfer) throw new Error('simulated interrupted rsync');
+      transferComplete = true;
+    },
+    mount() {
+      calls.push('mount');
+      if (mountUnit.includes('ConditionPathExists=/mnt/docker-storage/.transfer-complete') && !transferComplete) return;
+      sourceBound = true;
+    },
+    start() { calls.push('start'); },
+    async verify() { calls.push('verify'); },
+    finish() { calls.push('finish'); complete = true; },
+    verifyMounts() { calls.push('verifyMounts'); },
+  };
+
+  await assert.rejects(migrate(io), /interrupted rsync.*not rolled back/);
+  // A boot attempt with the generated ConditionPathExists gate keeps /var/lib visible.
+  io.mount();
+  assert.equal(sourceBound, false);
+
+  failTransfer = false;
+  await migrate(io);
+  assert.equal(transferComplete, true);
+  assert.equal(sourceBound, true);
+  assert.ok(calls.indexOf('move', 3) < calls.lastIndexOf('mount'));
+
+  const beforeRepeat = calls.length;
+  await migrate(io);
+  assert.deepEqual(calls.slice(beforeRepeat), ['preflight', 'verifyMounts']);
 });
 
 test('real transfer preserves content, modes, symlinks and hardlinks with no old files; resume repairs partial copies', t => {

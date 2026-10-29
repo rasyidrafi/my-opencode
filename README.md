@@ -117,6 +117,25 @@ clean its own Mise installations. The helper never scans or cleans cache storage
 
 Test: `node --test dot_config/tools-cleanup/setup.test.mjs`.
 
+## Mise task reruns and cleanup
+
+Setup tasks reconcile their documented, task-owned assets; rerun them after
+updating the repo, saved settings, or generated secret values to refresh those
+assets. A no-op rerun does not imply a runtime refresh: check each task's service
+instructions. In particular, `cloudflared:restart` intentionally switches the
+running executable and briefly interrupts the tunnel; `docker:forward:setup`
+restarts only for changed or pending assets, otherwise it leaves a healthy
+service running; `codex:setup` and `openchamber:setup` perform the lifecycle
+actions named in their task descriptions.
+
+Changed shell, Docker setup, and Rawroute targets may create private backups
+before replacement. Backups can contain credentials and are retained for manual
+recovery; no task automatically prunes them. Destructive cleanup is separate and
+explicit: for example, `tools:cleanup` previews by default and only uninstalls
+with `--apply`, while old Cloudflare binaries are eligible only after the
+separate cleanup step. Reruns do not generically remove unrelated tools, services,
+containers, caches, or user data.
+
 ## Optional agent skills
 
 `ask-bun` and `ask-docker` are opt-in skills, adapted from the sibling
@@ -165,40 +184,60 @@ python3 -B -m unittest discover -s dot_local/share/my-opencode/optional-skills/t
 ```
 
 Run `mise run shell:setup` after `chezmoi apply` and `mise install` to install
-the deterministic Bash and Fish environment on Linux/macOS. No Codex, model,
-credentials, network access, sudo, or AI requests are needed. Setup never runs
-implicitly. Preview with `mise run shell:setup -- --dry-run`.
+portable Bash and optional Fish startup integration on Linux/macOS. This is not a
+bare-OS bootstrap: it assumes the repository's generated files and Mise are
+available. Zsh and service/OS-wide environment setup are out of scope. No Codex,
+model, credentials, network access, sudo, or AI requests are needed; setup never
+runs implicitly. Use `mise run shell:setup -- --check` for a read-only structural
+preflight, or `mise run shell:setup -- --dry-run` to preview planned file changes.
+The check does not source startup files or secret values; it reports validators,
+Fish config root, Bash login entrypoint, cache state, planned paths, and blockers.
+Fish syntax/runtime checks run only when Fish is installed. Startup fixtures cover
+bounded generic patterns; they do not certify any CachyOS-shipped defaults.
 
-The installer syntax-checks proposed files, backs up changed files privately under
-`~/.local/state/shell-init-backups`, and installs idempotent hooks in `.bashrc`,
-`.profile`, and existing `.bash_profile`/`.bash_login`. It preserves custom profile
-content; symlinks, unsupported inline loaders, invalid syntax and ambiguous hooks
-fail explicitly rather than being guessed. Existing AI-generated shared loaders
-require review and `--replace-legacy-loader` (also supported with `--dry-run`).
-Fish terminals get the same managed PATH order, secrets and cache hooks through a
-confined manager at `~/.config/fish/conf.d/my-opencode.fish`, which sources
-`~/.config/shell/env.fish`; Fish user configuration is never modified.
-Backups contain sensitive configuration: keep them private.
+The installer backs up changed files privately under
+`~/.local/state/shell-init-backups`, syntax-checks proposed files, and installs
+idempotent hooks in `.bashrc`, `.profile`, and existing `.bash_profile` or
+`.bash_login`. The shared environment is initialized before distro `.bashrc`
+early-return guards; a separate PATH-only finalizer runs after profile/interactive
+customizations so stock PATH prepends cannot leave duplicates or reverse the
+baseline. Existing profile content is preserved. Only existing `~/bin`,
+`~/.local/bin`, and Mise shims are normalized; unrelated PATH entries keep their
+order and position around that baseline, and custom interactive PATH additions
+remain effective. Mise activation is interactive-only. Caller-provided secrets,
+including empty values, take precedence over managed defaults. Setup reads secret
+names from the manifest but never prints secret values.
 
-The shared loader orders `~/bin`, `~/.local/bin`, mise shims, then the remaining
-PATH. Mise activation is interactive-only. Caller-provided secrets, including empty
-values, take precedence over managed defaults. Existing generated exports are
-supported using names from the secrets manifest; credentials are never parsed or
-printed by setup. Secrets/cache helper reruns recognize installed integration.
-Cache remains opt-in via `azure-mnt-cache:setup`; existing direct cache integration
-is migrated. Workboxes without opt-in remain unaffected.
+Fish terminals use an installer-owned hook at
+`$XDG_CONFIG_HOME/fish/conf.d/my-opencode.fish` (default
+`~/.config/fish/conf.d/my-opencode.fish`) to source `~/.config/shell/env.fish`;
+Fish user configuration is never edited. An in-home nondefault XDG config root is
+supported. External or relative roots and unmanaged `my-opencode.fish` collisions
+are refused before writes. The root is selected from `XDG_CONFIG_HOME` when setup
+runs; rerun setup after changing that variable. Fish prompt-time finalization is
+PATH-only, so secrets and cache hooks are not replayed.
 
-Keep host-specific additions in `~/.config/shell/local.sh` (Bash-only: Fish
-cannot source Bash snippets, so mirror any host-specific Fish needs in your Fish
-config). Custom absolute
-`BASH_ENV` hooks are preserved through a private legacy wrapper; ambiguous cycles
-require manual migration. Templates in `dot_config/shell/templates` are the source
-of truth; rerun setup after applying updates. Generated loaders are not chezmoi
-targets, so applying the repo does not overwrite local opt-in choices.
-Open a new shell afterward. Clean Bash processes without `BASH_ENV`, systemd,
-cron and GUI launchers require explicit integration; this task changes none of
-those services. Test without editing the real home:
-`node --test dot_config/shell/setup.test.mjs dot_config/azure-mnt-cache/setup.test.mjs`.
+Existing generated Bash exports are supported using names from the secrets
+manifest. Secrets/cache helper reruns recognize installed integration.
+Cache remains opt-in via `azure-mnt-cache:setup`; a marker or an active standalone
+known cache loader preserves opt-in, while comments and inactive textual mentions
+do not. Workboxes without opt-in remain unaffected.
+
+Keep host-specific additions in `~/.config/shell/local.sh`. It is Bash-only and is
+guarded from POSIX `sh` profiles; Fish-specific additions belong in Fish user
+configuration. Custom absolute `BASH_ENV` hooks are preserved through a private
+legacy wrapper when supplied in the task's invoking environment. A custom
+`BASH_ENV` assignment inside a profile is refused for explicit migration.
+`BASH_ENV` is inherited only by child noninteractive Bash processes that receive
+it; this task cannot update already-running processes,
+services, cron, GUI launchers, or clean Bash processes started without it. Ambiguous
+conditional/inline loader migrations and unsupported startup customizations fail
+explicitly instead of being guessed. Existing shared generated loaders require
+review and `--replace-legacy-loader` (also supported with `--dry-run` and `--check`).
+Templates in `dot_config/shell/templates` are the source of truth; rerun setup after
+applying updates. Generated loaders are not chezmoi targets. Backups may contain
+sensitive configuration; keep them private. Test without editing the real home:
+`node --test dot_config/shell/setup.test.mjs dot_config/secrets/setup.test.mjs dot_config/azure-mnt-cache/setup.test.mjs`.
 
 Run `mise run chrome:setup` after `chezmoi apply` for `browser-use`. Setup first
 reuses a verified Chrome, Edge, Chromium, or Brave executable found on `PATH` or
@@ -307,10 +346,12 @@ guest's existing pinned host trust and forwarding authorization.
 
 Rerunning setup updates the existing `workbox-docker-forward.service` and
 `/usr/local/libexec/workbox-docker-forward.py` in place, including installations
-created before this task. It restarts the service only when installed assets
-change; unchanged setup ensures it is enabled and started. After a repo update,
-apply chezmoi and rerun setup to update the installed service code. The task
-does not restart Docker or modify containers.
+created before this task. An activation marker is persisted before changing
+assets and cleared only after daemon-reload, restart and active-state verification;
+if activation fails, rerunning retries it even if the files now match. A healthy
+unchanged service is enabled/checked without restart; an inactive one is started.
+After a repo update, apply chezmoi and rerun setup to update the installed service
+code. The task does not restart Docker or modify containers.
 
 Scope is **all running containers on the saved context**, regardless of which
 machine created them. Only published TCP ports (`-p`, Compose `ports`) are
@@ -354,8 +395,15 @@ after successful transfer: **no rollback copy or old storage tree is retained**.
 An interrupted migration is resumed forward by rerunning the task. Do not remove
 `/etc/azure-mnt-cache/docker-storage.json` or the destination while it is unfinished.
 Completed reruns verify mounts without restarting workloads. Mount dependencies
-and a readiness marker prevent Docker/containerd from silently storing data on root
-when `/mnt` is unavailable or a migration is incomplete.
+and separate markers prevent premature boot binds: the mount units require
+`/mnt/docker-storage/.transfer-complete`, written only after both transfers finish
+and are synced, while Docker/containerd services also require `.ready`. A reboot
+during copying therefore leaves the original `/var/lib` trees visible instead of
+hiding unmoved files under a partial bind. If an older unfinished migration is
+already bound without a recorded completed transfer, setup refuses to bless it;
+stop the services and inspect/unmount the underlying paths safely before rerunning.
+Completed state from the previous unit format is verified before its boot guards
+are upgraded.
 
 Existing unrelated systemd overrides are preserved. Conflicting storage mounts,
 custom containerd roots/services, non-Docker containerd namespaces, auto-remove or

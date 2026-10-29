@@ -19,6 +19,9 @@ class Integration(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.fragment = self.root / 'cloudflared.service'
         self.fragment.write_text('[Unit]\nDescription=Tunnel\n[Service]\nType=notify\nExecStart=/old/cloudflared --no-autoupdate tunnel run --token SECRET\nRestart=on-failure\n')
+        # The production validator rejects group-writable service files; make
+        # fixture permissions deterministic under permissive caller umasks.
+        self.fragment.chmod(0o644)
         self.binary = self.root / 'new' / 'cloudflared'
         self.binary.parent.mkdir()
         self.binary.write_text('fixture')

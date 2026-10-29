@@ -1,11 +1,13 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { run } from '../docker-setup/setup.mjs';
 
 const service = 'workbox-docker-forward.service';
 const directory = '/usr/local/libexec';
+const pendingFile = '/etc/workbox-docker-forward.pending';
 
 export function settings(state) {
   if (state.role !== 'guest') throw new Error('Run docker:setup --role guest first.');
@@ -21,6 +23,31 @@ export function unit(user, group, home) {
   }
   if (!path.isAbsolute(home) || /[\r\n"\\%]/.test(home)) throw new Error('Unsupported service home path.');
   return `# Managed by mise run docker:forward:setup\n[Unit]\nDescription=Forward host Docker published TCP ports to workbox localhost\nWants=network-online.target\nAfter=network-online.target\n\n[Service]\nType=simple\nUser=${user}\nGroup=${group}\nEnvironment="HOME=${home}"\nExecStart=/usr/bin/python3 ${directory}/workbox-docker-forward.py --config /etc/workbox-docker-forward.json\nRestart=always\nRestartSec=5\nTimeoutStopSec=20\nNoNewPrivileges=yes\n\n[Install]\nWantedBy=multi-user.target\n`;
+}
+
+export function activateAssets(assets, io) {
+  const revision = createHash('sha256').update(JSON.stringify(assets)).digest('hex');
+  const changed = assets.filter(([target, content]) => !io.matches(target, content));
+  const pending = io.readPending();
+
+  if (changed.length || pending !== null) {
+    // Persist recovery intent before changing any installed asset. If install,
+    // daemon-reload, restart or health verification fails, reruns retry it.
+    if (pending !== revision) io.writePending(revision);
+    for (const [target, content] of changed) io.install(target, content);
+    io.daemonReload();
+    io.enable();
+    io.restart();
+    if (!io.isActive()) throw new Error(`Service activation is still pending; ${service} is not active. Rerun docker:forward:setup.`);
+    io.clearPending();
+    return { changed: changed.map(([target]) => target), restarted: true };
+  }
+
+  io.enable();
+  if (io.isActive()) return { changed: [], restarted: false };
+  io.start();
+  if (!io.isActive()) throw new Error(`${service} did not become active after start.`);
+  return { changed: [], restarted: false };
 }
 
 export function setup(argv = process.argv.slice(2)) {
@@ -54,18 +81,32 @@ export function setup(argv = process.argv.slice(2)) {
       ['/etc/workbox-docker-forward.json', JSON.stringify(config, null, 2) + '\n'],
       [`/etc/systemd/system/${service}`, contents],
     ];
-    let changed = false;
-    for (const [target, content] of assets) {
-      if (fs.existsSync(target) && fs.readFileSync(target, 'utf8') === content) continue;
-      const source = path.join(temporary, path.basename(target));
-      fs.writeFileSync(source, content, { mode: 0o600 });
-      run('sudo', ['install', '-D', '-o', 'root', '-g', 'root', '-m', '0644', source, target]);
-      changed = true;
-    }
-    if (changed) run('sudo', ['systemctl', 'daemon-reload']);
-    run('sudo', ['systemctl', 'enable', service]);
-    run('sudo', ['systemctl', changed ? 'restart' : 'start', service]);
-    run('systemctl', ['is-active', service]);
+    activateAssets(assets, {
+      matches(target, content) { return fs.existsSync(target) && fs.readFileSync(target, 'utf8') === content; },
+      readPending() {
+        try {
+          const stat = fs.lstatSync(pendingFile);
+          if (!stat.isFile() || stat.isSymbolicLink()) throw new Error(`Refusing unsafe activation marker: ${pendingFile}`);
+          return fs.readFileSync(pendingFile, 'utf8');
+        } catch (error) { if (error.code === 'ENOENT') return null; throw error; }
+      },
+      writePending(revision) {
+        const source = path.join(temporary, 'activation.pending');
+        fs.writeFileSync(source, `${revision}\n`, { mode: 0o600 });
+        run('sudo', ['install', '-D', '-o', 'root', '-g', 'root', '-m', '0644', source, pendingFile]);
+      },
+      install(target, content) {
+        const source = path.join(temporary, path.basename(target));
+        fs.writeFileSync(source, content, { mode: 0o600 });
+        run('sudo', ['install', '-D', '-o', 'root', '-g', 'root', '-m', '0644', source, target]);
+      },
+      daemonReload() { run('sudo', ['systemctl', 'daemon-reload']); },
+      enable() { run('sudo', ['systemctl', 'enable', service]); },
+      restart() { run('sudo', ['systemctl', 'restart', service]); },
+      start() { run('sudo', ['systemctl', 'start', service]); },
+      isActive() { return run('systemctl', ['is-active', service], { capture: true, allowFailure: true }) === 'active'; },
+      clearPending() { run('sudo', ['rm', '--', pendingFile]); },
+    });
     console.log(`Ready. Inspect forwarding/conflicts: journalctl -u ${service} -f`);
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });
