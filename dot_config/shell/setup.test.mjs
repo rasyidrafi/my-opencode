@@ -248,6 +248,20 @@ test('migrates bounded known loaders and helper cache opt-in without losing prof
   assert.deepEqual(setup({ home, env: {} }).changed, []);
 }));
 
+test('migrates empty environment guards left by older installations', () => fixture((home, write) => {
+  const guard = 'if [ -r "$HOME/.config/shell/env.sh" ]; then\n    :\nfi\n';
+  write('.profile', guard + 'export PROFILE_CUSTOM=kept\n');
+  write('.bashrc', guard + 'if command -v mise >/dev/null 2>&1; then\n    :\nfi\nalias example=true\n');
+  const result = setup({ home, env: {} });
+  for (const name of ['.profile', '.bashrc']) {
+    assert.ok(!fs.readFileSync(path.join(home, name), 'utf8').includes(guard));
+    assert.ok(fs.readFileSync(path.join(result.backup, name), 'utf8').startsWith(guard));
+  }
+  assert.match(fs.readFileSync(path.join(home, '.profile'), 'utf8'), /export PROFILE_CUSTOM=kept/);
+  assert.match(fs.readFileSync(path.join(home, '.bashrc'), 'utf8'), /alias example=true/);
+  assert.deepEqual(setup({ home, env: {} }).changed, []);
+}));
+
 test('comments do not enable cache and ambiguous conditional loaders are refused', () => fixture((home, write) => {
   write('.profile', '# . "$HOME/.config/azure-mnt-cache/cache.sh"\nreturn\n[ ! -r "$HOME/.config/azure-mnt-cache/cache.sh" ] || . "$HOME/.config/azure-mnt-cache/cache.sh"\n# source "$HOME/.bashrc"\n');
   setup({ home, env: {} });
@@ -443,6 +457,19 @@ test('upgrades the existing interactive compatibility profile and remains idempo
   const profile = fs.readFileSync(path.join(home, '.profile'), 'utf8');
   assert.equal(profile.split('*i*) [ ! -r "$HOME/.bashrc" ]').length - 1, 1);
   assert.ok(profile.includes('# Compatibility entry point for login shells.'));
+  assert.deepEqual(setup({ home, env: {} }).changed, []);
+  for (const interactive of [false, true]) {
+    const r = runBash(home, ['--noprofile', '--norc', ...(interactive ? ['-i'] : []), '-c'], '. "$HOME/.profile"');
+    assert.equal(r.status, 0, r.stderr);
+    if (!interactive) assert.equal(fs.existsSync(path.join(home, 'rc-count')), false);
+  }
+  assert.equal(fs.readFileSync(path.join(home, 'rc-count'), 'utf8'), 'x');
+}));
+
+test('recognizes the legacy inline file guard in interactive Bash login delegation', () => fixture((home, write) => {
+  write('.profile', 'if [ -n "${BASH_VERSION-}" ]; then\n    case $- in\n        *i*) if [ -r "$HOME/.bashrc" ]; then . "$HOME/.bashrc"; fi ;;\n    esac\nfi\n');
+  write('.bashrc', 'printf x >> "$HOME/rc-count"\n');
+  setup({ home, env: {} });
   assert.deepEqual(setup({ home, env: {} }).changed, []);
   for (const interactive of [false, true]) {
     const r = runBash(home, ['--noprofile', '--norc', ...(interactive ? ['-i'] : []), '-c'], '. "$HOME/.profile"');

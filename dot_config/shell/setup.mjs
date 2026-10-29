@@ -105,6 +105,9 @@ function knownLegacyEnvironmentBlocks(lines) {
     ['if [ -r "$HOME/.config/shell/env.sh" ]; then', '. "$HOME/.config/shell/env.sh"', 'fi'],
     ['if [ -f "$HOME/.config/shell/env.sh" ]; then', '. "$HOME/.config/shell/env.sh"', 'fi'],
   ];
+  // Older installations replaced loader commands with ':' but left their
+  // guards behind. These empty blocks are safe to migrate on subsequent runs.
+  forms.push(...forms.map(form => form.map(line => line === '. "$HOME/.config/shell/env.sh"' ? ':' : line)));
   const meaningful = lines.map((line, index) => ({ line: line.trim(), index }))
     .filter(({ line }) => line && !line.startsWith('#'));
   const removed = new Set();
@@ -259,6 +262,7 @@ function knownInteractiveBashrcIndexes(lines) {
   ];
   const forms = [
     [...prefix, 'esac', 'fi'],
+    [...prefix.slice(0, 2), '*i*) if [ -r "$HOME/.bashrc" ]; then . "$HOME/.bashrc"; fi ;;', 'esac', 'fi'],
     [...prefix, '*)', 'if [ "${BASH_ENV-}" != "$HOME/.bash_env" ]; then',
       ':', 'fi', ';;', 'esac', 'else', ':', 'fi'],
   ];
