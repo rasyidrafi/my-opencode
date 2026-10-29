@@ -200,14 +200,25 @@ cron and GUI launchers require explicit integration; this task changes none of
 those services. Test without editing the real home:
 `node --test dot_config/shell/setup.test.mjs dot_config/azure-mnt-cache/setup.test.mjs`.
 
-Run `mise run chrome:setup` after `chezmoi apply` to opt into installing Google
-Chrome Stable for `browser-use`. Currently supports Debian/Ubuntu Linux on amd64
-only; Windows, macOS, other distributions and architectures fail explicitly.
-Requires root or sudo and internet access. Downloads the official Google `.deb`
-over HTTPS and installs it with apt, including dependencies. Google's package may
-configure its apt repository for future updates. If Chrome Stable already runs,
-setup leaves it unchanged. This task does not launch Chrome, change browser
-profiles, or run automatically during `mise install`. Headless use needs no desktop.
+Run `mise run chrome:setup` after `chezmoi apply` for `browser-use`. Setup first
+reuses a verified Chrome, Edge, Chromium, or Brave executable found on `PATH` or
+at a small set of conventional Linux paths. The bounded `--version` check does
+not launch a browser or verify CDP/headless support. Existing browsers skip
+distro, architecture, apt, sudo, and network checks. Broken or unverifiable
+launchers stop with an error rather than being silently replaced. Known Chrome,
+Chromium, Edge, and Brave Flatpak apps are detected read-only; this task does not
+launch/configure Flatpak browsers and will not install a native replacement over
+one. Snap launcher paths are preserved, though their packaging/runtime may still
+affect browser launch.
+
+Only when no browser is found does setup install Google Chrome Stable. This
+fallback supports Debian-family Linux (Debian/Ubuntu IDs or exact Debian/Ubuntu
+`ID_LIKE` tokens, including Linux Mint) on amd64; Windows, macOS, other
+distributions and architectures fail explicitly. It requires root or sudo and
+internet access, downloads Google's official `.deb` over HTTPS, and installs it
+with apt, including dependencies. Google's package may configure its apt
+repository for future updates. Setup does not launch Chrome, change browser
+profiles, or run automatically during `mise install`.
 Test host validation without installing anything:
 `node --test dot_config/chrome/setup.test.mjs`.
 

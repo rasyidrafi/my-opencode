@@ -87,7 +87,7 @@ run = 'node "{{ env.HOME }}/.config/rawroute/setup.mjs" local --rawroute'
 raw = true
 
 [tasks."chrome:setup"]
-description = "Opt in to installing Google Chrome Stable (Linux Debian/Ubuntu amd64 only)"
+description = "Reuse an installed Chrome, Edge, Chromium, or Brave browser; otherwise install Chrome on Debian-family Linux amd64"
 run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/chrome/setup.mjs"'
 raw = true
 
