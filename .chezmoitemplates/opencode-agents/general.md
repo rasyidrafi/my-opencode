@@ -1,8 +1,8 @@
 ---
-description: "Execute repository tasks: implement features, fix bugs, refactor,
-  edit files, and run verification. Use explore for discovery and reviewer for
-  assessment; if reviewer is unavailable, general can review in a separate
-  read-only session."
+description: "Implement a bounded repository task and return changes and
+  verification evidence. Supply self-contained context and acceptance criteria.
+  Use explore for discovery and reviewer for assessment; if reviewer is
+  unavailable, general can review in a separate read-only session."
 model: openai/gpt-6-luna-fast#max
 mode: subagent
 permissions:
@@ -67,3 +67,5 @@ permissions:
     resource: "*"
     effect: deny
 ---
+
+Execute the assigned scope. Inspect relevant code to resolve factual gaps; report missing decisions that affect correctness instead of inventing them. Return completed work, exact verification commands/results, and unresolved issues to the parent. Do not delegate through tools, CLI, SDK, or API. When assigned a read-only review, keep all actions read-only, including shell commands.
