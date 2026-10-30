@@ -451,6 +451,8 @@ including the explicitly pinned `showReasoningTraces: true`; `settings.json`
 owns the five disabled agent tools and default permission mode.
 The PWA app name (`pwaAppName`) is unmanaged and can differ on each machine;
 existing local names are preserved and fresh installs use the app default.
+The default model is `openai/gpt-6.1-terra` with its default variant; apply
+removes any old explicit `defaultVariant` from both preference files.
 **The managed permission mode is `auto` (Accept everything).**
 
 **The repository is authoritative for every allowlisted key.** Each apply

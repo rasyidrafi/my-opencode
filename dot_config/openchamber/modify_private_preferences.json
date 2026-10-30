@@ -12,6 +12,8 @@
 {{- $fields := $config.fields -}}
 {{- /* Catalog filtering is now handled by the OpenCode allowlist plugin. */ -}}
 {{- $_ := unset $fields "hiddenModels" -}}
+{{- /* No explicit variant: use the model's default. */ -}}
+{{- $_ := unset $fields "defaultVariant" -}}
 {{- /* Retire the old custom small model; absent keys use OpenCode's default. */ -}}
 {{- range list "smallModelUseDefault" "smallModelOverride" "smallModelVariant" -}}
   {{- $_ := unset $fields . -}}

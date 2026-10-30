@@ -1,6 +1,5 @@
 {
-  "defaultModel": "openai/gpt-6.1-sol",
-  "defaultVariant": "low",
+  "defaultModel": "openai/gpt-6.1-terra",
   "sessionTabsEnabled": true,
   "showReasoningTraces": true,
   "reportUsage": false,

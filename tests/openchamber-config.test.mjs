@@ -13,6 +13,11 @@ const managed = name => JSON.parse(fs.readFileSync(path.join(repository, '.chezm
 const preferences = managed('preferences.json');
 const settings = managed('settings.json');
 
+test('OpenChamber defaults to Terra without an explicit variant', () => {
+  assert.equal(preferences.defaultModel, 'openai/gpt-6.1-terra');
+  assert.ok(!Object.hasOwn(preferences, 'defaultVariant'));
+});
+
 test('OpenChamber no longer manages a redundant model denylist', () => {
   assert.ok(!Object.hasOwn(preferences, 'hiddenModels'));
   assert.ok(!Object.hasOwn(settings, 'hiddenModels'));
@@ -178,6 +183,23 @@ test('retired small-model overrides and legacy copies are removed so the default
     assert.ok(!Object.hasOwn(fields, key));
     assert.ok(!Object.hasOwn(config, key));
   }
+  assert.equal(config.keepLocal, true);
+  assert.deepEqual(apply(), first);
+});
+
+test('old default variant is removed from both documents', t => {
+  const { put, read, apply } = fixture(t);
+  put('preferences.json', { version: 1, fields: {
+    defaultModel: { value: 'openai/gpt-6.1-sol', updatedAt: 1 },
+    defaultVariant: { value: 'low', updatedAt: 1 },
+  } });
+  put('settings.json', { defaultVariant: 'low', keepLocal: true });
+  const first = apply();
+  const fields = JSON.parse(read('preferences.json')).fields;
+  const config = JSON.parse(read('settings.json'));
+  assert.equal(fields.defaultModel.value, 'openai/gpt-6.1-terra');
+  assert.ok(!Object.hasOwn(fields, 'defaultVariant'));
+  assert.ok(!Object.hasOwn(config, 'defaultVariant'));
   assert.equal(config.keepLocal, true);
   assert.deepEqual(apply(), first);
 });

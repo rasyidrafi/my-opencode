@@ -9,6 +9,7 @@
 {{- /* Also remove the legacy copies of the retired small-model override. */ -}}
 {{- /* Catalog filtering is now handled by the OpenCode allowlist plugin. */ -}}
 {{- $_ := unset $config "hiddenModels" -}}
+{{- $_ := unset $config "defaultVariant" -}}
 {{- range list "smallModelUseDefault" "smallModelOverride" "smallModelVariant" -}}
   {{- $_ := unset $config . -}}
 {{- end -}}
