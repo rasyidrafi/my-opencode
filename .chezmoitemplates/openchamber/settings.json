@@ -4,5 +4,6 @@
   "agentWebToolEnabled": false,
   "agentKnowledgeToolEnabled": false,
   "agentRenderToolEnabled": false,
+  "agentImageToolEnabled": false,
   "permissionDefaultMode": "auto"
 }

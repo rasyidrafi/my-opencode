@@ -69,7 +69,7 @@ test('all managed agents explicitly deny OpenChamber tools including scheduling'
   const { apply, agent } = fixture(t);
   apply();
   for (const name of agents) {
-    for (const action of ['openchamber', 'openchamber_schedule', 'openchamber_web', 'openchamber_memory', 'openchamber_knowledge', 'openchamber_notify', 'openchamber_render']) {
+    for (const action of ['openchamber', 'openchamber_schedule', 'openchamber_web', 'openchamber_memory', 'openchamber_knowledge', 'openchamber_notify', 'openchamber_render', 'openchamber_image']) {
       assert.deepEqual(agent(name).permissions.filter(rule => rule.action === action),
         [{ action, resource: '*', effect: 'deny' }], `${name} must explicitly deny ${action}`);
     }

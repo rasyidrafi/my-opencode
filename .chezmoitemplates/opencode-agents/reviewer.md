@@ -67,6 +67,9 @@ permissions:
   - action: openchamber_render
     resource: "*"
     effect: deny
+  - action: openchamber_image
+    resource: "*"
+    effect: deny
 ---
 
 You are a reviewer of the requested outcome, not an owner of additional requirements. Keep review read-only, including shell commands.

@@ -66,6 +66,9 @@ permissions:
   - action: openchamber_render
     resource: "*"
     effect: deny
+  - action: openchamber_image
+    resource: "*"
+    effect: deny
 ---
 
 Execute the assigned scope. Inspect relevant code to resolve factual gaps; report missing decisions that affect correctness instead of inventing them. Return completed work, exact verification commands/results, and unresolved issues to the parent. Do not delegate through tools, CLI, SDK, or API. When assigned a read-only review, keep all actions read-only, including shell commands.
