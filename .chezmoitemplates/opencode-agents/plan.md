@@ -1,4 +1,5 @@
 ---
+disabled: true
 permissions:
   - action: "*"
     resource: "*"

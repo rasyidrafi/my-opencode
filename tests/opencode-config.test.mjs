@@ -76,6 +76,17 @@ test('all managed agents explicitly deny OpenChamber tools including scheduling'
   }
 });
 
+test('plan agent remains disabled on fresh installs and reapply', t => {
+  const { apply, put, agent } = fixture(t);
+  apply();
+  assert.equal(agent('plan').disabled, true);
+  put('agents/plan.md', '---\ndisabled: false\nmodel: custom/plan\n---\n');
+  const first = apply();
+  assert.equal(agent('plan').disabled, true);
+  assert.equal(agent('plan').model, 'custom/plan');
+  assert.deepEqual(apply(), first);
+});
+
 test('title generation uses GPT 6 Luna with the default variant', t => {
   const { apply, read } = fixture(t);
   const first = apply();

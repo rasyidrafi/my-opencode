@@ -524,6 +524,8 @@ instructions and permissions while preserving each existing frontmatter `model`
 `.chezmoitemplates/opencode-agents/`: `general` and `explore` default to
 `openai/gpt-6-luna-fast#xhigh`, and `reviewer` to `openai/gpt-6-astra#low`.
 Build and plan inherit the session model unless a local model is set.
+The managed plan agent is disabled via `disabled: true`, matching this machine;
+applying the template restores that setting even if it was changed locally.
 Existing selections, including older repo defaults, stay selected; remove an
 agent's `model` field to adopt the current repo default on the next apply.
 
