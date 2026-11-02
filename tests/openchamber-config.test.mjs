@@ -23,6 +23,11 @@ test('OpenChamber no longer manages a redundant model denylist', () => {
   assert.ok(!Object.hasOwn(settings, 'hiddenModels'));
 });
 
+test('OpenChamber secret and workflow tools are disabled', () => {
+  assert.equal(settings.agentSecretToolEnabled, false);
+  assert.equal(settings.agentWorkflowToolEnabled, false);
+});
+
 function fixture(t) {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-config-test-'));
   t.after(() => fs.rmSync(home, { recursive: true, force: true }));

@@ -448,7 +448,8 @@ Chezmoi merges the approved OpenChamber preferences into
 `.chezmoitemplates/openchamber/`: `preferences.json` owns the model defaults,
 hidden models and selected UI/notification preferences,
 including the explicitly pinned `showReasoningTraces: true`; `settings.json`
-owns the six disabled agent tools (including image generation) and default permission mode.
+owns the eight disabled agent tools (including image generation, secret and
+workflow) and default permission mode.
 The PWA app name (`pwaAppName`) is unmanaged and can differ on each machine;
 existing local names are preserved and fresh installs use the app default.
 The default model is `openai/gpt-6.1-terra` with its default variant; apply
