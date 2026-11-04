@@ -5,6 +5,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
+import { agentDescriptions, agentPolicies, agentSystemPrompts } from '../dot_config/opencode/plugins/my-opencode/agents.js';
 
 const repository = fileURLToPath(new URL('../', import.meta.url));
 const located = spawnSync('mise', ['which', 'chezmoi'], { encoding: 'utf8' });
@@ -42,7 +43,23 @@ function fixture(t) {
     assert.ok(frontmatter, 'valid Markdown frontmatter');
     return JSON.parse(cm(['execute-template', '--with-stdin', '{{ .chezmoi.stdin | fromYaml | toJson }}'], frontmatter[1]));
   };
-  return { apply, applyAll, put, read, agent, directory };
+  const agentBody = name => {
+    const text = read(`agents/${name}.md`);
+    const frontmatter = text.match(/^---\n[\s\S]*?\n---(?:\n|$)/);
+    assert.ok(frontmatter, 'valid Markdown frontmatter');
+    return text.slice(frontmatter[0].length).trimEnd();
+  };
+  return { apply, applyAll, put, read, agent, agentBody, directory };
+}
+
+function expectedAgentFrontmatter(name) {
+  const expected = structuredClone(agentPolicies[name]);
+  delete expected.system;
+  if (expected.model) {
+    const { providerID, id, variant } = expected.model;
+    expected.model = `${providerID}/${id}${variant ? `#${variant}` : ''}`;
+  }
+  return expected;
 }
 
 test('applying retires explicit local plugin paths without changing other plugins', t => {
@@ -70,6 +87,10 @@ test('chezmoi apply removes the stale renamed plugin file but preserves unrelate
 
   assert.ok(!fs.existsSync(path.join(legacy, 'index.js')));
   assert.equal(fs.readFileSync(path.join(legacy, 'notes.txt'), 'utf8'), 'unrelated local file');
+  assert.deepEqual(
+    JSON.parse(fs.readFileSync(path.join(directory, 'plugins/my-opencode/agent-policy.json'), 'utf8')),
+    JSON.parse(fs.readFileSync(path.join(repository, 'dot_config/opencode/plugins/my-opencode/agent-policy.json'), 'utf8')),
+  );
 });
 
 test('fresh installs leave agent policy to the plugin and seed identical Luna limits', t => {
@@ -78,7 +99,10 @@ test('fresh installs leave agent policy to the plugin and seed identical Luna li
   assert.deepEqual(apply(), first);
   const config = JSON.parse(read('opencode.json'));
   assert.ok(!Object.hasOwn(config, 'plugins'));
-  for (const name of agents) assert.deepEqual(agent(name), name === 'plan' ? { disabled: true } : {});
+  for (const name of ['build', 'general', 'explore', 'reviewer']) {
+    assert.deepEqual(agent(name), expectedAgentFrontmatter(name));
+  }
+  assert.deepEqual(agent('plan'), { disabled: true });
   assert.deepEqual(config.agents, { title: { model: 'openai/gpt-6-luna' } });
   const models = JSON.parse(read('opencode.json')).provider.openai.models;
   assert.deepEqual(models['gpt-6-luna-fast'].limit, models['gpt-6-luna'].limit);
@@ -87,15 +111,16 @@ test('fresh installs leave agent policy to the plugin and seed identical Luna li
   assert.deepEqual(models['gpt-6.1-terra'].limit, { context: 500000, input: 372000, output: 128000 });
 });
 
-test('agent source files are minimal shells, with Plan remaining disabled', t => {
-  const { apply, agent, read } = fixture(t);
+test('generated agent files expose the plugin policy to the UI', t => {
+  const { apply, agent, agentBody } = fixture(t);
   apply();
   for (const name of ['build', 'general', 'explore', 'reviewer']) {
-    assert.deepEqual(agent(name), {});
-    assert.equal(read(`agents/${name}.md`), '---\n{}\n---\n');
+    assert.deepEqual(agent(name), expectedAgentFrontmatter(name));
+    assert.deepEqual(agent(name).permissions, agentPolicies[name].permissions);
+    assert.equal(agent(name).description, agentDescriptions[name]);
+    assert.equal(agentBody(name), agentSystemPrompts[name] ?? '');
   }
   assert.deepEqual(agent('plan'), { disabled: true });
-  assert.equal(read('agents/plan.md'), '---\ndisabled: true\n---\n');
 });
 
 test('plan agent remains disabled and its stub rejects local policy overrides', t => {
@@ -184,18 +209,19 @@ test('applying removes retired Step 5 Preview without removing other local RawRo
   assert.deepEqual(apply(), first);
 });
 
-test('applying replaces local agent edits with minimal plugin-managed shells', t => {
-  const { apply, put, read, agent } = fixture(t);
+test('applying replaces local agent edits with the canonical plugin policy', t => {
+  const { apply, put, agent, agentBody } = fixture(t);
   for (const name of agents) put(`agents/${name}.md`, `---\r\nmodel: 'custom/${name}#high' # local selection\r\npermissions: []\r\n---\r\nOld instructions\r\n`);
   const first = apply();
   for (const name of agents) {
-    assert.deepEqual(agent(name), name === 'plan' ? { disabled: true } : {});
-    assert.ok(!read(`agents/${name}.md`).includes('Old instructions'));
+    assert.deepEqual(agent(name), name === 'plan' ? { disabled: true } : expectedAgentFrontmatter(name));
+    assert.equal(agentBody(name), agentSystemPrompts[name] ?? '');
   }
   assert.deepEqual(apply(), first);
-  put('agents/general.md', read('agents/general.md').replace('---\n---', '---\nmodel: custom/another-model#low\n---'));
+  put('agents/general.md', '---\nmodel: custom/another-model#low\npermissions: []\n---\nLocal prompt');
   apply();
-  assert.deepEqual(agent('general'), {});
+  assert.deepEqual(agent('general'), expectedAgentFrontmatter('general'));
+  assert.equal(agentBody('general'), agentSystemPrompts.general);
 });
 
 test('OpenCode merges owned limits and routing while preserving user models and unrelated settings', t => {

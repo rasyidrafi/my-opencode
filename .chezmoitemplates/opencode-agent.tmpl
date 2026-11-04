@@ -1,6 +1,18 @@
-{{- /* Keep only the loader stub here; the plugin owns runtime agent policy. */ -}}
-{{- $pattern := "(?s)\\A---[ \\t]*\\r?\\n(.*?)\\r?\\n---[ \\t]*(?:\\r?\\n|\\z)" -}}
-{{- $defaults := regexFind $pattern .defaults -}}
-{{- $config := regexReplaceAll $pattern $defaults "${1}" | fromYaml | default dict -}}
+{{- /* Generate the UI-visible agent file from the plugin's canonical policy. */ -}}
+{{- $agent := index .policy.agents .name -}}
+{{- $frontmatter := omit $agent "system" "permissionOverrides" -}}
+{{- if hasKey $agent "permissionOverrides" -}}
+  {{- $rules := list -}}
+  {{- range .policy.permissionOrder -}}
+    {{- $action := . -}}
+    {{- $effect := get $agent.permissionOverrides $action -}}
+    {{- if not $effect -}}{{- $effect = get $.policy.commonPermissions $action -}}{{- end -}}
+    {{- if $effect -}}
+      {{- $rules = append $rules (dict "action" $action "resource" "*" "effect" $effect) -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $_ := set $frontmatter "permissions" $rules -}}
+{{- end -}}
 ---
-{{ $config | toYaml }}---
+{{ $frontmatter | toYaml }}---
+{{ if hasKey $agent "system" }}{{ $agent.system }}{{ end }}

@@ -72,20 +72,20 @@ Other OpenAI models, including future catalog additions, are disabled on every
 catalog rebuild. Other providers are unchanged. The plugin also owns the
 runtime policies for `build`, `general`, `explore`, and `reviewer`:
 repo-specific prompts and descriptions, permissions, model overrides, agent
-modes, and the Build default. Agent files are minimal loader stubs. Plan is
-only disabled by its `disabled: true` stub; the plugin does not change its
-permissions or model. The plugin transforms already-loaded agents, so it does
-not create agents; keep the stub files present. The `title`
-model remains in `opencode.json` because OpenChamber's small-model resolver reads
-`agents.title.model`. To change policy, edit
-`agentDescriptions` or `agentSystemPrompts` in
-`dot_config/opencode/plugins/my-opencode/agents.js`. To change the OpenAI
-catalog selection, edit `allowedModels` in `index.js`. Run `chezmoi apply`
-after either change. Apply removes the old `openai-allowlist` entrypoint from
-the local plugin directory so it cannot be auto-discovered alongside the new
-plugin; unrelated files in that old directory are left untouched. The redundant
-OpenChamber `hiddenModels` list is removed from
-preferences and legacy settings on apply.
+modes, and the Build default. `agent-policy.json` in the plugin directory is the
+single source for those policies and the title model. The plugin applies it at
+runtime, while `chezmoi apply` generates the full user agent files from that
+same data, so the OpenCode settings UI shows the active models, prompts, and
+permissions. Local edits to generated agent files are replaced on the next
+apply. Plan remains disabled by its `disabled: true` file setting; the plugin
+does not change its permissions or model. The plugin transforms already-loaded
+agents, so agent files are still needed. To change policy, edit
+`dot_config/opencode/plugins/my-opencode/agent-policy.json`. To change the
+OpenAI catalog selection, edit `allowedModels` in `index.js`. Apply removes the
+old `openai-allowlist` entrypoint from the local plugin directory so it cannot
+be auto-discovered alongside the new plugin; unrelated files in that old
+directory are left untouched. The redundant OpenChamber `hiddenModels` list is
+removed from preferences and legacy settings on apply.
 
 Test: `node --test tests/my-opencode-plugin.test.mjs tests/opencode-agent-plugin.test.mjs tests/opencode-config.test.mjs`.
 
@@ -520,10 +520,10 @@ OpenCode's global config is `~/.config/opencode/opencode.json`. Its
 routing and model limits while retaining unmanaged root settings. Soy currently
 has no root `model` or `default_agent` selection there; its provider routing is
 configured. Rawroute switches use the same merge.
-Per-agent files have a different rule: every apply replaces their frontmatter
-with the minimal loader stubs. Runtime agent policy is applied by the local
-plugin after OpenCode loads those agents. Title generation remains configured
-in `opencode.json` for OpenChamber compatibility. Explore defaults to
+Per-agent files are generated from `agent-policy.json` on every apply, including
+their frontmatter and system prompts. The plugin enforces the same data at
+runtime. The title model in `opencode.json` is generated from that file too for
+OpenChamber compatibility. Explore defaults to
 `openai/gpt-6-luna-fast#xhigh`, General to `openai/gpt-6-luna-fast#max`, and
 Reviewer to `openai/gpt-6-astra#low`; Build and Plan inherit the session model.
 Build is explicitly selected as the default, and Plan remains disabled.

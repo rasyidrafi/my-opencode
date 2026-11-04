@@ -1,2 +1,3 @@
 {{- /* chezmoi:modify-template */ -}}
-{{- includeTemplate "opencode-agent.tmpl" (dict "defaults" (includeTemplate "opencode-agents/plan.md" .)) -}}
+{{- $policy := includeTemplate "dot_config/opencode/plugins/my-opencode/agent-policy.json" . | mustFromJson -}}
+{{- includeTemplate "opencode-agent.tmpl" (dict "policy" $policy "name" "plan") -}}

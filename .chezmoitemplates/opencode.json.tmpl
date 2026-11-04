@@ -1,10 +1,11 @@
 {{- $local := stat (joinPath .chezmoi.homeDir ".config" "rawroute" "local-enabled") -}}
 {{- $rawrouteLocal := stat (joinPath .chezmoi.homeDir ".config" "rawroute" "rawroute-local-enabled") -}}
+{{- $agentPolicy := includeTemplate "dot_config/opencode/plugins/my-opencode/agent-policy.json" . | mustFromJson -}}
 {
   "websearch": false,
   "agents": {
     "title": {
-      "model": "openai/gpt-6-luna"
+      "model": "{{ $agentPolicy.titleModel }}"
     }
   },
   "providers": {
