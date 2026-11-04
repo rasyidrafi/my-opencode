@@ -1,7 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, realpathSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { scannerSession } from './windows-scan.mjs';
 
 // Deliberately only compare ordinary numeric releases, never refs or prereleases.
 export function older(a, b) {
@@ -46,9 +47,13 @@ export function plan(installed, global, sources, prunable) {
   return { candidates, kept };
 }
 
-function main() {
-  if (process.platform !== 'linux') throw new Error('tools:cleanup supports Linux only');
-  const args = process.argv.slice(2);
+export function main({ platform = process.platform, args = process.argv.slice(2), execute = execFileSync, canonical = realpathSync, elevate } = {}) {
+  if (!['linux', 'win32'].includes(platform)) throw new Error('tools:cleanup supports Linux and Windows only');
+  const execFileSync = execute;
+  const realpathSync = canonical;
+  const samePath = (a, b) => platform === 'win32'
+    ? a.replaceAll('\\', '/').toLowerCase() === b.replaceAll('\\', '/').toLowerCase()
+    : a === b;
   if (args.length > 1 || args.some(a => !['--apply', '--dry-run'].includes(a))) {
     throw new Error('Usage: tools:cleanup [--dry-run | --apply]');
   }
@@ -66,7 +71,7 @@ function main() {
   let removed = 0, skipped = 0, failed = 0, eligible = 0;
   const candidates = initial.candidates.filter(row => {
     try {
-      if (realpathSync(row.install_path) === row.install_path) return true;
+      if (samePath(realpathSync(row.install_path), row.install_path)) return true;
     } catch { /* Missing or inaccessible paths must not be uninstalled. */ }
     skipped++;
     console.log(`SKIP ${row.id}: install path is symlinked or cannot be verified`);
@@ -75,28 +80,58 @@ function main() {
   if (!candidates.length) return console.log(`Summary: 0 removed, ${skipped} skipped, 0 failed.`);
   // sudo -v can require a password even with NOPASSWD permissions. Probe an
   // actual command first; only authenticate interactively when necessary.
-  try {
+  if (platform === 'linux') try {
     execFileSync('sudo', ['-n', '/usr/bin/true'], { stdio: 'ignore' });
   } catch {
     // Authenticate on the terminal, never capture or handle the sudo password.
     execFileSync('sudo', ['-v'], { stdio: 'inherit' });
   }
-  const scanner = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'scan.py'), 'utf8');
+  const scanner = readFileSync(join(dirname(fileURLToPath(import.meta.url)), platform === 'win32' ? 'scan.ps1' : 'scan.py'), 'utf8');
+  let useElevation = false;
+  let session;
+  const elevated = (scanner, input, execute) => {
+    if (elevate) return elevate(scanner, input, execute);
+    session ??= scannerSession(scanner, execute);
+    return session.scan(scanner, input);
+  };
   const check = rows => {
-    const result = JSON.parse(execFileSync('sudo', ['-n', '/usr/bin/python3', '-c', scanner], {
-      input: JSON.stringify(rows.map(r => ({ id: r.id, path: r.install_path }))),
+    console.log(`CHECK process use: ${rows.length} installation(s)`);
+    const command = platform === 'win32' ? 'powershell.exe' : 'sudo';
+    const args = platform === 'win32'
+      ? ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(scanner, 'utf16le').toString('base64')]
+      : ['-n', '/usr/bin/python3', '-c', scanner];
+    let output;
+    const input = JSON.stringify(rows.map(r => ({ id: r.id, path: r.install_path })));
+    try { output = useElevation ? elevated(scanner, input, execFileSync) : execFileSync(command, args, {
+      input,
       encoding: 'utf8', maxBuffer: 16 * 1024 * 1024,
-    }));
+      windowsHide: true,
+      timeout: 120_000,
+    }); } catch (error) {
+      throw new Error(`Process inspection failed${error.code === 'ETIMEDOUT' ? ' (timed out)' : ''}; cleanup stopped before uninstalling unchecked versions.`);
+    }
+    let result = JSON.parse(output);
+    if (platform === 'win32' && !useElevation && result.some(hit => hit.kind === 'inspection unavailable')) {
+      useElevation = true;
+      result = JSON.parse(elevated(scanner, input, execFileSync));
+    }
     if (!Array.isArray(result) || result.some(r => !rows.some(row => row.id === r.id) || !Number.isInteger(r.pid) || typeof r.kind !== 'string')) {
       throw new Error('Invalid process scanner result; cleanup stopped');
     }
     return result;
   };
+  try {
   const busy = check(candidates);
   for (const row of candidates) {
+    console.log(`CHECK ${row.id}`);
     const skip = reason => { skipped++; console.log(`SKIP ${row.id}: ${reason}`); };
     const hits = busy.filter(hit => hit.id === row.id);
-    if (hits.length) { skip(`in use: ${hits.map(h => `PID ${h.pid} (${h.kind})`).join(', ')}`); continue; }
+    if (hits.length) {
+      const unknown = hits.filter(h => h.kind === 'inspection unavailable');
+      if (unknown.length) skip(`cannot verify use: ${unknown.length} inaccessible process(es); try an Administrator terminal for greater visibility`);
+      else skip(`in use: ${hits.map(h => `PID ${h.pid} (${h.kind})`).join(', ')}`);
+      continue;
+    }
     if (!row.prunable) { skip('Mise does not consider this version prunable'); continue; }
     if (!apply) { eligible++; console.log(`WOULD REMOVE ${row.id}`); continue; }
     // Earlier uninstalls change the inventory. Re-plan rather than compare the
@@ -104,7 +139,7 @@ function main() {
     const fresh = snapshot().candidates.find(r => r.id === row.id && r.install_path === row.install_path);
     if (!fresh?.prunable) { skip('no longer eligible under current configuration'); continue; }
     try {
-      if (realpathSync(row.install_path) !== row.install_path) { skip('install path changed'); continue; }
+      if (!samePath(realpathSync(row.install_path), row.install_path)) { skip('install path changed'); continue; }
     } catch { skip('install path cannot be verified'); continue; }
     const currentHits = check([row]);
     if (currentHits.length) { skip(`now in use: ${currentHits.map(h => `PID ${h.pid} (${h.kind})`).join(', ')}`); continue; }
@@ -119,8 +154,9 @@ function main() {
   }
   console.log(`Summary: ${removed} removed, ${skipped} skipped, ${failed} failed${apply ? '' : `, ${eligible} would remove (preview only; use --apply)`}.`);
   if (failed) process.exitCode = 1;
+  } finally { session?.close(); }
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === realpathSync(process.argv[1])) {
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
   try { main(); } catch (error) { console.error(error.message); process.exitCode = 1; }
 }

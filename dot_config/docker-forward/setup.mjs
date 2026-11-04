@@ -51,6 +51,7 @@ export function activateAssets(assets, io) {
 }
 
 export function setup(argv = process.argv.slice(2)) {
+  if (process.platform === 'win32') throw new Error('docker:forward:setup is not supported on Windows yet. Requires Linux/systemd.');
   if (argv.some(arg => arg !== '--dry-run')) throw new Error('Usage: mise run docker:forward:setup -- [--dry-run]');
   if (process.platform !== 'linux' || !fs.existsSync('/run/systemd/system')) throw new Error('Linux with systemd is required.');
   if (process.getuid() === 0) throw new Error('Run as the intended guest user; setup invokes sudo for installation.');

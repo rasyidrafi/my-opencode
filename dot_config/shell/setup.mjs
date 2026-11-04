@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { start, end, pathStart, pathEnd, loader, pathLoader, read, assertSafe, privateWrite } from './integration.mjs';
+import { setupWindows } from './windows.mjs';
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const quote = value => `'${value.replaceAll("'", "'\\''")}'`;
@@ -392,7 +393,9 @@ function previousFishLoaderContent() {
   return `${fishLoaderHeader}\nif test -r "$HOME/.config/shell/env.fish"\n    source "$HOME/.config/shell/env.fish"\nend\n`;
 }
 
-export function setup({ home = os.homedir(), platform = process.platform, env = process.env, dryRun = false, replaceLegacy = false } = {}) {
+export function setup({ home = os.homedir(), platform = process.platform, env = process.env, dryRun = false, replaceLegacy = false, cmd = false } = {}) {
+  if (platform === 'win32') return setupWindows({ home, env, dryRun, cmd });
+  if (cmd) throw new Error('--cmd is supported only on Windows.');
   if (!['linux', 'darwin'].includes(platform)) throw new Error('shell:setup supports Linux and macOS Bash/Fish environments only.');
   home = path.resolve(home);
   const fishRoot = configRoot(home, env);
@@ -533,7 +536,8 @@ function parseArguments(args) {
     if (arg === '--dry-run') options.dryRun = true;
     else if (arg === '--check') options.check = true;
     else if (arg === '--replace-legacy-loader') options.replaceLegacy = true;
-    else throw new Error(`Unknown argument: ${arg}\nUsage: shell:setup [--check] [--dry-run] [--replace-legacy-loader]`);
+    else if (arg === '--cmd') options.cmd = true;
+    else throw new Error(`Unknown argument: ${arg}\nUsage: shell:setup [--check] [--dry-run] [--cmd] [--replace-legacy-loader]`);
   }
   return options;
 }
@@ -542,7 +546,16 @@ function selectedLogin(home) {
   return ['.bash_profile', '.bash_login', '.profile'].find(name => fs.existsSync(path.join(home, name))) ?? '.profile (created by setup)';
 }
 
-function checkReport({ home, env, replaceLegacy }) {
+function checkReport({ home, env, replaceLegacy, cmd }) {
+  if (process.platform === 'win32') {
+    console.log('Read-only Windows shell check; profiles are parsed, never sourced.');
+    const result = setupWindows({ home, env, dryRun: true, cmd });
+    for (const shell of result.shells) console.log(`PowerShell: ${shell}`);
+    console.log(`Git Bash: ${result.gitBash || 'not installed'}. CMD integration: ${result.cmd ? 'enabled/selected' : 'opt-in (--cmd)'}.`);
+    for (const target of result.changed) console.log(`Would update: ${target}`);
+    console.log('Check complete; no files or Registry values changed.');
+    return 0;
+  }
   home = path.resolve(home);
   const hasFish = fishAvailable();
   let root = '(invalid)';
@@ -573,15 +586,17 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   try {
     const options = parseArguments(process.argv.slice(2));
     if (options.check) {
-      process.exitCode = checkReport({ home: os.homedir(), env: process.env, replaceLegacy: options.replaceLegacy });
+      process.exitCode = checkReport({ home: os.homedir(), env: process.env, replaceLegacy: options.replaceLegacy, cmd: options.cmd });
     } else {
-      const result = setup({ dryRun: options.dryRun, replaceLegacy: options.replaceLegacy });
+      const result = setup({ dryRun: options.dryRun, replaceLegacy: options.replaceLegacy, cmd: options.cmd });
       if (options.dryRun) {
         console.log(`Dry run: ${result.changed.length} file(s) would change; no files written.`);
         for (const target of result.changed) console.log(target);
       } else {
-        console.log(result.changed.length ? `Installed deterministic Bash/Fish setup (${result.changed.length} changed files). Private backup: ${result.backup}` : 'Bash/Fish setup is already current; no changes.');
-        console.log('Open a new Bash or Fish shell afterward. Zsh, existing clean processes and systemd/cron need their own explicit environment integration.');
+        console.log(result.changed.length ? `Installed shell setup (${result.changed.length} changes). Private backup: ${result.backup}` : 'Shell setup is already current; no changes.');
+        console.log(process.platform === 'win32'
+          ? 'Open a new PowerShell or Git Bash shell. CMD requires --cmd. Restart the terminal launcher to refresh inherited Windows user environment variables.'
+          : 'Open a new Bash or Fish shell afterward. Zsh, existing clean processes and systemd/cron need their own explicit environment integration.');
       }
     }
   } catch (error) { console.error(error.message); process.exitCode = 1; }

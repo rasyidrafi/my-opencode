@@ -4,13 +4,17 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { test } from 'node:test';
+import { test as platformTest } from 'node:test';
 import { setup } from './setup.mjs';
 import { centralized, start, end, pathStart, pathEnd } from './integration.mjs';
 import { installShellLoader, renderEnvironment, renderEnvironmentFish } from '../secrets/setup.mjs';
 import { install as installCache } from '../azure-mnt-cache/setup.mjs';
 
 const cli = fileURLToPath(new URL('./setup.mjs', import.meta.url));
+// This suite exercises POSIX startup semantics; Windows has windows.test.mjs.
+const test = (name, options, fn) => typeof options === 'function'
+  ? platformTest(name, { skip: process.platform === 'win32' && 'POSIX shell integration' }, options)
+  : platformTest(name, { ...options, skip: process.platform === 'win32' ? 'POSIX shell integration' : options.skip }, fn);
 const fishAvailable = (() => {
   const result = spawnSync('fish', ['--version'], { encoding: 'utf8' });
   return !result.error && result.status === 0;

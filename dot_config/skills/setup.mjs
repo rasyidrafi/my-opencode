@@ -64,7 +64,7 @@ export function planInstall({ names, scope, project, home = os.homedir(), catalo
     const source = fs.realpathSync(path.join(catalog, name));
     const target = path.join(destination, name);
     const entry = stat(target);
-    if (entry && (!entry.isSymbolicLink() || path.resolve(path.dirname(target), fs.readlinkSync(target)) !== source)) {
+    if (entry && (!entry.isSymbolicLink() || !fs.existsSync(target) || fs.realpathSync(target) !== source)) {
       throw new Error(`Refusing to replace existing path: ${target}`);
     }
     return { source, target, exists: Boolean(entry) };
@@ -80,13 +80,13 @@ export function applyPlan(plan, { dryRun = false } = {}) {
   try {
     for (const link of plan.links) {
       if (link.exists) continue;
-      fs.symlinkSync(link.source, link.target, 'dir');
+      fs.symlinkSync(link.source, link.target, process.platform === 'win32' ? 'junction' : 'dir');
       created.push(link);
     }
   } catch (error) {
     // Roll back only links created by this invocation and still owned by it.
     for (const link of created.reverse()) {
-      if (stat(link.target)?.isSymbolicLink() && fs.readlinkSync(link.target) === link.source) fs.unlinkSync(link.target);
+      if (stat(link.target)?.isSymbolicLink() && fs.existsSync(link.target) && fs.realpathSync(link.target) === link.source) fs.unlinkSync(link.target);
     }
     throw error;
   }

@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { centralized } from '../shell/integration.mjs';
 import { configure as configureGitHub } from '../github/setup.mjs';
+import { saveWindowsEnvironment, restrictWindowsDirectory } from './windows.mjs';
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const home = os.homedir();
@@ -48,7 +49,7 @@ function authenticateGitHub(token) {
   configureGitHub({ env });
   // Migrate the previous Windows environment-based GitHub configuration.
   if (windows) {
-    powershell("[Environment]::SetEnvironmentVariable('GH_TOKEN', $null, 'User')", '', 'GitHub environment cleanup');
+    saveWindowsEnvironment({}, ['GH_TOKEN']);
   }
   console.log('GitHub CLI authenticated for github.com; Git configured to use its credentials for HTTPS.');
   if (process.env.GH_TOKEN || process.env.GITHUB_TOKEN) {
@@ -67,35 +68,9 @@ function privateWrite(target, content) {
 
 function restrictDirectory() {
   if (windows) {
-    // Restrict the generated directory to this Windows account, using its SID.
-    const script = `
-      $ErrorActionPreference = 'Stop'
-      $target = [Console]::In.ReadToEnd()
-      $sid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
-      # Read/change only the DACL. A fresh descriptor can request owner/audit
-      # changes and fail with SeSecurityPrivilege on an existing directory.
-      $acl = [System.IO.Directory]::GetAccessControl($target, [System.Security.AccessControl.AccessControlSections]::Access)
-      $acl.SetAccessRuleProtection($true, $false)
-      foreach ($existingRule in @($acl.Access)) {
-        $acl.RemoveAccessRuleSpecific($existingRule)
-      }
-      $rule = New-Object System.Security.AccessControl.FileSystemAccessRule($sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
-      $acl.AddAccessRule($rule)
-      [System.IO.Directory]::SetAccessControl($target, $acl)
-    `;
-    powershell(script, path.join(directory, 'generated'), 'directory permissions');
+    restrictWindowsDirectory(path.join(directory, 'generated'));
   } else {
     fs.chmodSync(path.join(directory, 'generated'), 0o700);
-  }
-}
-
-function powershell(script, input, operation = 'user environment') {
-  const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
-    input, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 30_000,
-  });
-  if (result.error || result.status !== 0) {
-    const reason = result.error?.code ?? `exit ${result.status}`;
-    throw new Error(`Windows ${operation} update failed (${reason}); no secret output was printed.`);
   }
 }
 
@@ -218,14 +193,7 @@ function main() {
     const retired = retiredEnvironmentNames(Object.keys(environment),
       [...readNames('managed-env-names'), ...readNames('names')], readNames('retired-env-names'));
     if (windows) {
-      // Send values over stdin, never command-line arguments or printed output.
-      powershell(`
-        $ErrorActionPreference = 'Stop'
-        $values = [Console]::In.ReadToEnd() | ConvertFrom-Json
-        foreach ($property in $values.PSObject.Properties) {
-          [Environment]::SetEnvironmentVariable($property.Name, [string]$property.Value, 'User')
-        }
-      `, JSON.stringify(environment));
+      saveWindowsEnvironment(environment);
     } else {
       privateWrite(path.join(generated, 'env.sh'), renderEnvironment(environment, retired));
       privateWrite(path.join(generated, 'env.fish'), renderEnvironmentFish(environment, retired));
@@ -240,13 +208,7 @@ function main() {
     }
     // Retire only names previously managed by this helper, after installation succeeds.
     if (windows) {
-      powershell(`
-        $ErrorActionPreference = 'Stop'
-        $names = [Console]::In.ReadToEnd() | ConvertFrom-Json
-        foreach ($name in $names) {
-          [Environment]::SetEnvironmentVariable([string]$name, $null, 'User')
-        }
-      `, JSON.stringify(retired), 'retired environment cleanup');
+      saveWindowsEnvironment({}, retired);
     }
     privateWrite(path.join(generated, 'retired-env-names'), retired.map(name => `${name}\n`).join(''));
     privateWrite(path.join(generated, 'managed-env-names'), Object.keys(environment).map(name => `${name}\n`).join(''));

@@ -53,6 +53,15 @@ test('unsupported hosts and arguments fail before commands', () => {
     fixture({ deps }, ({ calls, execute }) => { assert.throws(() => execute('restart')); assert.equal(calls.length, 0); });
   }
 });
+
+for (const operation of ['setup', 'restart']) {
+  test(`${operation} rejects Windows before running any commands`, () => {
+    fixture({ deps: { platform: 'win32' } }, ({ calls, execute }) => {
+      assert.throws(() => execute(operation), new RegExp(`cloudflared:${operation} is not supported on Windows yet`));
+      assert.equal(calls.length, 0);
+    });
+  });
+}
 test('root helper parser, lifecycle, rollback and path verification tests', () => {
   const tests = fileURLToPath(new URL('./service_test.py', import.meta.url));
   execFileSync('python3', ['-B', tests], { stdio: 'inherit' });

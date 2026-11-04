@@ -1,5 +1,5 @@
-{{- $local := stat (joinPath .chezmoi.homeDir ".config" "rawroute" "local-enabled") -}}
-{{- $rawrouteLocal := stat (joinPath .chezmoi.homeDir ".config" "rawroute" "rawroute-local-enabled") -}}
+{{- $local := stat (joinPath .chezmoi.destDir ".config" "rawroute" "local-enabled") -}}
+{{- $rawrouteLocal := stat (joinPath .chezmoi.destDir ".config" "rawroute" "rawroute-local-enabled") -}}
 {{- $agentPolicy := includeTemplate "dot_config/opencode/plugins/my-opencode/agent-policy.json" . | mustFromJson -}}
 {
   "websearch": false,

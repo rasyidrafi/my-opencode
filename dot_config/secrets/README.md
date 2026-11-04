@@ -19,7 +19,16 @@ can prevent cleanup; use `bw lock` if a run is interrupted. No session is saved.
 On initial login, Bitwarden may ask for your master password during both login
 and unlock. On later runs only unlock is necessary.
 
-Windows uses user-scoped Registry environment values. Linux writes mode-0600
+Windows uses user-scoped Registry environment values.
+Values are written as a batch without per-variable desktop notifications. A
+separate notification has a three-second deadline; an unresponsive desktop
+application cannot make successfully saved values fail setup. Restart the
+launcher or sign out/in if it does not pick up the environment change.
+Windows user environment updates require no administrator access and preserve
+Unicode values. If restricting the generated directory is denied, setup asks
+for administrator approval through UAC for that permission repair only, keeping
+the original user's SID. Cancelling UAC fails setup without printing secrets.
+Linux writes mode-0600
 shell files in a mode-0700 directory (`env.sh` for Bash/Zsh and `env.fish` for
 Fish, both with the same values) and adds an idempotent loader to bash/zsh
 profiles, preserving existing content. Fish loads `env.fish` through the

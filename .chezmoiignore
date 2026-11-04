@@ -7,9 +7,11 @@ tests/**
 .config/tools-cleanup/*.test.mjs
 .config/tools-cleanup/__pycache__/**
 .config/skills/setup.test.mjs
+.config/services/setup.test.mjs
 .local/share/my-opencode/optional-skills/tests/**
 .config/secrets/README.md
 .config/secrets/setup.test.mjs
+.config/secrets/windows.test.mjs
 .config/secrets/generated/**
 .config/tailscale/README.md
 .config/tailscale/setup.test.mjs
@@ -18,6 +20,7 @@ tests/**
 .config/azure-mnt-cache/docker-enabled
 .config/azure-mnt-cache/shell-enabled
 .config/shell/setup.test.mjs
+.config/shell/windows.test.mjs
 .config/docker-setup/setup.test.mjs
 .config/docker-forward/setup.test.mjs
 .config/docker-forward/*_test.py

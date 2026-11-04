@@ -29,17 +29,17 @@ yarn = "4.18.1"
 
 [tasks."cloudflared:restart"]
 description = "Switch the running cloudflared service to the global Mise version and restart"
-run = 'node "{{ env.HOME }}/.config/cloudflared/restart.mjs"'
+run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/cloudflared/restart.mjs"'
 raw = true
 
 [tasks."cloudflared:setup"]
 description = "Integrate an existing cloudflared service with global Mise using a systemd drop-in"
-run = 'node "{{ env.HOME }}/.config/cloudflared/setup.mjs"'
+run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/cloudflared/setup.mjs"'
 raw = true
 
 [tasks."tools:cleanup"]
-description = "Preview or safely remove unused older mise tool versions (Linux)"
-run = 'node "{{ env.HOME }}/.config/tools-cleanup/setup.mjs"'
+description = "Preview or safely remove unused older mise tool versions (Linux and Windows)"
+run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/tools-cleanup/setup.mjs"'
 raw = true
 
 [tasks."secrets:setup"]
@@ -53,8 +53,8 @@ run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOM
 raw = true
 
 [tasks."shell:setup"]
-description = "Install portable Bash and Fish environment hooks, preserving user customizations"
-run = 'node "{{ env.HOME }}/.config/shell/setup.mjs"'
+description = "Install Linux/macOS Bash/Fish or Windows PowerShell/Git Bash hooks; CMD is opt-in"
+run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/shell/setup.mjs"'
 raw = true
 
 [tasks."skills:install"]
@@ -69,22 +69,22 @@ raw = true
 
 [tasks."provider:local"]
 description = "Opt into local Rawroute for Codex and OpenCode on this machine"
-run = 'node "{{ env.HOME }}/.config/rawroute/setup.mjs" local'
+run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/rawroute/setup.mjs" local'
 raw = true
 
 [tasks."provider:default"]
 description = "Restore the default Rawroute endpoint for Codex and OpenCode"
-run = 'node "{{ env.HOME }}/.config/rawroute/setup.mjs" default'
+run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/rawroute/setup.mjs" default'
 raw = true
 
 [tasks."rawroute:default"]
 description = "Use the public Rawroute provider endpoint in OpenCode"
-run = 'node "{{ env.HOME }}/.config/rawroute/setup.mjs" default --rawroute'
+run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/rawroute/setup.mjs" default --rawroute'
 raw = true
 
 [tasks."rawroute:local"]
 description = "Use the local Rawroute provider endpoint in OpenCode"
-run = 'node "{{ env.HOME }}/.config/rawroute/setup.mjs" local --rawroute'
+run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/rawroute/setup.mjs" local --rawroute'
 raw = true
 
 [tasks."chrome:setup"]
@@ -94,17 +94,17 @@ raw = true
 
 [tasks."docker:setup"]
 description = "Set up native Docker on a host, or native clients with a guest SSH context"
-run = 'node "{{ env.HOME }}/.config/docker-setup/setup.mjs"'
+run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/docker-setup/setup.mjs"'
 raw = true
 
 [tasks."docker:forward:setup"]
 description = "Mirror remote Docker published TCP ports to guest localhost with SSH reuse and 2-minute polling"
-run = 'node "{{ env.HOME }}/.config/docker-forward/setup.mjs"'
+run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/docker-forward/setup.mjs"'
 raw = true
 
 [tasks."azure-mnt-cache:setup"]
 description = "Move host Docker storage to /mnt and install shell cache paths; SSH guests keep using their host"
-run = 'node "{{ env.HOME }}/.config/azure-mnt-cache/setup.mjs"'
+run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/azure-mnt-cache/setup.mjs"'
 raw = true
 
 [tasks."tailscale:setup"]
@@ -114,14 +114,10 @@ raw = true
 
 [tasks."codex:setup"]
 description = "Start the Codex app-server daemon, or restart it if already running"
-run = "codex app-server daemon restart"
+run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/services/setup.mjs" codex'
 raw = true
 
 [tasks."openchamber:setup"]
 description = "Replace OpenChamber on port 3000 with its native user startup service"
-run = [
-  "openchamber startup disable",
-  "openchamber stop --port 3000",
-  "openchamber startup enable --port 3000",
-]
+run = 'node "{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}/.config/services/setup.mjs" openchamber'
 raw = true

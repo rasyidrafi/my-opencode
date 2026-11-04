@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { assertSafe, privateWrite } from '../shell/integration.mjs';
+import { restrictWindowsDirectory } from '../secrets/windows.mjs';
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 export const modes = {
@@ -35,7 +36,7 @@ function invoke(command, args, options) {
 }
 
 export function configure({ mode, home = os.homedir(), env = process.env, source, dryRun = false, rawroute = false, chezmoi = 'chezmoi', execute = invoke, platform = process.platform }) {
-  if (!['linux', 'darwin'].includes(platform)) throw new Error('Rawroute switching currently supports Linux/macOS only.');
+  if (!['linux', 'darwin', 'win32'].includes(platform)) throw new Error('Rawroute switching supports Linux, macOS and Windows.');
   if (!Object.hasOwn(modes, mode)) throw new Error('Expected local or default mode.');
   const selectedModes = rawroute ? rawrouteModes : modes;
   const envKey = selectedModes[mode].envKey;
@@ -55,7 +56,7 @@ export function configure({ mode, home = os.homedir(), env = process.env, source
   for (const target of [...paths, marker]) assertSafe(home, target);
   const flags = ['--source', source, '--destination', home, '--no-tty', '--no-pager'];
   const cm = (args, input) => {
-    const r = execute(chezmoi, [...flags, ...args], { env: { ...env, HOME: home }, cwd: home, input });
+    const r = execute(chezmoi, [...flags, ...args], { env: { ...env, HOME: home, ...(platform === 'win32' ? { USERPROFILE: home } : {}) }, cwd: home, input });
     // Chezmoi errors/diffs can contain existing credentials; never forward them.
     if (r.error || r.status !== 0) throw new Error('Chezmoi command failed; output withheld because configuration may contain credentials.');
     return (r.stdout || '').trim();
@@ -78,6 +79,10 @@ export function configure({ mode, home = os.homedir(), env = process.env, source
   try {
     const snapshots = [...paths, marker].map(target => ({ target, exists: fs.existsSync(target), content: fs.existsSync(target) ? fs.readFileSync(target) : null, mode: fs.existsSync(target) ? fs.statSync(target).mode & 0o777 : null }));
     const backup = path.join(home, '.local/state/rawroute-backups', `${new Date().toISOString().replaceAll(':', '-')}-${process.pid}`);
+    if (platform === 'win32') {
+      fs.mkdirSync(backup, { recursive: true });
+      restrictWindowsDirectory(backup);
+    }
     for (const snapshot of snapshots) {
       if (snapshot.exists) privateWrite(home, path.join(backup, path.relative(home, snapshot.target)), snapshot.content);
     }
@@ -105,7 +110,7 @@ export function configure({ mode, home = os.homedir(), env = process.env, source
           assertSafe(home, snapshot.target);
           if (snapshot.exists) {
             privateWrite(home, snapshot.target, snapshot.content);
-            fs.chmodSync(snapshot.target, snapshot.mode);
+            if (platform !== 'win32') fs.chmodSync(snapshot.target, snapshot.mode);
           } else if (fs.existsSync(snapshot.target)) fs.unlinkSync(snapshot.target);
         } catch { rollbackFailed = true; }
       }

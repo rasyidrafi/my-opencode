@@ -6,6 +6,9 @@ After `chezmoi apply` and `mise install`, run `mise run github:setup` once
 to migrate GitHub and Gist credential helpers to the stable Mise `gh` shim.
 This repairs stale version-specific paths without sudo, Bitwarden access or
 logging in again. It preserves other hosts and refuses custom GitHub helpers.
+On Windows, install [Git for Windows](https://git-scm.com/download/win) first
+and ensure `git.exe` is on PATH. If Git is missing, `github:setup` exits with
+installation instructions; reopen the terminal after installing and rerun it.
 Reruns are idempotent; normal tool upgrades/cleanup need no rerun because the
 shim selects the active version. Keep Mise's shims installed (`mise reshim`).
 `secrets:setup` uses the same integration after authenticating GitHub.
@@ -27,6 +30,12 @@ Run `chezmoi init --source /absolute/path/to/this/checkout` (after `cd` into it;
 effectively `$(pwd)` at that moment) to generate `~/.config/chezmoi/chezmoi.toml`
 with `sourceDir` recorded by `.chezmoi.toml.tmpl`. Re-run that form after moving
 the checkout; bare `chezmoi init` without a source generates no config.
+
+Apply this checkout on Linux or Windows with `chezmoi apply --source /path/to/this/checkout`.
+The obsolete plugin cleanup uses `/bin/sh` on Linux and PowerShell on Windows;
+chezmoi skips the empty script for the other platform. Template files use LF
+line endings through `.gitattributes`, including on Windows, so generated agent
+files and repeated SSH config merges stay consistent across platforms.
 
 ## Restart the Cloudflare tunnel
 
@@ -94,7 +103,7 @@ Test: `node --test tests/my-opencode-plugin.test.mjs tests/opencode-agent-plugin
 
 ## Tool version cleanup
 
-After `chezmoi apply`, preview unused older Mise installations on Linux:
+After `chezmoi apply`, preview unused older Mise installations on Linux or Windows:
 
 ```sh
 mise run tools:cleanup
@@ -109,13 +118,27 @@ older than a globally selected, installed replacement are candidates. Newer,
 unconfigured tools, refs and prereleases are left alone. No config edits, upgrades,
 cache sweeps, service restarts or process termination are performed.
 
-Before uninstalling anything, the task performs a read-only `/proc` scan
+On Linux, before uninstalling anything, the task performs a read-only `/proc` scan
 using `sudo -n /usr/bin/python3` (root inspection is required even for preview).
 The task first probes noninteractive sudo access. If authentication is needed,
 it runs `sudo -v` with inherited terminal input/output so sudo asks for a password
 interactively; the helper never reads the password. Passwordless sudo needs no prompt.
 The scan checks executables, working directories, absolute arguments, mapped files and open files;
 inode matching through each process root detects shared nspawn bind mounts too.
+On Windows, PowerShell scans running processes once per check, matching executable
+paths, loaded modules and absolute command-line paths against candidate installs.
+It does not enumerate installation files or register them with Restart Manager.
+No Python or sudo is needed. Visible executable/argument references from all
+sessions protect candidates; module inspection focuses on the current interactive
+session. Unrelated system/other-account processes do not block user cleanup.
+Windows-enforced Antimalware Light protection distinguishes protected AV processes
+without relying on their names. If inspection needs administrator access, setup
+requests UAC once for a read-only scanner session, reused for all pre-removal
+checks. The original account SID is retained and uninstall runs unelevated.
+Unresolved processes owned by the current account still block removal. Progress identifies
+each scan and candidate. Configuration and use are rechecked before removal.
+Windows scanning does not inspect arbitrary open files, process working directories or Linux guests;
+use Linux cleanup inside WSL for WSL installations.
 Busy old versions are skipped with tool/PID information only. Versions Mise does
 not consider prunable and unverifiable/symlinked install paths are skipped too.
 Configurations and process use are checked again immediately before each explicit
@@ -181,8 +204,8 @@ Noninteractive use requires explicit skill names and scope.
 The installer validates the entire selection, skips correct existing links, and
 refuses conflicting paths or symlinked `.agents`/`skills` parent directories.
 `--dry-run` creates nothing. No sudo, downloads, AI requests, automatic dependency
-installation, or Git configuration changes occur. Windows directory symlinks
-require Developer Mode or suitable privileges; link failures are reported.
+installation, or Git configuration changes occur. Windows uses directory junctions,
+which do not require Developer Mode or administrator privileges.
 
 Links point to the deployed catalog, not the Git checkout: update with
 `chezmoi apply`. Activation links remain local and are not managed by chezmoi.
@@ -201,7 +224,8 @@ python3 -B -m unittest discover -s dot_local/share/my-opencode/optional-skills/t
 ```
 
 Run `mise run shell:setup` after `chezmoi apply` and `mise install` to install
-portable Bash and optional Fish startup integration on Linux/macOS. This is not a
+portable Bash and optional Fish startup integration on Linux/macOS, or PowerShell
+and Git Bash integration on Windows. This is not a
 bare-OS bootstrap: it assumes the repository's generated files and Mise are
 available. Zsh and service/OS-wide environment setup are out of scope. No Codex,
 model, credentials, network access, sudo, or AI requests are needed; setup never
@@ -211,6 +235,32 @@ The check does not source startup files or secret values; it reports validators,
 Fish config root, Bash login entrypoint, cache state, planned paths, and blockers.
 Fish syntax/runtime checks run only when Fish is installed. Startup fixtures cover
 bounded generic patterns; they do not certify any CachyOS-shipped defaults.
+
+On Windows, setup detects installed Windows PowerShell 5.1 and PowerShell 7 and
+asks each executable for its current-user, all-hosts profile, including redirected
+Documents locations. It preserves user content and installs an idempotent loader
+with native Mise activation. Git Bash is detected from Git for Windows, never
+through the WSL `bash.exe` launcher. Its interactive and selected login profiles
+load the Windows hook, preserve customizations and activate Mise once per shell.
+Only existing user `bin`, `.local/bin` and Windows Mise shims are added to PATH.
+Optional custom hooks are `~/.config/shell/local.ps1` and `local.sh` respectively.
+Windows Terminal needs no configuration; new tabs use their shell's startup hooks.
+
+CMD integration is opt-in: `mise run shell:setup -- --cmd`. It installs a quiet
+shim/PATH loader through user-scoped `Command Processor/AutoRun`, preserving the
+original command and Registry value type. CMD uses Mise shims, without directory
+change/prompt activation. `cmd /d` bypasses AutoRun. Check or preview CMD changes
+with `--check --cmd` or `--dry-run --cmd`; neither writes files or Registry values.
+Windows backups include previous profiles and the original AutoRun value/type,
+restricted to your Windows account. Setup validates PowerShell and Bash syntax
+before writing, and reports restrictive PowerShell execution policies without
+changing them. A PowerShell profile encoded in UTF-16 is backed up byte-for-byte
+and rewritten as UTF-8 with a BOM for PowerShell 5.1 compatibility.
+
+Windows shells inherit the user environment saved by `secrets:setup`; loaders do
+not copy secrets into profiles. Restart the parent terminal/launcher (or sign out
+and back in) if it still has stale environment values. WSL shells use the existing
+Linux setup, run inside each distribution. Windows setup does not manage WSL.
 
 The installer backs up changed files privately under
 `~/.local/state/shell-init-backups`, syntax-checks proposed files, and installs
@@ -268,7 +318,12 @@ launch/configure Flatpak browsers and will not install a native replacement over
 one. Snap launcher paths are preserved, though their packaging/runtime may still
 affect browser launch.
 
-Only when no browser is found does setup install Google Chrome Stable. This
+On Windows, setup detects existing Chrome, Edge, Chromium and Brave installations
+through PATH, user/system installation directories and Registry App Paths. It
+checks executable version metadata without launching a browser. If none is found,
+it asks you to install a supported browser; it does not install one automatically.
+
+Only when no browser is found on Linux does setup install Google Chrome Stable. This
 fallback supports Debian-family Linux (Debian/Ubuntu IDs or exact Debian/Ubuntu
 `ID_LIKE` tokens, including Linux Mint) on amd64; Windows, macOS, other
 distributions and architectures fail explicitly. It requires root or sudo and
@@ -282,6 +337,8 @@ Test host validation without installing anything:
 ## Shared native Docker
 
 `docker:setup` is opt-in and deterministic, for Debian/Ubuntu amd64/arm64.
+`docker:setup`, `docker:forward:setup` and `azure-mnt-cache:setup` explicitly exit
+with a not-supported error on Windows before running commands or modifying files.
 Mise runs the task but does not manage Docker binaries. The host uses native
 Docker CE; a systemd-nspawn guest installs only native CLI, Compose and Buildx
 packages from Docker's official apt repository. No TCP daemon or shared socket.
@@ -453,6 +510,9 @@ Run `mise run codex:setup` after applying chezmoi and installing tools with Mise
 to start the native Codex app-server daemon, or restart it if already running.
 This briefly interrupts an existing daemon. Check its status and versions with
 `codex app-server daemon version`.
+Both startup tasks support Windows, including npm `.ps1` and `.cmd` launchers.
+They require the corresponding CLI on PATH; run `mise install` and `mise reshim`
+first. Windows OpenChamber startup uses its native scheduled task integration.
 
 Run `mise run openchamber:setup` after applying chezmoi to install and start
 OpenChamber's native user startup service on port 3000. This disables any previous
@@ -585,6 +645,8 @@ These tasks only apply OpenCode configuration; they do not switch Codex,
 the `openai` provider route controlled by `provider:*`, or model selections.
 The separate local-mode marker persists across chezmoi applies. Backups,
 rollback, and `--dry-run` work like `provider:*`; no models are added.
+Both sets of switches support Windows. Config backups are restricted to the
+current Windows account with an ACL; Linux/macOS use private file modes.
 
 Mode is stored in `~/.config/rawroute/local-enabled`, never in Git. Both templates
 check this marker, so later ordinary `chezmoi apply` preserves local mode until

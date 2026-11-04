@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { options, catalogSkills, planInstall, applyPlan } from './setup.mjs';
 
 function fixture(t) {
@@ -53,14 +54,14 @@ for (const kind of ['file', 'directory', 'symlink']) test(`refuses conflicting $
   fs.mkdirSync(path.dirname(target), { recursive: true });
   if (kind === 'file') fs.writeFileSync(target, 'preserve');
   if (kind === 'directory') fs.mkdirSync(target);
-  if (kind === 'symlink') fs.symlinkSync('/missing-target', target);
+  if (kind === 'symlink') fs.symlinkSync(path.resolve('/missing-target'), target, process.platform === 'win32' ? 'junction' : 'dir');
   assert.throws(() => planInstall(f), /Refusing to replace/);
   assert.equal(fs.existsSync(path.join(path.dirname(target), 'ask-bun')), false);
 });
 
 test('refuses symlinked parent directories', t => {
   const f = fixture(t);
-  fs.symlinkSync(f.home, path.join(f.project, '.agents'), 'dir');
+  fs.symlinkSync(f.home, path.join(f.project, '.agents'), process.platform === 'win32' ? 'junction' : 'dir');
   assert.throws(() => planInstall(f), /Refusing non-directory or symlink/);
 });
 
@@ -89,7 +90,7 @@ test('parses explicit scope and rejects ambiguous arguments', () => {
 test('CLI lists installed catalog and refuses incomplete noninteractive requests', t => {
   const f = fixture(t);
   const script = new URL('./setup.mjs', import.meta.url);
-  const run = args => spawnSync(process.execPath, [script.pathname, ...args], { env: { ...process.env, HOME: f.home }, encoding: 'utf8' });
+  const run = args => spawnSync(process.execPath, [fileURLToPath(script), ...args], { env: { ...process.env, HOME: f.home, USERPROFILE: f.home }, encoding: 'utf8' });
   assert.equal(run(['list']).stdout.trim(), 'ask-bun\nask-docker');
   assert.match(run(['install']).stderr, /Noninteractive use requires/);
   assert.equal(run(['install', 'ask-bun', '--project', f.project, '--dry-run']).status, 0);

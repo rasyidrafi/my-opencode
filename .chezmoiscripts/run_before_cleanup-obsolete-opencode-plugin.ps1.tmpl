@@ -1,0 +1,17 @@
+{{- if eq .chezmoi.os "windows" -}}
+$ErrorActionPreference = 'Stop'
+
+$legacyDir = Join-Path {{ .chezmoi.destDir | quote }} '.config/opencode/plugins/openai-allowlist'
+if (Test-Path -LiteralPath $legacyDir -PathType Container) {
+    $directory = Get-Item -LiteralPath $legacyDir -Force
+    if ($directory.Attributes -band [System.IO.FileAttributes]::ReparsePoint) { return }
+    $legacyEntry = Join-Path $legacyDir 'index.js'
+    if ((Test-Path -LiteralPath $legacyEntry -PathType Leaf) -and
+        (Select-String -LiteralPath $legacyEntry -SimpleMatch 'local.openai-allowlist' -Quiet)) {
+        Remove-Item -LiteralPath $legacyEntry
+    }
+    if (@(Get-ChildItem -LiteralPath $legacyDir -Force).Count -eq 0) {
+        Remove-Item -LiteralPath $legacyDir
+    }
+}
+{{ end -}}

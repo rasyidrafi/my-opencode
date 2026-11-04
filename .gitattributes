@@ -1,0 +1,2 @@
+*.tmpl text eol=lf
+dot_ssh/modify_config text eol=lf

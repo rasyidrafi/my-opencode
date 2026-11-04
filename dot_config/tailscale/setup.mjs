@@ -51,12 +51,13 @@ export async function setup(io) {
   throw new Error(`Not connected to ${tailnet} (state: ${status.BackendState}). Check Tailscale connectivity or pending device approval, then retry.`);
 }
 
-function runtime() {
-  const windows = process.platform === 'win32';
-  if (!windows && process.platform !== 'linux') throw new Error('This helper supports Windows and Linux only.');
-  const candidates = ['tailscale'];
+export function runtime({ platform = process.platform, env = process.env, execute = spawnSync } = {}) {
+  const spawnSync = execute;
+  const windows = platform === 'win32';
+  if (!windows && platform !== 'linux') throw new Error('This helper supports Windows and Linux only.');
+  const candidates = [windows ? 'tailscale.exe' : 'tailscale'];
   if (windows) {
-    for (const root of [process.env.ProgramFiles, process.env['ProgramW6432'], process.env['ProgramFiles(x86)']]) {
+    for (const root of [env.ProgramFiles, env.ProgramW6432, env['ProgramFiles(x86)']]) {
       if (root) candidates.push(path.join(root, 'Tailscale', 'tailscale.exe'));
     }
   } else {
@@ -114,7 +115,7 @@ function runtime() {
   }
 
   // Use an absolute executable for sudo/UAC, avoiding their different PATHs.
-  if (executable === 'tailscale') {
+  if (executable === 'tailscale' || executable === 'tailscale.exe') {
     const resolved = windows
       ? spawnSync('where.exe', ['tailscale.exe'], { encoding: 'utf8' })
       : spawnSync('sh', ['-c', 'command -v tailscale'], { encoding: 'utf8' });

@@ -1,6 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { setup, tailnet, account } from './setup.mjs';
+import { setup, runtime, tailnet, account } from './setup.mjs';
+import path from 'node:path';
+
+test('Windows detects an existing Program Files installation when Tailscale is absent from PATH', async () => {
+  const calls = [];
+  const installed = path.join('C:/Program Files', 'Tailscale', 'tailscale.exe');
+  const io = runtime({ platform: 'win32', env: { ProgramFiles: 'C:/Program Files' }, execute: (command, args) => {
+    calls.push([command, args]);
+    if (command === 'tailscale.exe') return { error: { code: 'ENOENT' } };
+    assert.equal(command, installed);
+    return { status: 0, stdout: args[0] === 'version' ? '1.0' : JSON.stringify(target) };
+  } });
+  await setup(io);
+  assert.ok(calls.some(([command, args]) => command === installed && args[0] === 'status'));
+  assert.ok(calls.every(([command]) => command !== 'powershell.exe'));
+});
+
+test('Windows asks for Tailscale installation if no installed executable is found', () => {
+  assert.throws(() => runtime({ platform: 'win32', env: {}, execute: () => ({ error: { code: 'ENOENT' } }) }), /Install Tailscale first/);
+});
 
 const target = { BackendState: 'Running', CurrentTailnet: { MagicDNSSuffix: tailnet } };
 const other = { BackendState: 'Running', CurrentTailnet: { MagicDNSSuffix: 'other.ts.net' } };

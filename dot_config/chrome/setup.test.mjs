@@ -3,7 +3,28 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { discoverBrowserCandidates, setup, validateHost } from './setup.mjs';
+import { discoverBrowserCandidates, setup, setupWindows, validateHost } from './setup.mjs';
+
+test('Windows reuses verified browser metadata without launching the browser or installing packages', async () => {
+  const messages = [];
+  const browser = await setup({ platform: 'win32', env: { LOCALAPPDATA: 'C:/User Data' }, log: message => messages.push(message),
+    spawn: (command, args, options) => {
+      assert.equal(command, 'powershell.exe');
+      const script = Buffer.from(args.at(-1), 'base64').toString('utf16le');
+      assert.match(script, /VersionInfo/);
+      assert.match(script, /HKCU/);
+      assert.ok(JSON.parse(options.input).some(candidate => candidate.endsWith('chrome.exe')));
+      return { status: 0, stdout: JSON.stringify([{ family: 'Edge', path: 'C:/Program Files/Edge/msedge.exe', version: '156.0.0.1' }]) };
+    }, readOsRelease: () => assert.fail('no Linux host inspection') });
+  assert.equal(browser.family, 'Edge');
+  assert.match(messages[0], /No browser was launched/);
+});
+
+test('Windows browser failures ask for installation and never install a Linux package', () => {
+  assert.throws(() => setupWindows({ spawn: () => ({ status: 0, stdout: '[]' }) }), /Install Chrome, Edge, Chromium or Brave/);
+  assert.throws(() => setupWindows({ spawn: () => ({ status: 1 }) }), /Could not inspect/);
+  assert.throws(() => setupWindows({ spawn: () => ({ status: 0, stdout: 'invalid' }) }), /Invalid Windows browser/);
+});
 
 function makeTestDirectory(t) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'chrome-setup-test-'));
@@ -30,13 +51,13 @@ function isolatedSetupDependencies(directory, executablePaths = []) {
   };
 }
 
-test('rejects Windows and macOS before inspecting launchers or the host', async () => {
-  for (const platform of ['win32', 'darwin']) {
+test('rejects macOS before inspecting launchers or the host', async () => {
+  for (const platform of ['darwin']) {
     await assert.rejects(setup({
       platform,
       isExecutable: () => assert.fail('launcher discovery should not run'),
       readOsRelease: () => assert.fail('os-release should not be read'),
-    }), /Linux only/);
+    }), /Linux and Windows only/);
   }
 });
 
@@ -92,7 +113,7 @@ test('checks conventional fallback executable paths when PATH has no browser', (
   assert.deepEqual(candidates, [{ path: fallback, family: 'Chrome' }]);
 });
 
-test('preserves the PATH launcher path for snap-style symlinks', t => {
+test('preserves the PATH launcher path for snap-style symlinks', { skip: process.platform === 'win32' }, t => {
   const directory = makeTestDirectory(t);
   const target = makeExecutable(directory, 'package/chromium');
   const snapLauncher = path.join(directory, 'snap/bin/chromium');

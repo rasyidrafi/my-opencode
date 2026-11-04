@@ -26,7 +26,7 @@ function fixture(t, content) {
   const effective = host => {
     const result = spawnSync('ssh', ['-G', '-F', target, host], { encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr);
-    return Object.fromEntries(result.stdout.trim().split('\n').map(line => {
+    return Object.fromEntries(result.stdout.trim().split(/\r?\n/).map(line => {
       const space = line.indexOf(' ');
       return [line.slice(0, space), line.slice(space + 1)];
     }));

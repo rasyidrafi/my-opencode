@@ -1,7 +1,8 @@
+{{- if ne .chezmoi.os "windows" -}}
 #!/bin/sh
 set -eu
 
-legacy_dir={{ joinPath .chezmoi.homeDir ".config" "opencode" "plugins" "openai-allowlist" | quote }}
+legacy_dir={{ joinPath .chezmoi.destDir ".config" "opencode" "plugins" "openai-allowlist" | quote }}
 legacy_entry="$legacy_dir/index.js"
 
 if [ -d "$legacy_dir" ] && [ ! -L "$legacy_dir" ]; then
@@ -10,3 +11,4 @@ if [ -d "$legacy_dir" ] && [ ! -L "$legacy_dir" ]; then
   fi
   rmdir -- "$legacy_dir" 2>/dev/null || true
 fi
+{{ end -}}

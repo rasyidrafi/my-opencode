@@ -1,6 +1,6 @@
 {{- /* chezmoi:modify-template */ -}}
 {{- $config := fromToml .chezmoi.stdin -}}
-{{- $local := stat (joinPath .chezmoi.homeDir ".config" "rawroute" "local-enabled") -}}
+{{- $local := stat (joinPath .chezmoi.destDir ".config" "rawroute" "local-enabled") -}}
 {{- $baseURL := "https://ccs.halotec.my.id/v1" -}}
 {{- $envKey := "CCS_HALOTEC_API_KEY" -}}
 {{- if $local -}}

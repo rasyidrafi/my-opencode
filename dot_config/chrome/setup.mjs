@@ -154,6 +154,62 @@ function run(command, args, spawn, options = {}) {
   }
 }
 
+export function setupWindows({ env = process.env, spawn = spawnSync, log = console.log } = {}) {
+  const candidates = [];
+  const browsers = [
+    ['Google/Chrome/Application/chrome.exe', 'chrome.exe'],
+    ['Microsoft/Edge/Application/msedge.exe', 'msedge.exe'],
+    ['BraveSoftware/Brave-Browser/Application/brave.exe', 'brave.exe'],
+    ['Chromium/Application/chrome.exe', 'chromium.exe'],
+  ];
+  for (const [relative, name] of browsers) {
+    for (const root of [env.ProgramFiles, env.ProgramW6432, env['ProgramFiles(x86)'], env.LOCALAPPDATA]) {
+      if (root) candidates.push(path.join(root, relative));
+    }
+    for (const root of (env.PATH || env.Path || '').split(';').filter(Boolean)) candidates.push(path.join(root, name));
+  }
+  // Read PE metadata instead of launching Windows GUI browsers with --version.
+  const script = `
+    $ErrorActionPreference = 'Stop'
+    [Console]::InputEncoding = [Console]::OutputEncoding = New-Object Text.UTF8Encoding($false)
+    $paths = @([Console]::In.ReadToEnd() | ConvertFrom-Json)
+    foreach ($root in @('HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths', 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths', 'HKLM:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\App Paths')) {
+      foreach ($name in @('chrome.exe', 'msedge.exe', 'brave.exe', 'chromium.exe')) {
+        $key = Join-Path $root $name
+        if (Test-Path -LiteralPath $key) { $paths += (Get-Item -LiteralPath $key).GetValue('') }
+      }
+    }
+    $found = @()
+    foreach ($candidate in @($paths | Where-Object { $_ } | Select-Object -Unique)) {
+      $candidate = [Environment]::ExpandEnvironmentVariables($candidate).Trim([char]34)
+      if (!(Test-Path -LiteralPath $candidate -PathType Leaf)) { continue }
+      $info = (Get-Item -LiteralPath $candidate).VersionInfo
+      $family = switch -Regex ($info.ProductName + ' ' + $info.FileDescription) {
+        'Brave' { 'Brave'; break }
+        'Microsoft Edge' { 'Edge'; break }
+        'Chromium' { 'Chromium'; break }
+        'Google Chrome' { 'Chrome'; break }
+      }
+      if ($family -and $info.ProductVersion -match '^\\d+(\\.\\d+)+') {
+        $found += @{ family=$family; version=$info.ProductVersion; path=$candidate }
+      }
+    }
+    ConvertTo-Json -InputObject @($found) -Compress
+  `;
+  const result = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')], {
+    input: JSON.stringify(candidates), encoding: 'utf8', timeout: 30_000,
+    stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true,
+  });
+  if (result.error || result.status !== 0) throw new Error('Could not inspect installed Windows browsers. Check PowerShell and retry.');
+  let found;
+  try { found = JSON.parse(result.stdout); } catch { throw new Error('Invalid Windows browser inspection result.'); }
+  if (!Array.isArray(found)) throw new Error('Invalid Windows browser inspection result.');
+  const browser = found.find(b => ['Chrome', 'Edge', 'Chromium', 'Brave'].includes(b.family) && typeof b.path === 'string' && /^\d+(\.\d+)+/.test(b.version));
+  if (!browser) throw new Error('No supported browser detected on Windows. Install Chrome, Edge, Chromium or Brave, then rerun mise run chrome:setup.');
+  log(`Using installed ${browser.family} browser: ${browser.version} (${browser.path}). No browser was launched.`);
+  return browser;
+}
+
 export async function setup(dependencies = {}) {
   const {
     platform = process.platform,
@@ -170,8 +226,8 @@ export async function setup(dependencies = {}) {
     log = message => console.log(message),
   } = dependencies;
 
-  // Reuse detection is Linux-only and intentionally precedes distro and architecture checks.
-  if (platform !== 'linux') throw new Error('chrome:setup supports Linux only; Windows and macOS are not supported.');
+  if (platform === 'win32') return setupWindows({ env, spawn, log });
+  if (platform !== 'linux') throw new Error('chrome:setup supports Linux and Windows only.');
   const candidates = discoverBrowserCandidates({ env, executable: isExecutable, includeFallbacks });
   for (const candidate of candidates) {
     const result = versionResult(candidate.path, spawn);

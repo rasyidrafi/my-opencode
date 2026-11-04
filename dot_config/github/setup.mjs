@@ -7,14 +7,22 @@ import { fileURLToPath } from 'node:url';
 const quote = value => `'${value.replaceAll("'", "'\\''")}'`;
 
 export function configure({ home = os.homedir(), env = process.env, platform = process.platform, execute = spawnSync } = {}) {
+  const git = platform === 'win32' ? 'git.exe' : 'git';
+  if (platform === 'win32') {
+    const result = execute(git, ['--version'], { env, encoding: 'utf8', timeout: 30_000 });
+    if (result.error?.code === 'ENOENT') {
+      throw new Error('Git for Windows is not installed or not on PATH. Install it from https://git-scm.com/download/win (or run winget install --id Git.Git -e), reopen your terminal, then rerun mise run github:setup.');
+    }
+    if (result.error || result.status !== 0) throw new Error('Git for Windows could not run. Repair your Git installation and PATH, reopen your terminal, then rerun mise run github:setup.');
+  }
   const data = env.MISE_DATA_DIR || (platform === 'win32'
     ? path.join(env.LOCALAPPDATA || path.join(home, 'AppData', 'Local'), 'mise')
     : path.join(env.XDG_DATA_HOME || path.join(home, '.local', 'share'), 'mise'));
-  const shim = ['gh', ...(platform === 'win32' ? ['gh.exe', 'gh.cmd'] : [])]
+  const shim = (platform === 'win32' ? ['gh.exe', 'gh.cmd', 'gh'] : ['gh'])
     .map(name => path.join(data, 'shims', name)).find(target => fs.existsSync(target) && fs.statSync(target).isFile());
   if (!shim) throw new Error('GitHub CLI Mise shim missing. Run mise install and mise reshim first.');
   const helper = `!${quote(shim.replaceAll('\\', '/'))} auth git-credential`;
-  const run = args => execute('git', args, { env, encoding: 'utf8', timeout: 30_000 });
+  const run = args => execute(git, args, { env, encoding: 'utf8', timeout: 30_000 });
   const keys = ['github.com', 'gist.github.com'].map(host => `credential.https://${host}.helper`);
   // Validate both hosts before writing; do not silently replace custom helpers.
   const pending = keys.filter(key => {

@@ -3,7 +3,7 @@
       preserve local options (including IdentityAgent) in their original scope. */ -}}
 {{- $begin := "# >>> my-opencode SSH aliases >>>" -}}
 {{- $end := "# <<< my-opencode SSH aliases <<<" -}}
-{{- $existing := .chezmoi.stdin -}}
+{{- $existing := replace "\r\n" "\n" .chezmoi.stdin -}}
 {{- $blocks := regexFindAll "(?m)^# >>> my-opencode SSH aliases >>>$" $existing -1 -}}
 {{- $ends := regexFindAll "(?m)^# <<< my-opencode SSH aliases <<<$" $existing -1 -}}
 {{- if or (gt (len $blocks) 1) (ne (len $blocks) (len $ends)) -}}

@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync, existsSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { older, plan } from './setup.mjs';
+import { older, plan, main } from './setup.mjs';
 
 const row = (version, extra = {}) => ({ version, install_path: `/tools/demo/${version}`, installed: true, ...extra });
 test('numeric comparison is conservative and does not mistake 1.10 for 1.1', () => {
@@ -33,8 +33,7 @@ test('missing pins and malformed inventories fail closed', () => {
   assert.throws(() => plan({}, {}, {}, {}));
   assert.throws(() => plan({ demo: [{}] }, {}, {}, {}));
 });
-test('Linux process scan detects a process using a candidate working directory', async () => {
-  if (process.platform !== 'linux') return;
+test('Linux process scan detects a process using a candidate working directory', { skip: process.platform !== 'linux' }, async () => {
   const dir = mkdtempSync(join(tmpdir(), 'tools-cleanup-'));
   const child = spawn('/bin/sleep', ['30'], { cwd: dir });
   await new Promise((resolve, reject) => { child.once('spawn', resolve); child.once('error', reject); });
@@ -54,7 +53,7 @@ test('Linux process scan detects a process using a candidate working directory',
   }
 });
 
-test('scanner skips permission-denied zombies but refuses inaccessible live processes', () => {
+test('scanner skips permission-denied zombies but refuses inaccessible live processes', { skip: process.platform !== 'linux' }, () => {
   const scanner = fileURLToPath(new URL('./scan.py', import.meta.url));
   const code = `import runpy,sys,errno,io
 from unittest.mock import patch
@@ -71,7 +70,7 @@ for state in ['Z', 'S']:
 });
 
 for (const mode of ['preview', 'busy', 'denied', 'interactive-auth', 'apply', 'uninstall-failure', 'not-prunable', 'config-changed', 'scan-denied']) {
-  test(`CLI ${mode}: safe preflight before uninstall`, () => {
+  test(`CLI ${mode}: safe preflight before uninstall`, { skip: process.platform !== 'linux' }, () => {
     const dir = mkdtempSync(join(tmpdir(), 'tools-cleanup-cli-'));
     try {
       const old = join(dir, '1'), other = join(dir, '2'), current = join(dir, '3');
@@ -93,6 +92,7 @@ if(a[0]==='uninstall') {
   if(${JSON.stringify(mode)}==='config-changed' && calls>=4 && a.includes('--all-sources')) result=${JSON.stringify(inventory)};
   console.log(JSON.stringify(result));
 }
+
 `, { mode: 0o700 });
       writeFileSync(join(dir, 'sudo'), `#!${process.execPath}
 const fs=require('fs'), mode=${JSON.stringify(mode)};
@@ -129,3 +129,63 @@ console.log(JSON.stringify(mode==='busy' && targets.some(r=>r.id==='demo@1')?[{i
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 }
+
+for (const mode of ['preview', 'apply', 'busy', 'unknown', 'config-changed', 'scan-denied']) {
+  test(`Windows ${mode}: rechecks configuration and use before removal`, () => {
+    const old = row('1', { install_path: 'C:/mise/installs/demo/1' });
+    const pin = row('2', { install_path: 'C:/mise/installs/demo/2' });
+    const calls = [];
+    let snapshots = 0;
+    const execute = (command, args) => {
+      calls.push([command, args]);
+      if (command === 'powershell.exe') {
+        if (mode === 'scan-denied') throw new Error('scan denied');
+        return JSON.stringify(mode === 'busy' ? [{ id: 'demo@1', pid: 123, kind: 'open file' }]
+          : mode === 'unknown' ? [{ id: 'demo@1', pid: 123, kind: 'inspection unavailable' }] : []);
+      }
+      assert.equal(command, 'mise');
+      if (args[0] === 'uninstall') return '';
+      if (args.includes('--installed')) { snapshots++; return JSON.stringify({ demo: [old, pin] }); }
+      if (args.includes('--prunable')) return JSON.stringify({ demo: [old] });
+      if (args.includes('--all-sources') && mode === 'config-changed' && snapshots > 1) return JSON.stringify({ demo: [old, pin] });
+      return JSON.stringify({ demo: [pin] });
+    };
+    const run = () => main({ platform: 'win32', args: mode === 'preview' ? [] : ['--apply'], execute,
+      elevate: () => JSON.stringify([{ id: 'demo@1', pid: 123, kind: 'inspection unavailable' }]),
+      canonical: value => value.replaceAll('/', '\\').toUpperCase() });
+    if (mode === 'scan-denied') assert.throws(run, /Process inspection failed/); else run();
+    const removals = calls.filter(([, args]) => args[0] === 'uninstall');
+    assert.equal(removals.length, mode === 'apply' ? 1 : 0);
+    assert.ok(calls.every(([command]) => !['sudo', 'python3'].includes(command)));
+    if (mode === 'apply') assert.equal(calls.filter(([command]) => command === 'powershell.exe').length, 2);
+  });
+}
+
+test('Windows process scan detects executable, loaded modules and script arguments without enumerating installs', { skip: process.platform !== 'win32' }, () => {
+  const script = readFileSync(fileURLToPath(new URL('./scan.ps1', import.meta.url)), 'utf8');
+  assert.ok(!script.includes('Get-ChildItem'));
+  assert.ok(!script.includes('RmRegisterResources'));
+  const dir = mkdtempSync(join(tmpdir(), 'cleanup-process-'));
+  const childScript = join(dir, 'fixture.cjs');
+  writeFileSync(childScript, 'setInterval(() => {}, 1000)');
+  const child = spawn(process.execPath, [childScript], { stdio: 'ignore' });
+  return new Promise((resolve, reject) => {
+    child.once('error', reject);
+    child.once('spawn', () => {
+      try {
+        const hits = JSON.parse(execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')], {
+          input: JSON.stringify([{ id: 'script@1', path: dir }, { id: 'node@1', path: join(process.execPath, '..') }]), encoding: 'utf8', windowsHide: true, timeout: 30_000,
+        }));
+        assert.ok(hits.some(hit => hit.id === 'script@1' && hit.pid === child.pid && hit.kind === 'argument'));
+        assert.ok(hits.some(hit => hit.id === 'node@1' && hit.pid === child.pid && hit.kind === 'executable'));
+        assert.ok(hits.some(hit => hit.id === 'node@1' && hit.pid === child.pid && hit.kind === 'loaded module'));
+        assert.ok(hits.every(hit => Object.keys(hit).sort().join(',') === 'id,kind,pid'));
+        resolve();
+      } catch (error) { reject(error); }
+      finally { child.kill(); }
+    });
+  }).finally(async () => {
+    if (child.exitCode === null) await new Promise(resolve => child.once('exit', resolve));
+    rmSync(dir, { recursive: true, force: true });
+  });
+});

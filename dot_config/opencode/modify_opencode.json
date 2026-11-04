@@ -9,9 +9,16 @@
 {{- $disabled := concat (get $config "disabled_providers" | default list) $managed.disabled_providers | uniq -}}
 {{- /* The local plugin is auto-discovered; retire redundant explicit paths. */ -}}
 {{- if hasKey $config "plugins" -}}
-  {{- $oldPath := joinPath .chezmoi.homeDir ".config" "opencode" "plugins" "openai-allowlist" -}}
-  {{- $path := joinPath .chezmoi.homeDir ".config" "opencode" "plugins" "my-opencode" -}}
-  {{- $plugins := without (without $config.plugins $oldPath) $path -}}
+  {{- $oldPath := joinPath .chezmoi.destDir ".config" "opencode" "plugins" "openai-allowlist" | replace "\\" "/" -}}
+  {{- $path := joinPath .chezmoi.destDir ".config" "opencode" "plugins" "my-opencode" | replace "\\" "/" -}}
+  {{- $plugins := list -}}
+  {{- range $config.plugins -}}
+    {{- $normalized := . -}}
+    {{- if kindIs "string" . -}}{{- $normalized = replace "\\" "/" . -}}{{- end -}}
+    {{- if and (ne (toJson $normalized) (toJson $oldPath)) (ne (toJson $normalized) (toJson $path)) -}}
+      {{- $plugins = append $plugins . -}}
+    {{- end -}}
+  {{- end -}}
   {{- $config = setValueAtPath "plugins" $plugins $config -}}
 {{- end -}}
 {{- $config = mustMergeOverwrite $config $managed -}}

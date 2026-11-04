@@ -14,7 +14,7 @@ const chezmoi = process.env.CHEZMOI_TEST_BINARY || (located.status === 0 ? locat
 function fixture(fn) {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rawroute-test-'));
   const put = (name, text) => { const p = path.join(home, name); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, text); };
-  const env = { HOME: home, PATH: process.env.PATH, LANG: 'C.UTF-8', CCS_HALOTEC_LOCAL_API_KEY: 'synthetic-test-value', XDG_CONFIG_HOME: path.join(home, '.config'), XDG_CACHE_HOME: path.join(home, '.cache'), XDG_STATE_HOME: path.join(home, '.local/state'), XDG_DATA_HOME: path.join(home, '.local/share') };
+  const env = { ...process.env, HOME: home, USERPROFILE: home, PATH: process.env.PATH, LANG: 'C.UTF-8', CCS_HALOTEC_LOCAL_API_KEY: 'synthetic-test-value', XDG_CONFIG_HOME: path.join(home, '.config'), XDG_CACHE_HOME: path.join(home, '.cache'), XDG_STATE_HOME: path.join(home, '.local/state'), XDG_DATA_HOME: path.join(home, '.local/share') };
   try { fn({ home, put, env, source: repository, chezmoi }); }
   finally { fs.rmSync(home, { recursive: true, force: true }); }
 }
@@ -100,7 +100,11 @@ test('failed first opt-in removes newly created files and restores default marke
 }));
 
 test('symlink targets and concurrent switches are refused', () => fixture(({ put, ...args }) => {
-  put('original', 'safe'); fs.mkdirSync(path.join(args.home, '.codex')); fs.symlinkSync(path.join(args.home, 'original'), path.join(args.home, '.codex/config.toml'));
+  put('original', 'safe'); fs.mkdirSync(path.join(args.home, '.codex'));
+  if (process.platform === 'win32') {
+    fs.mkdirSync(path.join(args.home, 'linked-directory'));
+    fs.symlinkSync(path.join(args.home, 'linked-directory'), path.join(args.home, '.codex/config.toml'), 'junction');
+  } else fs.symlinkSync(path.join(args.home, 'original'), path.join(args.home, '.codex/config.toml'));
   assert.throws(() => configure({ ...args, mode: 'local' }), /symlink/);
   fs.unlinkSync(path.join(args.home, '.codex/config.toml'));
   put('.config/rawroute/.switch.lock', 'another invocation');
@@ -156,7 +160,9 @@ test('real chezmoi renders both modes, survives reapply and preserves local Code
   assert.equal(fs.readFileSync(path.join(args.home, '.config/unrelated-file'), 'utf8'), 'must stay untouched\n');
   const backups = path.join(args.home, '.local/state/rawroute-backups');
   for (const entry of fs.readdirSync(backups)) {
-    assert.equal(fs.statSync(path.join(backups, entry)).mode & 0o777, 0o700);
-    assert.equal(fs.statSync(path.join(backups, entry, 'manifest.json')).mode & 0o777, 0o600);
+    if (process.platform !== 'win32') {
+      assert.equal(fs.statSync(path.join(backups, entry)).mode & 0o777, 0o700);
+      assert.equal(fs.statSync(path.join(backups, entry, 'manifest.json')).mode & 0o777, 0o600);
+    }
   }
 }));
