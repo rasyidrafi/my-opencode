@@ -4,4 +4,3 @@
 {{- $config := regexReplaceAll $pattern $defaults "${1}" | fromYaml | default dict -}}
 ---
 {{ $config | toYaml }}---
-{{ trimPrefix $defaults .defaults }}

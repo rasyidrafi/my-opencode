@@ -69,10 +69,14 @@ test('fresh installs leave agent policy to the plugin and seed identical Luna li
 });
 
 test('agent source files are minimal shells, with Plan remaining disabled', t => {
-  const { apply, agent } = fixture(t);
+  const { apply, agent, read } = fixture(t);
   apply();
-  for (const name of ['build', 'general', 'explore', 'reviewer']) assert.deepEqual(agent(name), {});
+  for (const name of ['build', 'general', 'explore', 'reviewer']) {
+    assert.deepEqual(agent(name), {});
+    assert.equal(read(`agents/${name}.md`), '---\n{}\n---\n');
+  }
   assert.deepEqual(agent('plan'), { disabled: true });
+  assert.equal(read('agents/plan.md'), '---\ndisabled: true\n---\n');
 });
 
 test('plan agent remains disabled and its stub rejects local policy overrides', t => {
