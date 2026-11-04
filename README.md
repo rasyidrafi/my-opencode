@@ -72,8 +72,11 @@ Other OpenAI models, including future catalog additions, are disabled on every
 catalog rebuild. Other providers are unchanged. The plugin also owns the
 runtime policies for `build`, `general`, `explore`, and `reviewer`:
 repo-specific prompts and descriptions, permissions, model overrides, agent
-modes, and the Build default. `agent-policy.json` in the plugin directory is the
-single source for those policies and the title model. The plugin applies it at
+modes, and the Build default. It also removes OpenCode's built-in
+`opencode_worktree_remove` tool from the registry for every agent, independently
+of the `edit` permission; other edit tools remain available according to their
+normal permissions. `agent-policy.json` in the plugin directory is the single
+source for agent policies and the title model. The plugin applies them at
 runtime, while `chezmoi apply` generates the full user agent files from that
 same data, so the OpenCode settings UI shows the active models, prompts, and
 permissions. Local edits to generated agent files are replaced on the next
