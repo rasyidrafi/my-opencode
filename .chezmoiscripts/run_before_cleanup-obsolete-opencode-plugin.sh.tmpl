@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+legacy_dir={{ joinPath .chezmoi.homeDir ".config" "opencode" "plugins" "openai-allowlist" | quote }}
+legacy_entry="$legacy_dir/index.js"
+
+if [ -d "$legacy_dir" ] && [ ! -L "$legacy_dir" ]; then
+  if [ -f "$legacy_entry" ] && grep -q "local.openai-allowlist" "$legacy_entry"; then
+    rm -- "$legacy_entry"
+  fi
+  rmdir -- "$legacy_dir" 2>/dev/null || true
+fi

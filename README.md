@@ -81,8 +81,10 @@ model remains in `opencode.json` because OpenChamber's small-model resolver read
 `agentDescriptions` or `agentSystemPrompts` in
 `dot_config/opencode/plugins/my-opencode/agents.js`. To change the OpenAI
 catalog selection, edit `allowedModels` in `index.js`. Run `chezmoi apply`
-after either change. The old explicit `openai-allowlist` plugin path is retired
-on apply. The redundant OpenChamber `hiddenModels` list is removed from
+after either change. Apply removes the old `openai-allowlist` entrypoint from
+the local plugin directory so it cannot be auto-discovered alongside the new
+plugin; unrelated files in that old directory are left untouched. The redundant
+OpenChamber `hiddenModels` list is removed from
 preferences and legacy settings on apply.
 
 Test: `node --test tests/my-opencode-plugin.test.mjs tests/opencode-agent-plugin.test.mjs tests/opencode-config.test.mjs`.

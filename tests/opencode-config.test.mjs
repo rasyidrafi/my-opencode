@@ -30,13 +30,19 @@ function fixture(t) {
     cm(['apply', '--force', path.join(directory, 'opencode.json'), ...agents.map(name => path.join(directory, 'agents', `${name}.md`))]);
     return [read('opencode.json'), ...agents.map(name => read(`agents/${name}.md`))];
   };
+  const applyAll = () => {
+    const result = spawnSync(chezmoi, ['--source', repository, '--destination', home,
+      '--config', path.join(home, 'chezmoi.toml'), '--persistent-state', path.join(home, 'state.boltdb'),
+      '--no-tty', 'apply'], { env, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+  };
   const agent = name => {
     const text = read(`agents/${name}.md`);
     const frontmatter = text.match(/^---\n([\s\S]*?)\n---(?:\n|$)/);
     assert.ok(frontmatter, 'valid Markdown frontmatter');
     return JSON.parse(cm(['execute-template', '--with-stdin', '{{ .chezmoi.stdin | fromYaml | toJson }}'], frontmatter[1]));
   };
-  return { apply, put, read, agent, directory };
+  return { apply, applyAll, put, read, agent, directory };
 }
 
 test('applying retires explicit local plugin paths without changing other plugins', t => {
@@ -51,6 +57,19 @@ test('applying retires explicit local plugin paths without changing other plugin
   const first = apply();
   assert.deepEqual(JSON.parse(read('opencode.json')).plugins, others);
   assert.deepEqual(apply(), first);
+});
+
+test('chezmoi apply removes the stale renamed plugin file but preserves unrelated files', t => {
+  const { applyAll, directory } = fixture(t);
+  const legacy = path.join(directory, 'plugins/openai-allowlist');
+  fs.mkdirSync(legacy, { recursive: true });
+  fs.writeFileSync(path.join(legacy, 'index.js'), "export default { id: 'local.openai-allowlist' };\n");
+  fs.writeFileSync(path.join(legacy, 'notes.txt'), 'unrelated local file');
+
+  applyAll();
+
+  assert.ok(!fs.existsSync(path.join(legacy, 'index.js')));
+  assert.equal(fs.readFileSync(path.join(legacy, 'notes.txt'), 'utf8'), 'unrelated local file');
 });
 
 test('fresh installs leave agent policy to the plugin and seed identical Luna limits', t => {
