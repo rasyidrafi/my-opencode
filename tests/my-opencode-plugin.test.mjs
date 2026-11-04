@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import plugin, { allowedModels } from '../dot_config/opencode/plugins/openai-allowlist/index.js';
+import plugin, { allowedModels } from '../dot_config/opencode/plugins/my-opencode/index.js';
 
-test('OpenAI allowlist blocks unselected and future models on every catalog rebuild', async () => {
+test('my-opencode plugin blocks unselected and future OpenAI models on every catalog rebuild', async () => {
   let transform;
-  await plugin.setup({ model: { transform: async callback => { transform = callback; } } });
+  await plugin.setup({
+    agent: { transform: async () => {} },
+    model: { transform: async callback => { transform = callback; } },
+  });
+  assert.equal(plugin.id, 'local.my-opencode');
   const rows = [
     ...[...allowedModels].map(id => ({ providerID: 'openai', id, enabled: true })),
     ...['gpt-5.6-cyber', 'chat-latest', 'gpt-audio-1.5', 'gpt-5-search-api', 'future-model'].map(id => ({ providerID: 'openai', id, enabled: true })),

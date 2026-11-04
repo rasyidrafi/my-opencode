@@ -63,17 +63,29 @@ printed. Cleanup remains a separate, explicit operation.
 
 Test without restarting anything: `node --test dot_config/cloudflared/restart.test.mjs`.
 
-## OpenAI model allowlist
+## OpenCode plugin
 
-The managed OpenCode V2 plugin at
-`dot_config/opencode/plugins/openai-allowlist/index.js` limits OpenAI to
+The managed OpenCode V2 plugin `local.my-opencode` lives at
+`dot_config/opencode/plugins/my-opencode/`. It limits OpenAI to
 GPT-6.1 Terra, GPT-6.1 Sol, GPT-6 Luna, GPT-6 Luna Fast and GPT-6 Astra.
 Other OpenAI models, including future catalog additions, are disabled on every
-catalog rebuild. Other providers are unchanged. Edit the plugin's `allowedModels`
-set to change the selection, then run `chezmoi apply`. The redundant OpenChamber
-`hiddenModels` list is removed from preferences and legacy settings on apply.
+catalog rebuild. Other providers are unchanged. The plugin also owns the
+runtime policies for `build`, `general`, `explore`, and `reviewer`:
+repo-specific prompts and descriptions, permissions, model overrides, agent
+modes, and the Build default. Agent files are minimal loader stubs. Plan is
+only disabled by its `disabled: true` stub; the plugin does not change its
+permissions or model. The plugin transforms already-loaded agents, so it does
+not create agents; keep the stub files present. The `title`
+model remains in `opencode.json` because OpenChamber's small-model resolver reads
+`agents.title.model`. To change policy, edit
+`agentDescriptions` or `agentSystemPrompts` in
+`dot_config/opencode/plugins/my-opencode/agents.js`. To change the OpenAI
+catalog selection, edit `allowedModels` in `index.js`. Run `chezmoi apply`
+after either change. The old explicit `openai-allowlist` plugin path is retired
+on apply. The redundant OpenChamber `hiddenModels` list is removed from
+preferences and legacy settings on apply.
 
-Test: `node --test tests/openai-allowlist.test.mjs tests/opencode-config.test.mjs`.
+Test: `node --test tests/my-opencode-plugin.test.mjs tests/opencode-agent-plugin.test.mjs tests/opencode-config.test.mjs`.
 
 ## Tool version cleanup
 
@@ -507,11 +519,12 @@ routing and model limits while retaining unmanaged root settings. Soy currently
 has no root `model` or `default_agent` selection there; its provider routing is
 configured. Rawroute switches use the same merge.
 Per-agent files have a different rule: every apply replaces their frontmatter
-with the repo defaults, including `model`, plus repo instructions. Local per-agent
-model overrides are not preserved. Explore defaults to
+with the minimal loader stubs. Runtime agent policy is applied by the local
+plugin after OpenCode loads those agents. Title generation remains configured
+in `opencode.json` for OpenChamber compatibility. Explore defaults to
 `openai/gpt-6-luna-fast#xhigh`, General to `openai/gpt-6-luna-fast#max`, and
-Reviewer to `openai/gpt-6-astra#low`. Build and Plan have no model field and
-inherit the session model; Plan remains disabled.
+Reviewer to `openai/gpt-6-astra#low`; Build and Plan inherit the session model.
+Build is explicitly selected as the default, and Plan remains disabled.
 `gpt-6-luna-fast` shares Luna's limits: 680,000 context, 552,000 input, 128,000 output.
 
 RawRoute includes `atria-dawn` in place of the retired `step-5-preview` (removed

@@ -39,25 +39,28 @@ function fixture(t) {
   return { apply, put, read, agent, directory };
 }
 
-test('applying retires the explicit allowlist path without changing other plugins', t => {
+test('applying retires explicit local plugin paths without changing other plugins', t => {
   const { apply, put, read, directory } = fixture(t);
   const others = ['another-plugin', { package: 'custom-plugin', options: { keep: true } }];
-  put('opencode.json', JSON.stringify({ plugins: [others[0], path.join(directory, 'plugins/openai-allowlist'), others[1]] }));
+  put('opencode.json', JSON.stringify({ plugins: [
+    others[0],
+    path.join(directory, 'plugins/openai-allowlist'),
+    path.join(directory, 'plugins/my-opencode'),
+    others[1],
+  ] }));
   const first = apply();
   assert.deepEqual(JSON.parse(read('opencode.json')).plugins, others);
   assert.deepEqual(apply(), first);
 });
 
-test('fresh installs seed agent models and identical Luna limits; reapply is stable', t => {
+test('fresh installs leave agent policy to the plugin and seed identical Luna limits', t => {
   const { apply, read, agent } = fixture(t);
   const first = apply();
   assert.deepEqual(apply(), first);
   const config = JSON.parse(read('opencode.json'));
   assert.ok(!Object.hasOwn(config, 'plugins'));
-  assert.equal(agent('general').model, 'openai/gpt-6-luna-fast#max');
-  assert.equal(agent('explore').model, 'openai/gpt-6-luna-fast#xhigh');
-  assert.equal(agent('reviewer').model, 'openai/gpt-6-astra#low');
-  for (const name of ['build', 'plan']) assert.ok(!Object.hasOwn(agent(name), 'model'));
+  for (const name of agents) assert.deepEqual(agent(name), name === 'plan' ? { disabled: true } : {});
+  assert.deepEqual(config.agents, { title: { model: 'openai/gpt-6-luna' } });
   const models = JSON.parse(read('opencode.json')).provider.openai.models;
   assert.deepEqual(models['gpt-6-luna-fast'].limit, models['gpt-6-luna'].limit);
   assert.deepEqual(models['gpt-6-luna-fast'].limit, { context: 680000, input: 552000, output: 128000 });
@@ -65,23 +68,14 @@ test('fresh installs seed agent models and identical Luna limits; reapply is sta
   assert.deepEqual(models['gpt-6.1-terra'].limit, { context: 500000, input: 372000, output: 128000 });
 });
 
-test('all managed agents explicitly deny OpenChamber tools including scheduling', t => {
+test('agent source files are minimal shells, with Plan remaining disabled', t => {
   const { apply, agent } = fixture(t);
   apply();
-  for (const name of agents) {
-    for (const action of ['openchamber', 'openchamber_schedule', 'openchamber_web', 'openchamber_memory', 'openchamber_knowledge', 'openchamber_notify', 'openchamber_render', 'openchamber_image']) {
-      assert.deepEqual(agent(name).permissions.filter(rule => rule.action === action),
-        [{ action, resource: '*', effect: 'deny' }], `${name} must explicitly deny ${action}`);
-    }
-  }
-  for (const name of ['build', 'explore', 'general', 'reviewer']) {
-    assert.deepEqual(agent(name).permissions.filter(rule => rule.action === 'openchamber_secret'),
-      [{ action: 'openchamber_secret', resource: '*', effect: 'deny' }], `${name} must explicitly deny openchamber_secret`);
-  }
-  assert.ok(!agent('plan').permissions.some(rule => rule.action === 'openchamber_secret'));
+  for (const name of ['build', 'general', 'explore', 'reviewer']) assert.deepEqual(agent(name), {});
+  assert.deepEqual(agent('plan'), { disabled: true });
 });
 
-test('plan agent remains disabled and uses repo model defaults on apply', t => {
+test('plan agent remains disabled and its stub rejects local policy overrides', t => {
   const { apply, put, agent } = fixture(t);
   apply();
   assert.equal(agent('plan').disabled, true);
@@ -92,7 +86,7 @@ test('plan agent remains disabled and uses repo model defaults on apply', t => {
   assert.deepEqual(apply(), first);
 });
 
-test('title generation uses GPT 6 Luna with the default variant', t => {
+test('title model remains in config for OpenChamber model resolution', t => {
   const { apply, read } = fixture(t);
   const first = apply();
   assert.equal(JSON.parse(read('opencode.json')).agents.title.model, 'openai/gpt-6-luna');
@@ -167,38 +161,18 @@ test('applying removes retired Step 5 Preview without removing other local RawRo
   assert.deepEqual(apply(), first);
 });
 
-test('all managed agents replace custom models and refresh instructions and permissions from repo defaults', t => {
+test('applying replaces local agent edits with minimal plugin-managed shells', t => {
   const { apply, put, read, agent } = fixture(t);
-  const defaults = {
-    build: undefined,
-    plan: undefined,
-    general: 'openai/gpt-6-luna-fast#max',
-    explore: 'openai/gpt-6-luna-fast#xhigh',
-    reviewer: 'openai/gpt-6-astra#low',
-  };
   for (const name of agents) put(`agents/${name}.md`, `---\r\nmodel: 'custom/${name}#high' # local selection\r\npermissions: []\r\n---\r\nOld instructions\r\n`);
   const first = apply();
   for (const name of agents) {
-    if (defaults[name] === undefined) assert.ok(!Object.hasOwn(agent(name), 'model'));
-    else assert.equal(agent(name).model, defaults[name]);
-    assert.ok(agent(name).permissions.length > 0);
+    assert.deepEqual(agent(name), name === 'plan' ? { disabled: true } : {});
     assert.ok(!read(`agents/${name}.md`).includes('Old instructions'));
   }
   assert.deepEqual(apply(), first);
-  put('agents/general.md', read('agents/general.md').replace(defaults.general, 'custom/another-model#low'));
+  put('agents/general.md', read('agents/general.md').replace('---\n---', '---\nmodel: custom/another-model#low\n---'));
   apply();
-  assert.equal(agent('general').model, defaults.general);
-});
-
-test('missing and locally structured model fields are replaced with repo defaults', t => {
-  const { apply, put, agent } = fixture(t);
-  put('agents/general.md', '---\nmode: subagent\n---\n');
-  put('agents/explore.md', 'Old instructions without frontmatter\n');
-  put('agents/reviewer.md', '---\nmodel:\n  providerID: custom\n  model: review\n  variant: high\n---\n');
-  apply();
-  assert.equal(agent('general').model, 'openai/gpt-6-luna-fast#max');
-  assert.equal(agent('explore').model, 'openai/gpt-6-luna-fast#xhigh');
-  assert.equal(agent('reviewer').model, 'openai/gpt-6-astra#low');
+  assert.deepEqual(agent('general'), {});
 });
 
 test('OpenCode merges owned limits and routing while preserving user models and unrelated settings', t => {

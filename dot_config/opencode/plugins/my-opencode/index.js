@@ -1,3 +1,5 @@
+import { setupAgentTransform } from './agents.js';
+
 // V2 model transforms run whenever the catalog is rebuilt, including refreshes.
 // Do not enable allowed models: other provider/auth restrictions still apply.
 export const allowedModels = new Set([
@@ -9,8 +11,9 @@ export const allowedModels = new Set([
 ]);
 
 export default {
-  id: 'local.openai-allowlist',
+  id: 'local.my-opencode',
   async setup(ctx) {
+    await setupAgentTransform(ctx);
     await ctx.model.transform(models => {
       for (const model of models.list('openai')) {
         if (allowedModels.has(model.id)) continue;

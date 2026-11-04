@@ -1,7 +1,7 @@
-{{- /* Refresh the full agent frontmatter and instructions from the repo. */ -}}
+{{- /* Keep only the loader stub here; the plugin owns runtime agent policy. */ -}}
 {{- $pattern := "(?s)\\A---[ \\t]*\\r?\\n(.*?)\\r?\\n---[ \\t]*(?:\\r?\\n|\\z)" -}}
 {{- $defaults := regexFind $pattern .defaults -}}
-{{- $config := regexReplaceAll $pattern $defaults "${1}" | fromYaml -}}
+{{- $config := regexReplaceAll $pattern $defaults "${1}" | fromYaml | default dict -}}
 ---
 {{ $config | toYaml }}---
 {{ trimPrefix $defaults .defaults }}
