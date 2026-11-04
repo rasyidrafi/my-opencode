@@ -9,13 +9,13 @@ test('retires only previous managed names and keeps reintroduced names', () => {
   assert.throws(() => retiredEnvironmentNames([], ['BAD;COMMAND']), /Invalid/);
 });
 
-test('Bash clears retired inherited values while preserving active caller overrides', () => {
-  const script = renderEnvironment({ ACTIVE: 'managed', NEW: 'new' }, ['OLD']);
-  const result = spawnSync('bash', ['-c', `${script}\nprintf '%s|%s|%s|%s|%s' "\${OLD-unset}" "\${CCS_LOCAL_API_KEY-unset}" "$ACTIVE" "$NEW" "$UNRELATED"`], {
-    encoding: 'utf8', env: { ...process.env, OLD: 'old', CCS_LOCAL_API_KEY: 'old', ACTIVE: 'caller', UNRELATED: 'keep' },
+test('Bash replaces stale values with latest secrets and skips an already-current value', () => {
+  const script = renderEnvironment({ ACTIVE: 'latest', EMPTY: 'filled', SAME: 'current', NEW: 'new' }, ['OLD']);
+  const result = spawnSync('bash', ['-c', `set -e\nreadonly SAME\n${script}\nprintf '%s|%s|%s|%s|%s|%s|%s' "\${OLD-unset}" "\${CCS_LOCAL_API_KEY-unset}" "$ACTIVE" "$EMPTY" "$SAME" "$NEW" "$UNRELATED"`], {
+    encoding: 'utf8', env: { ...process.env, OLD: 'old', CCS_LOCAL_API_KEY: 'old', ACTIVE: 'stale', EMPTY: '', SAME: 'current', UNRELATED: 'keep' },
   });
   assert.equal(result.status, 0);
-  assert.equal(result.stdout, 'unset|unset|caller|new|keep');
+  assert.equal(result.stdout, 'unset|unset|latest|filled|current|new|keep');
 });
 
 test('Fish clears retired names without clearing active names', () => {

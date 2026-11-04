@@ -204,9 +204,10 @@ customizations so stock PATH prepends cannot leave duplicates or reverse the
 baseline. Existing profile content is preserved. Only existing `~/bin`,
 `~/.local/bin`, and Mise shims are normalized; unrelated PATH entries keep their
 order and position around that baseline, and custom interactive PATH additions
-remain effective. Mise activation is interactive-only. Caller-provided secrets,
-including empty values, take precedence over managed defaults. Setup reads secret
-names from the manifest but never prints secret values.
+remain effective. Mise activation is interactive-only. Generated secret values
+replace unset, empty, or stale inherited values; a value already equal to the
+latest generated secret is left unchanged. Setup reads secret names from the
+manifest but never prints secret values.
 
 Fish terminals use an installer-owned hook at
 `$XDG_CONFIG_HOME/fish/conf.d/my-opencode.fish` (default
@@ -306,8 +307,10 @@ with different options requires manual review. Authorization keeps the forced co
 Docker access is still **host-root equivalent**. Rerunning host setup with
 `--authorize-key` upgrades this task's older `restrict` authorization, preserving
 unrelated keys. Rerunning guest setup upgrades its managed SSH fragment to allow
-forwarding; pinned trust, identity and endpoint are preserved. A healthy daemon
-does not need to be restarted for these SSH changes.
+forwarding and configure SSH connection reuse (`ControlMaster auto`, a private
+control socket, and a 10-minute persist window); pinned trust, identity and endpoint
+are preserved. This lets repeated Docker CLI calls share an authenticated SSH
+connection. A healthy daemon does not need to be restarted for these SSH changes.
 
 Verification uses the actual Docker context transport, not a generic SSH shell
 (forced-command keys intentionally do not provide one). Unset Docker endpoint
@@ -337,8 +340,8 @@ There are no hardcoded host IPs, SSH aliases, or application port numbers.
 Run as that user; sudo is requested only for installation/service management.
 Dry run validates prerequisites and connectivity without writing files.
 
-The service discovers published ports roughly every 10 seconds, creates IPv4
-and IPv6 loopback SSH forwards, retries failed tunnels, and removes forwards
+The service discovers published ports roughly every 120 seconds (2 minutes),
+creates IPv4 and IPv6 loopback SSH forwards, retries failed tunnels, and removes forwards
 when publications disappear. Docker discovery failures preserve existing
 tunnels until a complete snapshot is available. It starts at boot without
 requiring an interactive login. SSH keys must work noninteractively with the
@@ -445,24 +448,24 @@ Check the service with `openchamber startup status`.
 Chezmoi merges the approved OpenChamber preferences into
 `~/.config/openchamber/preferences.json` and selected instance settings into
 `~/.config/openchamber/settings.json`. Edit the allowlists in
-`.chezmoitemplates/openchamber/`: `preferences.json` owns the model defaults,
-hidden models and selected UI/notification preferences,
+`.chezmoitemplates/openchamber/`: `preferences.json` owns the model/variant
+defaults and selected UI/notification preferences,
 including the explicitly pinned `showReasoningTraces: true`; `settings.json`
 owns the eight disabled agent tools (including image generation, secret and
 workflow) and default permission mode.
 The PWA app name (`pwaAppName`) is unmanaged and can differ on each machine;
 existing local names are preserved and fresh installs use the app default.
-The default model is `openai/gpt-6.1-terra` with its default variant; apply
-removes any old explicit `defaultVariant` from both preference files.
+The default model is `openai/gpt-6-luna` with the `high` variant. Apply removes
+the retired `hiddenModels` list and explicit `defaultAgent` from both files.
 **The managed permission mode is `auto` (Accept everything).**
 
 **The repository is authoritative for every allowlisted key.** Each apply
-overwrites conflicting local values, including booleans set to `false`, and
-replaces the hidden-model list rather than combining it with local choices.
+overwrites conflicting local values, including booleans set to `false`, rather
+than combining them with local choices.
 A newer local preference timestamp does not give a local value priority.
 Only keys outside the allowlists are preserved (except the retired overrides
-explicitly removed below). This precedence applies to OpenChamber; the separate
-Codex/OpenCode local-model preservation rules are described below.
+explicitly removed below). This precedence applies to OpenChamber; Codex and
+OpenCode have field-specific rules described below.
 
 The `modify_private_*.json` templates preserve unrelated keys, credentials,
 projects and session state. Themes are not managed: existing choices on every
@@ -494,12 +497,21 @@ updates `~/.codex/config.toml` in place: it enforces the Rawroute defaults while
 retaining other Codex settings, including project trust entries and Windows
 sandbox preferences. Codex can continue to add unrelated settings without those
 being discarded on the next `chezmoi apply`.
-The model defaults to `gpt-6-luna` only when the `model` field is absent;
-an existing local model selection is preserved, including during Rawroute switches.
+The model defaults to `gpt-6-luna` only when the `model` field is absent, and
+reasoning effort defaults to `xhigh` only when `model_reasoning_effort` is absent.
+Existing values for both fields are preserved, including during Rawroute switches.
 
-OpenCode follows the same modify-in-place pattern. `dot_config/opencode/modify_opencode.json`
-updates managed provider routing and model limits while retaining local model choices,
-agent configuration, and unrelated settings. Rawroute switches use this merge too.
+OpenCode's global config is `~/.config/opencode/opencode.json`. Its
+`dot_config/opencode/modify_opencode.json` template updates managed provider
+routing and model limits while retaining unmanaged root settings. Soy currently
+has no root `model` or `default_agent` selection there; its provider routing is
+configured. Rawroute switches use the same merge.
+Per-agent files have a different rule: every apply replaces their frontmatter
+with the repo defaults, including `model`, plus repo instructions. Local per-agent
+model overrides are not preserved. Explore defaults to
+`openai/gpt-6-luna-fast#xhigh`, General to `openai/gpt-6-luna-fast#max`, and
+Reviewer to `openai/gpt-6-astra#low`. Build and Plan have no model field and
+inherit the session model; Plan remains disabled.
 `gpt-6-luna-fast` shares Luna's limits: 680,000 context, 552,000 input, 128,000 output.
 
 RawRoute includes `atria-dawn` in place of the retired `step-5-preview` (removed
@@ -518,17 +530,6 @@ RawRoute also includes `deepseek-v4.1-flash-1017`, using the official DeepSeek
 max output is overridden to 262,144 tokens, and input is 737,856 tokens (context minus output).
 It accepts text and images and supports tools, reasoning toggle and low/high/max
 effort. Pricing is copied from the DeepSeek entry, not verified RawRoute pricing.
-
-The `dot_config/opencode/agents/modify_*.md` templates refresh repo-managed agent
-instructions and permissions while preserving each existing frontmatter `model`
-(including its variant). Missing model fields use the defaults in
-`.chezmoitemplates/opencode-agents/`: `general` and `explore` default to
-`openai/gpt-6-luna-fast#xhigh`, and `reviewer` to `openai/gpt-6-astra#low`.
-Build and plan inherit the session model unless a local model is set.
-The managed plan agent is disabled via `disabled: true`, matching this machine;
-applying the template restores that setting even if it was changed locally.
-Existing selections, including older repo defaults, stay selected; remove an
-agent's `model` field to adopt the current repo default on the next apply.
 
 Verify with `node --test tests/opencode-config.test.mjs dot_config/rawroute/setup.test.mjs`.
 

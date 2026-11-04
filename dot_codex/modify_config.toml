@@ -12,7 +12,10 @@
 {{- if not (hasKey $config "model") -}}
   {{- $config = $config | setValueAtPath "model" "gpt-6-luna" -}}
 {{- end -}}
-{{- $config = $config | setValueAtPath "model_reasoning_effort" "xhigh" -}}
+{{- /* Preserve an existing effort; seed the repo default only when absent. */ -}}
+{{- if not (hasKey $config "model_reasoning_effort") -}}
+  {{- $config = $config | setValueAtPath "model_reasoning_effort" "xhigh" -}}
+{{- end -}}
 {{- $config = $config | setValueAtPath "approval_policy" "never" -}}
 {{- $config = $config | setValueAtPath "sandbox_mode" "danger-full-access" -}}
 {{- $config = $config | setValueAtPath "model_providers.rawroute.name" "Rawroute" -}}

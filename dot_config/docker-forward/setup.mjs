@@ -14,7 +14,7 @@ export function settings(state) {
   for (const key of ['context', 'ssh-alias']) {
     if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(state[key] || '')) throw new Error(`Invalid saved ${key}. Rerun docker:setup.`);
   }
-  return { context: state.context, ssh_alias: state['ssh-alias'], interval: 10 };
+  return { context: state.context, ssh_alias: state['ssh-alias'], interval: 120 };
 }
 
 export function unit(user, group, home) {

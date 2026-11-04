@@ -45,8 +45,11 @@ export function guestSettings(input) {
   return c;
 }
 
-export function sshFragment(c) {
-  return `# Managed by mise run docker:setup; local to this machine.\nHost ${c['ssh-alias']}\n    HostName ${c.host}\n    User ${c.user}\n    Port ${c.port}\n    IdentityFile "${c.identity}"\n    IdentitiesOnly yes\n    UserKnownHostsFile "${c['known-hosts']}"\n    StrictHostKeyChecking yes\n    BatchMode yes\n    ForwardAgent no\n    ClearAllForwardings no\n`;
+export function sshFragment(c, { multiplexing = true } = {}) {
+  const reuse = multiplexing
+    ? '    ControlMaster auto\n    ControlPath ~/.ssh/control-%C\n    ControlPersist 10m\n'
+    : '';
+  return `# Managed by mise run docker:setup; local to this machine.\nHost ${c['ssh-alias']}\n    HostName ${c.host}\n    User ${c.user}\n    Port ${c.port}\n    IdentityFile "${c.identity}"\n    IdentitiesOnly yes\n    UserKnownHostsFile "${c['known-hosts']}"\n    StrictHostKeyChecking yes\n    BatchMode yes\n    ForwardAgent no\n    ClearAllForwardings no\n${reuse}`;
 }
 
 export function dockerKey(publicKey) {
@@ -206,8 +209,11 @@ export function setup(argv = process.argv.slice(2)) {
     assertSafe(home, fragment);
     const currentFragment = read(fragment);
     const proposedFragment = sshFragment(config);
-    const legacyFragment = proposedFragment.replace('ClearAllForwardings no', 'ClearAllForwardings yes');
-    if (currentFragment && currentFragment !== proposedFragment && currentFragment !== legacyFragment) throw new Error('Existing Docker SSH fragment differs. Resolve it explicitly instead of overwriting its endpoint.');
+    const compatibleFragments = [
+      proposedFragment,
+      sshFragment(config, { multiplexing: false }),
+    ].flatMap(value => [value, value.replace('ClearAllForwardings no', 'ClearAllForwardings yes')]);
+    if (currentFragment && !compatibleFragments.includes(currentFragment)) throw new Error('Existing Docker SSH fragment differs. Resolve it explicitly instead of overwriting its endpoint.');
     const dockerConfig = read(path.join(home, '.docker/config.json'));
     const active = dockerConfig ? JSON.parse(dockerConfig).currentContext : null;
     if (active && active !== 'default' && active !== config.context) throw new Error(`Another context (${active}) is selected; switch explicitly before setup.`);
@@ -242,9 +248,15 @@ export function setup(argv = process.argv.slice(2)) {
     const effective = run('ssh', ['-G', config['ssh-alias']], { capture: true });
     const settings = Object.fromEntries(effective.split('\n').map(line => [line.split(' ')[0], line.slice(line.indexOf(' ') + 1)]));
     const strict = ['true', 'yes'].includes(settings.stricthostkeychecking);
+    const controlPathPrefix = path.join(home, '.ssh/control-');
+    const controlPathIsSafe = settings.controlpath?.startsWith(controlPathPrefix)
+      && /^[a-f0-9]{40}$/.test(settings.controlpath.slice(controlPathPrefix.length));
     if (settings.hostname !== config.host || settings.user !== config.user || settings.port !== config.port || !strict
       || settings.identitiesonly !== 'yes' || settings.batchmode !== 'yes'
-      || settings.userknownhostsfile !== config['known-hosts']) throw new Error('Effective SSH settings conflict with the managed fragment; inspect ssh -G.');
+      || settings.userknownhostsfile !== config['known-hosts']
+      || settings.controlmaster !== 'auto'
+      || !controlPathIsSafe
+      || settings.controlpersist !== '600') throw new Error('Effective SSH settings conflict with the managed fragment; inspect ssh -G.');
     const endpoint = `ssh://${config['ssh-alias']}`;
     const contexts = run('/usr/bin/docker', ['context', 'ls', '--format', '{{.Name}}'], { capture: true }).split('\n');
     let created = false;

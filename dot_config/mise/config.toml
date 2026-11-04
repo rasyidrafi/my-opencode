@@ -97,7 +97,7 @@ run = 'node "{{ env.HOME }}/.config/docker-setup/setup.mjs"'
 raw = true
 
 [tasks."docker:forward:setup"]
-description = "Mirror remote Docker published TCP ports to guest localhost with a persistent systemd service"
+description = "Mirror remote Docker published TCP ports to guest localhost with SSH reuse and 2-minute polling"
 run = 'node "{{ env.HOME }}/.config/docker-forward/setup.mjs"'
 raw = true
 

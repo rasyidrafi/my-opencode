@@ -63,4 +63,7 @@ permissions:
   - action: openchamber_image
     resource: "*"
     effect: deny
+  - action: openchamber_secret
+    resource: "*"
+    effect: deny
 ---

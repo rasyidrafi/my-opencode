@@ -122,16 +122,21 @@ test('real chezmoi renders both modes, survives reapply and preserves local Code
     assert.deepEqual(json.provider.openai.models['gpt-6-luna-fast'].limit, json.provider.openai.models['gpt-6-luna'].limit);
     const toml = fs.readFileSync(path.join(args.home, '.codex/config.toml'), 'utf8');
     assert.match(toml, new RegExp(`^model = ['"]${expectedModel}['"]$`, 'm'));
+    assert.match(toml, new RegExp(`^model_reasoning_effort = ['"]${expectedEffort}['"]$`, 'm'));
     assert.ok(toml.includes(modes[mode].baseURL)); assert.ok(toml.includes(modes[mode].envKey));
     assert.ok(toml.includes('keep-me')); assert.ok(toml.includes('trusted'));
     assert.ok(!toml.includes('synthetic-test-value')); assert.ok(!JSON.stringify(json).includes('synthetic-test-value'));
     return [toml, JSON.stringify(json)];
   };
+  let expectedEffort = 'xhigh';
   configure({ ...args, mode: 'default', env: { ...args.env, CCS_HALOTEC_LOCAL_API_KEY: '' } });
   readConfigs('default');
   const codexFile = path.join(args.home, '.codex/config.toml');
-  put('.codex/config.toml', fs.readFileSync(codexFile, 'utf8').replace(/^model = .*$/m, 'model = "gpt-6-astra"'));
+  put('.codex/config.toml', fs.readFileSync(codexFile, 'utf8')
+    .replace(/^model = .*$/m, 'model = "gpt-6-astra"')
+    .replace(/^model_reasoning_effort = .*$/m, 'model_reasoning_effort = "low"'));
   expectedModel = 'gpt-6-astra';
+  expectedEffort = 'low';
   configure({ ...args, mode: 'local' });
   const local = readConfigs('local');
   const r = spawnSync(chezmoi, ['--source', repository, '--destination', args.home, '--no-tty', 'apply', '--force'], { env: args.env, encoding: 'utf8', timeout: 60_000 });

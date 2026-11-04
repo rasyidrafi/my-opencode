@@ -56,7 +56,7 @@ test('fresh installs seed agent models and identical Luna limits; reapply is sta
   assert.ok(!Object.hasOwn(config, 'plugins'));
   assert.equal(agent('general').model, 'openai/gpt-6-luna-fast#max');
   assert.equal(agent('explore').model, 'openai/gpt-6-luna-fast#xhigh');
-  assert.equal(agent('reviewer').model, 'openai/gpt-6-astra');
+  assert.equal(agent('reviewer').model, 'openai/gpt-6-astra#low');
   for (const name of ['build', 'plan']) assert.ok(!Object.hasOwn(agent(name), 'model'));
   const models = JSON.parse(read('opencode.json')).provider.openai.models;
   assert.deepEqual(models['gpt-6-luna-fast'].limit, models['gpt-6-luna'].limit);
@@ -74,16 +74,21 @@ test('all managed agents explicitly deny OpenChamber tools including scheduling'
         [{ action, resource: '*', effect: 'deny' }], `${name} must explicitly deny ${action}`);
     }
   }
+  for (const name of ['build', 'explore', 'general', 'reviewer']) {
+    assert.deepEqual(agent(name).permissions.filter(rule => rule.action === 'openchamber_secret'),
+      [{ action: 'openchamber_secret', resource: '*', effect: 'deny' }], `${name} must explicitly deny openchamber_secret`);
+  }
+  assert.ok(!agent('plan').permissions.some(rule => rule.action === 'openchamber_secret'));
 });
 
-test('plan agent remains disabled on fresh installs and reapply', t => {
+test('plan agent remains disabled and uses repo model defaults on apply', t => {
   const { apply, put, agent } = fixture(t);
   apply();
   assert.equal(agent('plan').disabled, true);
   put('agents/plan.md', '---\ndisabled: false\nmodel: custom/plan\n---\n');
   const first = apply();
   assert.equal(agent('plan').disabled, true);
-  assert.equal(agent('plan').model, 'custom/plan');
+  assert.ok(!Object.hasOwn(agent('plan'), 'model'));
   assert.deepEqual(apply(), first);
 });
 
@@ -162,22 +167,30 @@ test('applying removes retired Step 5 Preview without removing other local RawRo
   assert.deepEqual(apply(), first);
 });
 
-test('all managed agents preserve custom models while refreshing repo instructions and permissions', t => {
+test('all managed agents replace custom models and refresh instructions and permissions from repo defaults', t => {
   const { apply, put, read, agent } = fixture(t);
+  const defaults = {
+    build: undefined,
+    plan: undefined,
+    general: 'openai/gpt-6-luna-fast#max',
+    explore: 'openai/gpt-6-luna-fast#xhigh',
+    reviewer: 'openai/gpt-6-astra#low',
+  };
   for (const name of agents) put(`agents/${name}.md`, `---\r\nmodel: 'custom/${name}#high' # local selection\r\npermissions: []\r\n---\r\nOld instructions\r\n`);
   const first = apply();
   for (const name of agents) {
-    assert.equal(agent(name).model, `custom/${name}#high`);
+    if (defaults[name] === undefined) assert.ok(!Object.hasOwn(agent(name), 'model'));
+    else assert.equal(agent(name).model, defaults[name]);
     assert.ok(agent(name).permissions.length > 0);
     assert.ok(!read(`agents/${name}.md`).includes('Old instructions'));
   }
   assert.deepEqual(apply(), first);
-  put('agents/general.md', read('agents/general.md').replace('custom/general#high', 'openai/gpt-6-luna-fast#xhigh'));
+  put('agents/general.md', read('agents/general.md').replace(defaults.general, 'custom/another-model#low'));
   apply();
-  assert.equal(agent('general').model, 'openai/gpt-6-luna-fast#xhigh');
+  assert.equal(agent('general').model, defaults.general);
 });
 
-test('missing model fields get defaults and structured model selections survive', t => {
+test('missing and locally structured model fields are replaced with repo defaults', t => {
   const { apply, put, agent } = fixture(t);
   put('agents/general.md', '---\nmode: subagent\n---\n');
   put('agents/explore.md', 'Old instructions without frontmatter\n');
@@ -185,7 +198,7 @@ test('missing model fields get defaults and structured model selections survive'
   apply();
   assert.equal(agent('general').model, 'openai/gpt-6-luna-fast#max');
   assert.equal(agent('explore').model, 'openai/gpt-6-luna-fast#xhigh');
-  assert.deepEqual(agent('reviewer').model, { providerID: 'custom', model: 'review', variant: 'high' });
+  assert.equal(agent('reviewer').model, 'openai/gpt-6-astra#low');
 });
 
 test('OpenCode merges owned limits and routing while preserving user models and unrelated settings', t => {

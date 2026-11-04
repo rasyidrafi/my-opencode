@@ -457,7 +457,7 @@ export function setup({ home = os.homedir(), platform = process.platform, env = 
     if (names.some(name => typeof name !== 'string' || !/^[A-Z_][A-Z0-9_]*$/.test(name))) throw new Error('Invalid secret identifier in manifest.');
     plan('.config/secrets/generated/names', names.map(name => `${name}\n`).join(''));
   } else if (fs.existsSync(path.join(home, '.config/secrets/generated/env.sh'))) {
-    throw new Error('Existing secrets require manifest.json to preserve caller overrides; install the manifest before setup.');
+    throw new Error('Existing secrets require manifest.json to track managed environment names; install the manifest before setup.');
   }
   plan('.config/secrets/load.sh', read(path.join(directory, '../secrets/load.sh')), 'sh');
 

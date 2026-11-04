@@ -13,9 +13,13 @@ const managed = name => JSON.parse(fs.readFileSync(path.join(repository, '.chezm
 const preferences = managed('preferences.json');
 const settings = managed('settings.json');
 
-test('OpenChamber defaults to Terra without an explicit variant', () => {
-  assert.equal(preferences.defaultModel, 'openai/gpt-6.1-terra');
-  assert.ok(!Object.hasOwn(preferences, 'defaultVariant'));
+test('OpenChamber defaults to Luna with the high variant in both profile and legacy copy', () => {
+  assert.equal(preferences.defaultModel, 'openai/gpt-6-luna');
+  assert.equal(preferences.defaultVariant, 'high');
+  assert.equal(settings.defaultModel, 'openai/gpt-6-luna');
+  assert.equal(settings.defaultVariant, 'high');
+  assert.ok(!Object.hasOwn(preferences, 'defaultAgent'));
+  assert.ok(!Object.hasOwn(settings, 'defaultAgent'));
 });
 
 test('OpenChamber no longer manages a redundant model denylist', () => {
@@ -133,6 +137,23 @@ test('applying removes hiddenModels from both documents and preserves unrelated 
   assert.deepEqual(apply(), first);
 });
 
+test('applying clears a local default agent so OpenChamber chooses its built-in default', t => {
+  const { put, read, apply } = fixture(t);
+  put('preferences.json', { version: 1, fields: {
+    defaultAgent: { value: 'build', updatedAt: 1 },
+    favoriteAgents: { value: ['reviewer'], updatedAt: 2 },
+  } });
+  put('settings.json', { defaultAgent: 'build', keepLocal: true });
+  const first = apply();
+  const fields = JSON.parse(read('preferences.json')).fields;
+  const config = JSON.parse(read('settings.json'));
+  assert.ok(!Object.hasOwn(fields, 'defaultAgent'));
+  assert.ok(!Object.hasOwn(config, 'defaultAgent'));
+  assert.deepEqual(fields.favoriteAgents, { value: ['reviewer'], updatedAt: 2 });
+  assert.equal(config.keepLocal, true);
+  assert.deepEqual(apply(), first);
+});
+
 test('every managed value overrides conflicting local edits regardless of timestamps on every apply', t => {
   const { put, read, apply } = fixture(t);
   const conflicting = value => {
@@ -192,19 +213,20 @@ test('retired small-model overrides and legacy copies are removed so the default
   assert.deepEqual(apply(), first);
 });
 
-test('old default variant is removed from both documents', t => {
+test('repo-managed model and variant override old local values in both documents', t => {
   const { put, read, apply } = fixture(t);
   put('preferences.json', { version: 1, fields: {
     defaultModel: { value: 'openai/gpt-6.1-sol', updatedAt: 1 },
     defaultVariant: { value: 'low', updatedAt: 1 },
   } });
-  put('settings.json', { defaultVariant: 'low', keepLocal: true });
+  put('settings.json', { defaultModel: 'openai/gpt-6.1-sol', defaultVariant: 'low', keepLocal: true });
   const first = apply();
   const fields = JSON.parse(read('preferences.json')).fields;
   const config = JSON.parse(read('settings.json'));
-  assert.equal(fields.defaultModel.value, 'openai/gpt-6.1-terra');
-  assert.ok(!Object.hasOwn(fields, 'defaultVariant'));
-  assert.ok(!Object.hasOwn(config, 'defaultVariant'));
+  assert.equal(fields.defaultModel.value, 'openai/gpt-6-luna');
+  assert.equal(fields.defaultVariant.value, 'high');
+  assert.equal(config.defaultModel, 'openai/gpt-6-luna');
+  assert.equal(config.defaultVariant, 'high');
   assert.equal(config.keepLocal, true);
   assert.deepEqual(apply(), first);
 });

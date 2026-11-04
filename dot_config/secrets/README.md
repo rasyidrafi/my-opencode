@@ -26,7 +26,9 @@ profiles, preserving existing content. Fish loads `env.fish` through the
 shell:setup Fish loader (`~/.config/fish/conf.d/my-opencode.fish`). Custom
 ZDOTDIR, services, cron, containers and Linux GUI sessions require their own
 loading configuration. This does not update already-running processes or the
-invoking shell.
+invoking shell. On each shell load, managed environment values are reconciled
+against the latest generated secrets: empty or different values are replaced,
+while values that already match are left untouched.
 
 ## Add a secret
 
@@ -67,8 +69,10 @@ explicitly accept password files, but does not configure SSH authentication.
 
 ## Updating and removing
 
-Rerun setup after changing a value in Bitwarden. Existing local values are
-overwritten only after all references have been retrieved and validated.
+Rerun setup after changing a value in Bitwarden. The generated Bash and Fish
+loaders compare existing values with the newly generated values, replacing
+empty or stale values and skipping values that already match. Setup writes new
+files only after all references have been retrieved and validated.
 Writes across multiple destinations are not a transaction.
 After successful setup, removed managed environment names are deleted from Windows
 user ENV and unset by the generated Bash/Zsh and Fish loaders. The helper tracks

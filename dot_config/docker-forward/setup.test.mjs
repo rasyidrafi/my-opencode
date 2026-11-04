@@ -4,7 +4,7 @@ import { settings, unit, activateAssets } from './setup.mjs';
 
 test('uses saved guest context without machine-specific defaults', () => {
   assert.deepEqual(settings({ role: 'guest', context: 'other-host', 'ssh-alias': 'other-docker' }), {
-    context: 'other-host', ssh_alias: 'other-docker', interval: 10,
+    context: 'other-host', ssh_alias: 'other-docker', interval: 120,
   });
   assert.throws(() => settings({ role: 'host' }), /guest/);
   assert.throws(() => settings({ role: 'guest', context: '--host', 'ssh-alias': 'ok' }), /context/);

@@ -1,4 +1,6 @@
 {
+  "defaultModel": "openai/gpt-6-luna",
+  "defaultVariant": "high",
   "agentControlToolEnabled": false,
   "agentScheduleToolEnabled": false,
   "agentWebToolEnabled": false,

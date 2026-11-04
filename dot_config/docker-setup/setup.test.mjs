@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { options, validateRole, guestSettings, sshFragment, dockerKey, authorizeDockerKey, run, migrateMise } from './setup.mjs';
 
 const guest = { role: 'guest', context: 'soy', 'ssh-alias': 'soy-docker', host: '172.16.0.4', user: 'soy', identity: '/home/test/.ssh/docker-key', 'known-hosts': '/home/test/.ssh/docker-known-hosts' };
@@ -35,8 +36,29 @@ test('saved settings exclude one-shot flags', () => {
 
 test('SSH fragment keeps pinned trust and dedicated identity, never relaxes trust', () => {
   const text = sshFragment(guestSettings(guest));
-  for (const setting of ['Host soy-docker', 'HostName 172.16.0.4', 'User soy', 'StrictHostKeyChecking yes', 'IdentitiesOnly yes', 'BatchMode yes', 'ForwardAgent no', 'ClearAllForwardings no']) assert.ok(text.includes(setting));
+  for (const setting of ['Host soy-docker', 'HostName 172.16.0.4', 'User soy', 'StrictHostKeyChecking yes', 'IdentitiesOnly yes', 'BatchMode yes', 'ForwardAgent no', 'ClearAllForwardings no', 'ControlMaster auto', 'ControlPath ~/.ssh/control-%C', 'ControlPersist 10m']) assert.ok(text.includes(setting));
   assert.ok(!text.includes('StrictHostKeyChecking no'));
+  const previous = sshFragment(guestSettings(guest), { multiplexing: false });
+  assert.ok(!previous.includes('ControlMaster'));
+
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'docker-ssh-config-'));
+  try {
+    const config = path.join(directory, 'config');
+    fs.writeFileSync(config, text);
+    const result = spawnSync('ssh', ['-G', '-F', config, 'soy-docker'], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    const effective = Object.fromEntries(result.stdout.trim().split('\n').map(line => {
+      const space = line.indexOf(' ');
+      return [line.slice(0, space), line.slice(space + 1)];
+    }));
+    const socketPrefix = path.join(os.homedir(), '.ssh/control-');
+    assert.equal(effective.controlmaster, 'auto');
+    assert.equal(effective.controlpersist, '600');
+    assert.ok(effective.controlpath.startsWith(socketPrefix));
+    assert.match(effective.controlpath.slice(socketPrefix.length), /^[a-f0-9]{40}$/);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test('host authorization keeps Docker transport and allows port forwarding by default', () => {

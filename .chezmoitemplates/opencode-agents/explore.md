@@ -68,6 +68,9 @@ permissions:
   - action: openchamber_image
     resource: "*"
     effect: deny
+  - action: openchamber_secret
+    resource: "*"
+    effect: deny
 ---
 
 You are a file search specialist. You excel at thoroughly navigating and exploring codebases.

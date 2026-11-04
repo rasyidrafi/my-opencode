@@ -176,7 +176,7 @@ test('prose mentions of both marker types survive repeat setup', () => fixture((
   assert.equal(fs.readFileSync(path.join(home, '.bashrc'), 'utf8'), once);
 }));
 
-test('caller secret values, including empty and shell metacharacters, survive legacy generated exports', () => fixture((home, write) => {
+test('legacy generated exports replace empty and stale caller secrets', () => fixture((home, write) => {
   write('.config/secrets/manifest.json', JSON.stringify({ secrets: [{ name: 'TEST_KEY', output: 'env' }, { name: 'OTHER_KEY', output: 'env' }] }));
   write('.config/secrets/generated/env.sh', "export TEST_KEY='managed'\nexport OTHER_KEY='default'\n");
   setup({ home, env: {} });
@@ -184,7 +184,7 @@ test('caller secret values, including empty and shell metacharacters, survive le
     const r = spawnSync('sh', ['-c', '. "$HOME/.config/shell/env.sh"; . "$HOME/.config/shell/env.sh"; printf "%s|%s" "$TEST_KEY" "$OTHER_KEY"'], {
       env: { HOME: home, PATH: '/usr/bin:/bin', TEST_KEY: value }, encoding: 'utf8',
     });
-    assert.equal(r.status, 0); assert.equal(r.stderr, ''); assert.equal(r.stdout, `${value}|default`);
+    assert.equal(r.status, 0); assert.equal(r.stderr, ''); assert.equal(r.stdout, 'managed|default');
   }
 }));
 
@@ -228,14 +228,18 @@ test('arbitrary recursive Bash wrapper remains a blocker', () => fixture((home, 
   assert.equal(fs.existsSync(path.join(home, '.profile')), false);
 }));
 
-test('generated secrets provide defaults without replacing caller values', () => fixture((home, write) => {
+test('generated secrets reconcile unset, empty and stale values to the latest value', () => fixture((home, write) => {
   write('env.sh', renderEnvironment({ TEST_KEY: "managed'quoted" }));
-  for (const caller of [undefined, '', 'caller']) {
+  for (const caller of [undefined, '', 'caller', "managed'quoted"]) {
     const env = { HOME: home, PATH: '/usr/bin:/bin' };
     if (caller !== undefined) env.TEST_KEY = caller;
     const r = spawnSync('sh', ['-c', '. "$HOME/env.sh"; printf "%s" "$TEST_KEY"'], { env, encoding: 'utf8' });
-    assert.equal(r.status, 0); assert.equal(r.stdout, caller ?? "managed'quoted");
+    assert.equal(r.status, 0); assert.equal(r.stdout, "managed'quoted");
   }
+  const readonly = spawnSync('bash', ['-c', `set -e; readonly TEST_KEY="managed'quoted"; . "$HOME/env.sh"; printf "%s" "$TEST_KEY"`], {
+    env: { HOME: home, PATH: '/usr/bin:/bin', TEST_KEY: "managed'quoted" }, encoding: 'utf8',
+  });
+  assert.equal(readonly.status, 0); assert.equal(readonly.stdout, "managed'quoted");
 }));
 
 test('migrates bounded known loaders and helper cache opt-in without losing profile syntax', () => fixture((home, write) => {
@@ -397,15 +401,15 @@ test('Fish runtime receives the managed PATH order and Bash forwarding', { skip:
   assert.equal(r.stdout, `${home}/bin:${home}/.local/bin:${home}/.local/share/mise/shims:/usr/bin:/bin\nBASH_ENV=${home}/.bash_env`);
 }));
 
-test('generated Fish defaults preserve caller values', { skip: !fishAvailable }, () => fixture((home, write) => {
+test('generated Fish secrets replace stale values with the latest values', { skip: !fishAvailable }, () => fixture((home, write) => {
   write('.config/secrets/generated/env.fish', renderEnvironmentFish({ TEST_KEY: "managed'quoted", OTHER_KEY: 'line\nbreak', SAFE: 'plain' }));
   setup({ home, env: {} });
-  assert.match(fs.readFileSync(path.join(home, '.config/secrets/generated/env.fish'), 'utf8'), /if not set -q TEST_KEY/);
+  assert.match(fs.readFileSync(path.join(home, '.config/secrets/generated/env.fish'), 'utf8'), /test "\$TEST_KEY" != 'managed\\'quoted'/);
   const r = spawnSync('fish', ['-c', 'printf "%s|%s|%s" "$OTHER_KEY" "$TEST_KEY" "$SAFE"'], {
     env: { HOME: home, PATH: '/usr/bin:/bin', TEST_KEY: 'caller' }, encoding: 'utf8',
   });
   assert.equal(r.status, 0); assert.equal(r.stderr, '');
-  assert.equal(r.stdout, 'line\nbreak|caller|plain');
+  assert.equal(r.stdout, "line\nbreak|managed'quoted|plain");
 }));
 
 test('check is read-only, hides secret values, reports plans, and unknown arguments fail before work', () => fixture((home, write) => {

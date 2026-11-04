@@ -4,7 +4,7 @@ description: "Read-only review and consultation: assess code, diffs, plans, and
   approaches. Develop dependency-ordered implementation slices for broad changes.
   Includes investigation needed for the assessment. Use explore for pure
   discovery and general for changes."
-model: openai/gpt-6-astra
+model: openai/gpt-6-astra#low
 mode: subagent
 permissions:
   - action: "*"
@@ -68,6 +68,9 @@ permissions:
     resource: "*"
     effect: deny
   - action: openchamber_image
+    resource: "*"
+    effect: deny
+  - action: openchamber_secret
     resource: "*"
     effect: deny
 ---

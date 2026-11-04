@@ -6,15 +6,17 @@
 {{- if not (kindIs "map" $config) -}}
   {{- fail "OpenChamber settings.json must be a JSON object" -}}
 {{- end -}}
-{{- /* Also remove the legacy copies of the retired small-model override. */ -}}
+{{- /* Remove retired catalog/agent overrides; keep the legacy model/variant copies in sync. */ -}}
 {{- /* Catalog filtering is now handled by the OpenCode allowlist plugin. */ -}}
 {{- $_ := unset $config "hiddenModels" -}}
-{{- $_ := unset $config "defaultVariant" -}}
+{{- /* The repo intentionally leaves the default agent unset. */ -}}
+{{- $_ := unset $config "defaultAgent" -}}
 {{- range list "smallModelUseDefault" "smallModelOverride" "smallModelVariant" -}}
   {{- $_ := unset $config . -}}
 {{- end -}}
-{{- /* Only the approved instance keys are owned here. Keep credentials,
-      projects, session policies and other legacy profile copies untouched. */ -}}
+{{- /* The repo owns instance settings and model/variant compatibility copies.
+      Keep credentials, projects, session policies and other legacy profile
+      copies untouched. */ -}}
 {{- $managed := includeTemplate "openchamber/settings.json" . | mustFromJson -}}
 {{- /* Right-hand managed values overwrite local values, including false. */ -}}
 {{- mustMergeOverwrite $config $managed | toPrettyJson }}

@@ -130,23 +130,25 @@ export function retiredEnvironmentNames(current, previous = [], retired = []) {
 }
 
 export function renderEnvironment(environment, retired = []) {
-  return '# Generated locally. Do not commit. Caller-provided values take precedence.\n' +
+  return '# Generated locally. Do not commit. Values are reconciled with the latest generated secret.\n' +
     retiredEnvironmentNames(Object.keys(environment), [], retired).map(name => `unset ${name}\n`).join('') +
     Object.entries(environment).map(([name, value]) => {
       if (!/^[A-Z_][A-Z0-9_]*$/.test(name)) throw new Error('Invalid environment identifier.');
-      return `if [ "\${${name}+x}" != x ]; then export ${name}=${shellQuote(value)}; fi\n`;
+      const quoted = shellQuote(value);
+      return `if [ "\${${name}-}" != ${quoted} ]; then export ${name}=${quoted}; else export ${name}; fi\n`;
     }).join('');
 }
 
-// Fish twin of renderEnvironment: same caller-precedence semantics, because
-// set -q also holds for empty values, and Fish single-quote escaping.
+// Fish twin of renderEnvironment: replace unset/empty/stale values, but leave
+// an already-current value untouched.
 const fishQuote = value => `'${value.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`;
 export function renderEnvironmentFish(environment, retired = []) {
-  return '# Generated locally. Do not commit. Caller-provided values take precedence.\n' +
+  return '# Generated locally. Do not commit. Values are reconciled with the latest generated secret.\n' +
     retiredEnvironmentNames(Object.keys(environment), [], retired).map(name => `set -e ${name}\n`).join('') +
     Object.entries(environment).map(([name, value]) => {
       if (!/^[A-Z_][A-Z0-9_]*$/.test(name)) throw new Error('Invalid environment identifier.');
-      return `if not set -q ${name}; set -gx ${name} ${fishQuote(value)}; end\n`;
+      const quoted = fishQuote(value);
+      return `if not set -q ${name}; or test "$${name}" != ${quoted}; set -gx ${name} ${quoted}; end\n`;
     }).join('');
 }
 
