@@ -23,15 +23,22 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 const catalog = JSON.parse(fs.readFileSync(new URL('../.chezmoidata/mise.json', import.meta.url))).mise;
 for (const task of catalog.tasks.filter(task => !task.platforms.includes('android'))) {
-  test(task.name + ' rejects a Linux-reported Termux environment before processing arguments', () => {
-    const script = new URL('../dot_config/' + task.script, import.meta.url);
-    const args = task.args.trim().split(/\s+/).filter(Boolean);
-    const result = spawnSync(process.execPath, [script.pathname, ...args], {
-      env: { ...process.env, TERMUX_VERSION: 'test', PREFIX: '/data/data/com.termux/files/usr' },
-      encoding: 'utf8',
+  for (const termuxEnv of [
+    { TERMUX_VERSION: 'test', PREFIX: '' },
+    { TERMUX_VERSION: '', PREFIX: '/data/data/com.termux/files/usr' },
+    { TERMUX_VERSION: 'test', PREFIX: '/data/data/com.termux/files/usr' },
+  ]) {
+    test(task.name + ' rejects a Linux-reported Termux environment ' + JSON.stringify(termuxEnv) + ' before processing arguments', () => {
+      const script = new URL('../dot_config/' + task.script, import.meta.url);
+      const args = task.args.trim().split(/\s+/).filter(Boolean);
+      const runner = task.runner === 'sh' ? 'sh' : process.execPath;
+      const result = spawnSync(runner, [script.pathname, ...args], {
+        env: { ...process.env, ...termuxEnv },
+        encoding: 'utf8',
+      });
+      assert.equal(result.status, 1, result.stderr);
+      assert.equal(result.stdout, '');
+      assert.match(result.stderr, /not supported on Android\/Termux/);
     });
-    assert.equal(result.status, 1, result.stderr);
-    assert.equal(result.stdout, '');
-    assert.match(result.stderr, /not supported on Android\/Termux/);
-  });
+  }
 }

@@ -1,6 +1,12 @@
 #!/bin/sh
 set -eu
 
+prefix=${PREFIX:-}
+if [ -n "${TERMUX_VERSION:-}" ] || [ "$prefix" != "${prefix#/data/data/com.termux/}" ]; then
+  echo 'crd:setup is not supported on Android/Termux.' >&2
+  exit 1
+fi
+
 unit="chrome-remote-desktop@$(id -un).service"
 configure_panel_workarea() {
   config="$HOME/.config/chrome-remote-desktop"

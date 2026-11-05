@@ -2,8 +2,12 @@
 set -eu
 
 prefix=${PREFIX:-}
-if [ "$(uname -s)" != Linux ] || [ -n "${TERMUX_VERSION:-}" ] || [ "$prefix" != "${prefix#/data/data/com.termux/}" ]; then
-  echo "cua:startup requires Linux with systemd (not Termux)." >&2
+if [ -n "${TERMUX_VERSION:-}" ] || [ "$prefix" != "${prefix#/data/data/com.termux/}" ]; then
+  echo 'cua:startup is not supported on Android/Termux.' >&2
+  exit 1
+fi
+if [ "$(uname -s)" != Linux ]; then
+  echo 'cua:startup requires Linux with systemd.' >&2
   exit 1
 fi
 if ! command -v cua-driver >/dev/null 2>&1; then
