@@ -7,6 +7,25 @@ import shutil
 import subprocess
 
 home = Path.home()
+# Browser terminals (including code-server) resolve their generic monospace
+# family through fontconfig, independently of XFCE Terminal's preferences.
+# Use an early, strong alias so a minimal desktop cannot pick a proportional
+# font. Keep this in a dedicated file rather than replacing user font rules.
+fontconfig = Path(os.environ.get('XDG_CONFIG_HOME') or home / '.config') / 'fontconfig/conf.d/10-crd-monospace.conf'
+fontconfig_xml = '''<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
+<fontconfig>
+  <!-- Managed by mise run crd:setup. -->
+  <alias binding="strong">
+    <family>monospace</family>
+    <prefer><family>Liberation Mono</family></prefer>
+  </alias>
+</fontconfig>
+'''
+if not fontconfig.exists() or fontconfig.read_text() != fontconfig_xml:
+    fontconfig.parent.mkdir(parents=True, exist_ok=True)
+    fontconfig.write_text(fontconfig_xml)
+
 target = home / '.config/xfce4/terminal/terminalrc'
 old = target.read_text() if target.exists() else ''
 lines = old.splitlines(keepends=True)
@@ -51,3 +70,4 @@ if shutil.which('xfconf-query') and (os.environ.get('DBUS_SESSION_BUS_ADDRESS') 
             continue
         subprocess.run(args + ['-n', '-t', kind, '-s', value], check=True)
 print('XFCE Terminal font configured: Liberation Mono 10.')
+print('System monospace default configured: Liberation Mono (reload browser terminals to apply).')

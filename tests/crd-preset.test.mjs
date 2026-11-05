@@ -19,16 +19,24 @@ test('terminal font setup is idempotent, preserves other settings and backs up o
   fs.mkdirSync(path.dirname(rc), { recursive: true });
   const old = '[Configuration]\n# user comment\nFontName=Monospace 10\nColorBackground=#123456\n[Other]\nKeep=yes\n';
   fs.writeFileSync(rc, old);
-  const run = () => spawnSync('python3', [new URL('setup-terminal-font.py', source).pathname], { env: { ...process.env, HOME: root, DISPLAY: '', DBUS_SESSION_BUS_ADDRESS: '' }, encoding: 'utf8' });
+  const run = () => spawnSync('python3', [new URL('setup-terminal-font.py', source).pathname], { env: { ...process.env, HOME: root, XDG_CONFIG_HOME: path.join(root, '.config'), DISPLAY: '', DBUS_SESSION_BUS_ADDRESS: '' }, encoding: 'utf8' });
   assert.equal(run().status, 0);
   const first = fs.readFileSync(rc, 'utf8');
   const mtime = fs.statSync(rc).mtimeMs;
+  const alias = path.join(root, '.config/fontconfig/conf.d/10-crd-monospace.conf');
+  const aliasTime = fs.statSync(alias).mtimeMs;
+  assert.match(fs.readFileSync(alias, 'utf8'), /<family>monospace<\/family>/);
+  assert.match(fs.readFileSync(alias, 'utf8'), /<prefer><family>Liberation Mono<\/family><\/prefer>/);
   assert.match(first, /FontName=Liberation Mono 10/);
   assert.match(first, /FontUseSystem=FALSE\n\[Other\]/);
   assert.match(first, /# user comment/);
   assert.match(first, /ColorBackground=#123456/);
   assert.equal(run().status, 0);
   assert.equal(fs.statSync(rc).mtimeMs, mtime);
+  assert.equal(fs.statSync(alias).mtimeMs, aliasTime);
+  fs.writeFileSync(alias, '<fontconfig/>');
+  assert.equal(run().status, 0);
+  assert.match(fs.readFileSync(alias, 'utf8'), /Liberation Mono/);
   assert.equal(fs.readFileSync(path.join(root, '.local/state/crd-mint/terminalrc-before-font'), 'utf8'), old);
 });
 
