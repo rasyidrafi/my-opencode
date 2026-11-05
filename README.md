@@ -71,8 +71,9 @@ GitHub CLI (`gh`). Mise installs `gh`; install Git with `pkg install git` before
 After `chezmoi apply` and `mise install`, run `mise run t3code:setup` to
 start `t3 connect` using the mise-managed T3 CLI. Follow its sign-in prompts;
 over SSH, T3 can provide a URL and code for signing in on another device.
-The command configures T3 Connect and the T3 Code background service. Use
-`t3 connect status` to check it.
+The command configures T3 Connect and its background service to load generated
+secrets. It restarts the service each time, which interrupts running agent
+sessions and loads the latest secrets. Use `t3 connect status` to check it.
 
 ## T3 Code server on Android
 
