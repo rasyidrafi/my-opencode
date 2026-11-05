@@ -680,10 +680,15 @@ The task installs missing CRD, XFCE and dbus-x11 packages and their required
 dependencies without recommended packages or upgrading installed packages. It
 does not install a browser; existing browsers remain available to the session.
 For a new XFCE profile it also installs Mint-Y icons, Whisker Menu, a cursor
-theme and XFCE Terminal. It downloads the checksum-pinned official Mint-Y-Aqua
-theme to the user's local theme directory, and seeds a Mint-inspired bottom panel.
-The panel uses generic application launchers and Debian assets. Existing XFCE settings
-are left untouched, and a running CRD session is never restarted to apply it.
+theme and XFCE Terminal. It uses the official Mint 22.3 XFCE settings for the
+panel, window manager, desktop, terminal and notifications, with the official
+Mint-Y-Dark-Aqua theme, Mint wallpaper, and Ubuntu fonts installed locally. The
+menu uses a Debian logo and generic launchers; Mint-specific XApp and power
+manager panel plugins are omitted. Existing XFCE settings are left untouched,
+and a running CRD session is never restarted by setup. An existing session can
+be updated explicitly by running `sh ~/.config/chrome-remote-desktop/mint-assets.sh`
+and `python3 ~/.config/chrome-remote-desktop/apply-mint-live.py`; this backs up
+the previous XFCE configuration and restarts only the panel.
 
 Run `mise run codex:setup` after applying chezmoi and installing tools with Mise
 to start the native Codex app-server daemon, or restart it if already running.

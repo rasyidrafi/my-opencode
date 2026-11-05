@@ -1,2 +1,11 @@
-button-icon=start-here
-show-button-title=false
+button-icon=/usr/share/icons/desktop-base/64x64/emblems/emblem-debian-white.png
+launcher-show-name=true
+launcher-show-description=true
+favorites=exo-web-browser.desktop,thunar.desktop,xfce4-terminal.desktop
+hover-switch-category=true
+position-search-alternate=true
+position-commands-alternate=false
+position-categories-alternate=true
+command-switchuser=dm-tool switch-to-greeter
+item-icon-size=2
+view-as-icons=false

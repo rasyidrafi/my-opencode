@@ -55,22 +55,11 @@ fi
 # Seed a new XFCE profile only; never overwrite an existing desktop's settings.
 xfce_config="$HOME/.config/xfce4/xfconf/xfce-perchannel-xml"
 if [ ! -d "$HOME/.config/xfce4" ]; then
-  theme_dir="$HOME/.local/share/themes/Mint-Y-Aqua"
-  if [ ! -d "$theme_dir" ] && [ ! -d /usr/share/themes/Mint-Y-Aqua ]; then
-    tmpdir=$(mktemp -d)
-    trap 'rm -rf "$tmpdir"' EXIT HUP INT TERM
-    echo 'Downloading the official Mint-Y-Aqua theme (Linux Mint LMDE 7).'
-    curl -fsSL https://github.com/linuxmint/mint-themes/releases/download/master.lmde7/packages.tar.gz -o "$tmpdir/mint-themes.tar.gz"
-    printf '%s  %s\n' '84ab8925d64af713cee577a069b187bd9ccb6bd8fbd0be7e098a2de96bbcedfb' "$tmpdir/mint-themes.tar.gz" | sha256sum -c -
-    tar xOf "$tmpdir/mint-themes.tar.gz" packages/mint-themes_2.4.3_all.deb > "$tmpdir/mint-themes.deb"
-    mkdir -p "$tmpdir/extracted" "$HOME/.local/share/themes"
-    dpkg-deb --fsys-tarfile "$tmpdir/mint-themes.deb" | tar xf - -C "$tmpdir/extracted" ./usr/share/themes/Mint-Y-Aqua
-    mv "$tmpdir/extracted/usr/share/themes/Mint-Y-Aqua" "$theme_dir"
-    rm -rf "$tmpdir"
-    trap - EXIT HUP INT TERM
-  fi
+  sh "$HOME/.config/chrome-remote-desktop/mint-assets.sh"
   mkdir -p "$xfce_config"
   cp "$HOME/.config/chrome-remote-desktop/mint-preset/"*.xml "$xfce_config/"
+  wallpaper="$HOME/.local/share/backgrounds/crd-mint/sele_ring.jpg"
+  WALLPAPER_PATH="$wallpaper" python3 -c 'import os,pathlib; p=pathlib.Path(os.environ["HOME"])/".config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml"; p.write_text(p.read_text().replace("MINT_WALLPAPER_PATH",os.environ["WALLPAPER_PATH"]))'
   mkdir -p "$HOME/.config/xfce4/panel"
   cp -R "$HOME/.config/chrome-remote-desktop/mint-preset/panel/." "$HOME/.config/xfce4/panel/"
   mkdir -p "$HOME/.config/xfce4/terminal"
