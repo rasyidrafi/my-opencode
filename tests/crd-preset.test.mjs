@@ -48,3 +48,24 @@ test('an active CRD service exits before installation, profile changes, or resta
   assert.match(result.stdout, /already running/);
   assert.ok(!fs.existsSync(path.join(root, '.config')));
 });
+
+test('a stopped registered host installs only missing audio packages then starts', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'crd-audio-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const put = (name, contents) => fs.writeFileSync(path.join(root, name), `#!/bin/sh\n${contents}\n`, { mode: 0o755 });
+  put('systemctl', '[ -f "$HOME/started" ]');
+  put('dpkg-query', 'case "$*" in *pipewire|*wireplumber|*libasound2-plugins|*pulseaudio-utils) exit 1;; *) printf installed;; esac');
+  put('sudo', 'if [ "$1" = -n ]; then exit 0; fi\nprintf "%s\\n" "$*" >> "$HOME/sudo-calls"\nif [ "$1" = systemctl ]; then touch "$HOME/started"; fi');
+  const config = path.join(root, '.config/chrome-remote-desktop');
+  fs.mkdirSync(config, { recursive: true });
+  fs.writeFileSync(path.join(config, 'host#test.json'), '{}');
+  fs.writeFileSync(path.join(config, 'mint-assets.sh'), '#!/bin/sh\nexit 0\n');
+  const state = path.join(root, '.local/state/crd-mint');
+  fs.mkdirSync(state, { recursive: true });
+  fs.writeFileSync(path.join(state, 'preset-v1-complete'), 'done');
+  const result = spawnSync('sh', [new URL('setup.sh', source).pathname], { env: { ...process.env, HOME: root, PATH: `${root}:${process.env.PATH}` }, encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  const calls = fs.readFileSync(path.join(root, 'sudo-calls'), 'utf8');
+  assert.match(calls, /apt-get install -y --no-install-recommends --no-upgrade pipewire wireplumber libasound2-plugins pulseaudio-utils/);
+  assert.doesNotMatch(calls, /google-chrome|restart/);
+});

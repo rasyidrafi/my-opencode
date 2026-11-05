@@ -24,7 +24,7 @@ authenticate_sudo() {
 }
 
 missing=''
-for package in chrome-remote-desktop xfce4 dbus-x11 xfce4-whiskermenu-plugin mint-y-icons bibata-cursor-theme xfce4-terminal xfce4-notifyd desktop-base; do
+for package in chrome-remote-desktop xfce4 dbus-x11 xfce4-whiskermenu-plugin mint-y-icons bibata-cursor-theme xfce4-terminal xfce4-notifyd desktop-base pipewire wireplumber libasound2-plugins pulseaudio-utils; do
   if [ "$(dpkg-query -W -f='${db:Status-Status}' "$package" 2>/dev/null || :)" != installed ]; then
     missing="$missing $package"
   fi

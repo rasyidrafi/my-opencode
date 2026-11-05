@@ -679,6 +679,10 @@ restarting it. If a registered service is stopped, the task starts it.
 The task installs missing CRD, XFCE and dbus-x11 packages and their required
 dependencies without recommended packages or upgrading installed packages. It
 does not install a browser; existing browsers remain available to the session.
+It also installs PipeWire, WirePlumber, ALSA's PulseAudio plugin and audio
+utilities for CRD's per-session audio forwarding. Installing audio support in an
+already running session takes effect after the CRD service is restarted; setup
+itself never restarts or changes an active session.
 For a new XFCE profile it also installs Mint-Y icons, Whisker Menu, a cursor
 theme and XFCE Terminal. It uses the official Mint 22.3 XFCE settings for the
 panel, window manager, desktop, terminal and notifications, with the official
