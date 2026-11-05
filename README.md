@@ -496,6 +496,18 @@ profiles, or run automatically during `mise install`.
 Test host validation without installing anything:
 `node --test dot_config/chrome/setup.test.mjs`.
 
+### mpv with ModernZ
+
+Run `mise run mpv:setup` on Linux to install mpv if needed and configure the
+ModernZ on-screen controller from the official
+[ModernZ releases](https://github.com/Samillion/ModernZ/releases). The task
+supports apt, dnf, pacman, and zypper, and asks for sudo only when mpv needs to
+be installed. It preserves unrelated `mpv.conf` settings and an existing
+`modernz.conf`, replaces the earlier uosc files/config, and makes no changes or
+downloads on subsequent runs once setup is complete. Windows, macOS, and
+Android/Termux are not supported. Test without system changes with
+`node --test tests/mpv-setup.test.mjs`.
+
 ## Shared native Docker
 
 `docker:setup` is opt-in and deterministic, for Debian/Ubuntu amd64/arm64.

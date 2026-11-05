@@ -345,6 +345,16 @@
         "androidCleanEnv": false
       },
       {
+        "name": "mpv:setup",
+        "description": "Install mpv and configure the ModernZ interface on Linux",
+        "script": "mpv/setup.mjs",
+        "args": "",
+        "platforms": [
+          "linux"
+        ],
+        "androidCleanEnv": false
+      },
+      {
         "name": "chrome:setup",
         "description": "Reuse an installed Chrome, Edge, Chromium, or Brave browser; otherwise install Chrome on Debian-family Linux amd64",
         "script": "chrome/setup.mjs",

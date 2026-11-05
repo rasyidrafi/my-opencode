@@ -52,7 +52,8 @@ for (const platform of ['linux', 'windows', 'android']) {
     const config = render(platform);
     const names = [...config.matchAll(/\[tasks\."([^"]+)"\]/g)].map(match => match[1]);
     assert.deepEqual(names, catalog.tasks.filter(task => task.platforms.includes(platform)).map(task => task.name));
-    assert.equal(names.length, { linux: 23, windows: 14, android: 11 }[platform]);
+    assert.equal(names.length, { linux: 24, windows: 14, android: 11 }[platform]);
+    assert.equal(names.includes('mpv:setup'), platform === 'linux');
     assert.equal(names.includes('cua:startup'), platform === 'linux');
     assert.equal(names.includes('crd:setup'), platform === 'linux');
     assert.equal(names.includes('t3code:setup'), platform !== 'windows');
