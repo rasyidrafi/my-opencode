@@ -421,6 +421,17 @@
         ],
         "androidCleanEnv": false,
         "runner": "sh"
+      },
+      {
+        "name": "t3code:setup",
+        "description": "Build and start the native Android ARM64 T3 Code server for the mobile app and existing Codex",
+        "script": "t3code/setup.sh",
+        "args": "",
+        "platforms": [
+          "android"
+        ],
+        "androidCleanEnv": true,
+        "runner": "sh"
       }
     ]
   }
