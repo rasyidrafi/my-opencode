@@ -397,6 +397,15 @@
         "androidCleanEnv": false
       },
       {
+        "name": "cua:startup",
+        "description": "Enable and restart the Cua Driver systemd user service on Linux",
+        "script": "cua/startup.sh",
+        "args": "",
+        "platforms": ["linux"],
+        "androidCleanEnv": false,
+        "runner": "sh"
+      },
+      {
         "name": "crd:setup",
         "description": "Set up Chrome Remote Desktop with XFCE without interrupting a running session",
         "script": "chrome-remote-desktop/setup.sh",

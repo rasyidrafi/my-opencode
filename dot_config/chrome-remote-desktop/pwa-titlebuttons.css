@@ -1,0 +1,10 @@
+/* Chromium tags its synthetic GTK nodes with .chromium. Cover both browser
+ * and default-decoration headerbars, and avoid the theme's tall vertical
+ * padding: Chrome scales the entire button down when it exceeds the titlebar. */
+headerbar.titlebar.chromium button.titlebutton.chromium {
+  /* 26px button + Chromium's 6px inter-button gap = Mint XFWM's 32px pitch. */
+  min-width: 26px;
+  min-height: 20px;
+  padding: 0;
+  margin: 0;
+}

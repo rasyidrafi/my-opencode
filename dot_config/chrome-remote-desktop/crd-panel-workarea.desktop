@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=CRD panel work-area recovery
+Comment=Keep maximized windows above XFCE panels after remote display resizing
+Exec=sh -c "exec /usr/bin/python3 \"\$HOME/.config/chrome-remote-desktop/panel-workarea.py\""
+OnlyShowIn=XFCE;
+Terminal=false

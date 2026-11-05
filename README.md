@@ -674,15 +674,45 @@ requires sudo and internet access. For first-time registration, open the display
 Google headless setup page on another device, authorize it, and paste only the
 authorization code into the terminal; then set the requested PIN. The code and
 PIN are not stored in the repository. An existing session configuration is
-preserved. If the service is already running, the task exits without changing or
-restarting it. If a registered service is stopped, the task starts it.
+preserved. If the service is already running, the task enables panel work-area
+recovery without restarting it or reapplying the desktop preset. If a registered
+service is stopped, the task starts it.
 The task installs missing CRD, XFCE and dbus-x11 packages and their required
 dependencies without recommended packages or upgrading installed packages. It
 does not install a browser; existing browsers remain available to the session.
+It installs `xfce4-screenshooter`; the initial XFCE preset binds **Ctrl+Shift+S**
+to interactive screenshot area selection. Later setup runs preserve shortcut
+customizations; the CRD service itself is never restarted.
+An XFCE autostart helper refreshes panel space reservations at login and after
+screen-size changes, working around stale work areas during CRD's “Resize to
+fit” with high-DPI mode off or on. It preserves panel sizes, does not force a
+resolution or DPI, and does not restart CRD. After applying chezmoi, run
+`mise run crd:setup`: it installs/repairs the autostart entry on every run and
+starts the helper immediately when run inside the graphical session (`DISPLAY`
+set), otherwise at the next XFCE login. A per-display lock prevents duplicates.
+Every setup run also maintains one marked block in `~/.config/gtk-3.0/gtk.css`
+to widen GTK-backed Chrome PWA caption buttons while keeping Chrome's own frame.
+Unrelated user CSS is preserved, and the original CSS is backed up once under
+`~/.local/state/crd-mint/gtk.css-before-titlebuttons`. The selector targets
+Chromium's synthetic GTK headerbar nodes (`.chromium`), covering browser and
+PWA headerbars without changing Thunar's buttons. Reopen Chrome/PWAs to load
+it; setup never closes them.
+Button spacing matches the bundled Mint XFWM theme's 32-pixel center-to-center
+distance (26-pixel GTK button plus Chromium's 6-pixel gap).
+Setup also ensures `fonts-liberation` is installed and sets XFCE Terminal to
+`Liberation Mono 10` with system-font inheritance disabled. This avoids generic
+`Monospace` resolving to a proportional font on minimal desktops. It updates
+both terminalrc and live xfconf settings, preserves other terminal settings,
+backs up the original terminalrc once, and skips unchanged settings on reruns.
+These desktop fixes also run when CRD is already active; missing terminal fonts
+may require sudo, but CRD and existing terminal sessions are never restarted.
+Every `crd:setup` run also ensures the machine's system timezone is
+`Asia/Jakarta` (WIB, UTC+7). It uses sudo only when a change is needed, verifies
+the result, and does not restart CRD or change the actual system clock time.
 It also installs PipeWire, WirePlumber, ALSA's PulseAudio plugin and audio
 utilities for CRD's per-session audio forwarding. Installing audio support in an
 already running session takes effect after the CRD service is restarted; setup
-itself never restarts or changes an active session.
+itself never restarts an active session.
 For a new XFCE profile it also installs Mint-Y icons, Whisker Menu, a cursor
 theme and XFCE Terminal. It uses the official Mint 22.3 XFCE settings for the
 panel, window manager, desktop, terminal and notifications, with the official
@@ -690,8 +720,8 @@ Mint-Y-Dark-Aqua theme, Mint wallpaper, and Ubuntu fonts installed locally. The
 menu uses a Debian logo and generic launchers; Mint-specific XApp and power
 manager panel plugins are omitted. The first setup backs up an existing XFCE
 profile before initializing the preset; later runs preserve user changes and
-repair missing theme assets. A running CRD session is never restarted or changed
-by setup. An existing session can
+repair missing theme assets. A running CRD session is never restarted or reset
+by setup; the targeted desktop fixes above still apply. An existing session can
 be updated explicitly by running `sh ~/.config/chrome-remote-desktop/mint-assets.sh`
 and `python3 ~/.config/chrome-remote-desktop/apply-mint-live.py`; this backs up
 the previous XFCE configuration and restarts only the panel.

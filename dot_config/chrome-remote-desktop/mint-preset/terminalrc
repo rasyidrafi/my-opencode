@@ -1,5 +1,6 @@
 [Configuration]
-FontName=Monospace 10
+FontName=Liberation Mono 10
+FontUseSystem=FALSE
 MiscAlwaysShowTabs=FALSE
 MiscBell=FALSE
 MiscBordersDefault=TRUE

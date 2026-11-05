@@ -2,10 +2,20 @@
 set -eu
 
 unit="chrome-remote-desktop@$(id -un).service"
-if systemctl is-active --quiet "$unit"; then
-  printf 'Chrome Remote Desktop is already running (%s); leaving it unchanged.\n' "$unit"
-  exit 0
-fi
+configure_panel_workarea() {
+  config="$HOME/.config/chrome-remote-desktop"
+  autostart="$HOME/.config/autostart/crd-panel-workarea.desktop"
+  mkdir -p "$(dirname "$autostart")"
+  if ! cmp -s "$config/crd-panel-workarea.desktop" "$autostart"; then
+    cp "$config/crd-panel-workarea.desktop" "$autostart"
+  fi
+  if [ -n "${DISPLAY:-}" ] && command -v python3 >/dev/null 2>&1 && command -v xprop >/dev/null 2>&1; then
+    # The helper's per-display lock makes repeated launches harmless.
+    nohup /usr/bin/python3 "$config/panel-workarea.py" </dev/null >/dev/null 2>&1 &
+  else
+    echo 'Panel work-area helper enabled for the next XFCE login.'
+  fi
+}
 
 if [ "$(uname -s)" != Linux ] || [ "$(dpkg --print-architecture 2>/dev/null || :)" != amd64 ] || ! command -v apt-get >/dev/null 2>&1; then
   echo 'Chrome Remote Desktop setup requires Debian/Ubuntu on amd64.' >&2
@@ -23,8 +33,43 @@ authenticate_sudo() {
   fi
 }
 
+configure_timezone() {
+  timezone='Asia/Jakarta'
+  if [ "$(timedatectl show -p Timezone --value)" = "$timezone" ]; then
+    echo "System timezone is already $timezone."
+    return
+  fi
+  authenticate_sudo
+  sudo timedatectl set-timezone "$timezone"
+  if [ "$(timedatectl show -p Timezone --value)" != "$timezone" ]; then
+    echo "Failed to configure system timezone: $timezone" >&2
+    exit 1
+  fi
+  echo "System timezone configured: $timezone (WIB, UTC+7)."
+}
+
+configure_terminal_font() {
+  if [ "$(dpkg-query -W -f='${db:Status-Status}' fonts-liberation 2>/dev/null || :)" != installed ]; then
+    authenticate_sudo
+    sudo apt-get update
+    sudo apt-get install -y --no-install-recommends --no-upgrade fonts-liberation
+  fi
+  /usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-terminal-font.py"
+}
+
+# Apply host defaults even when the remote desktop service is already active.
+configure_timezone
+
+if systemctl is-active --quiet "$unit"; then
+  configure_terminal_font
+  /usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-titlebuttons.py"
+  configure_panel_workarea
+  printf 'Chrome Remote Desktop is already running (%s); leaving the service unchanged.\n' "$unit"
+  exit 0
+fi
+
 missing=''
-for package in chrome-remote-desktop xfce4 dbus-x11 xfce4-whiskermenu-plugin mint-y-icons bibata-cursor-theme xfce4-terminal xfce4-notifyd desktop-base pipewire wireplumber libasound2-plugins pulseaudio-utils; do
+for package in chrome-remote-desktop xfce4 dbus-x11 xfce4-whiskermenu-plugin mint-y-icons bibata-cursor-theme xfce4-terminal xfce4-notifyd xfce4-screenshooter desktop-base python3 x11-utils pipewire wireplumber libasound2-plugins pulseaudio-utils; do
   if [ "$(dpkg-query -W -f='${db:Status-Status}' "$package" 2>/dev/null || :)" != installed ]; then
     missing="$missing $package"
   fi
@@ -52,6 +97,10 @@ if [ -n "$missing" ]; then
   fi
 fi
 
+# Enable on every run, independently of the one-time Mint profile marker.
+/usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-titlebuttons.py"
+configure_panel_workarea
+
 # Seed once, including when a previous XFCE profile exists or setup was interrupted.
 sh "$HOME/.config/chrome-remote-desktop/mint-assets.sh"
 if [ ! -f "$HOME/.local/state/crd-mint/preset-v1-complete" ]; then
@@ -59,6 +108,7 @@ if [ ! -f "$HOME/.local/state/crd-mint/preset-v1-complete" ]; then
 else
   echo 'Mint XFCE preset was already initialized; keeping current settings.'
 fi
+configure_terminal_font
 
 session_file="$HOME/.chrome-remote-desktop-session"
 if [ ! -e "$session_file" ] && [ ! -e /etc/chrome-remote-desktop-session ]; then

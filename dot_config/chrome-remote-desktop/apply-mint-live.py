@@ -58,7 +58,7 @@ try:
     # Removing the old panel tree prevents stale plugin properties from leaking
     # into new plugin IDs. The old configuration is backed up above.
     subprocess.run(['xfconf-query', '-c', 'xfce4-panel', '-p', '/plugins', '-r', '-R'], env=env, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    for channel in ['xsettings', 'xfwm4', 'xfce4-desktop', 'xfce4-notifyd', 'thunar', 'xfce4-panel']:
+    for channel in ['xsettings', 'xfwm4', 'xfce4-desktop', 'xfce4-notifyd', 'thunar', 'xfce4-panel', 'xfce4-keyboard-shortcuts']:
         root = ET.parse(preset / (channel + '.xml')).getroot()
         walk(channel, root)
     # Current XFCE uses output names and per-workspace settings, unlike Mint's
