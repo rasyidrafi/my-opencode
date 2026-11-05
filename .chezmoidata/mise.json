@@ -397,6 +397,15 @@
         "androidCleanEnv": false
       },
       {
+        "name": "crd:setup",
+        "description": "Set up Chrome Remote Desktop with XFCE without interrupting a running session",
+        "script": "chrome-remote-desktop/setup.sh",
+        "args": "",
+        "platforms": ["linux"],
+        "androidCleanEnv": false,
+        "runner": "sh"
+      },
+      {
         "name": "codex:setup",
         "description": "Start the Codex app-server daemon, or restart it if already running",
         "script": "services/setup.mjs",

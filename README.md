@@ -668,6 +668,15 @@ updated loaders. Test with
 `node --test dot_config/azure-mnt-cache/setup.test.mjs dot_config/shell/setup.test.mjs`
 (the real isolated file-transfer test requires rsync).
 
+Run `mise run crd:setup` on Debian or Ubuntu x86-64 after applying chezmoi to
+install Chrome Remote Desktop and XFCE for a virtual desktop session. The task
+requires sudo and internet access. For first-time registration, open the displayed
+Google headless setup page on another device, authorize it, and paste only the
+authorization code into the terminal; then set the requested PIN. The code and
+PIN are not stored in the repository. An existing session configuration is
+preserved. If the service is already running, the task exits without changing or
+restarting it. If a registered service is stopped, the task starts it.
+
 Run `mise run codex:setup` after applying chezmoi and installing tools with Mise
 to start the native Codex app-server daemon, or restart it if already running.
 This supports Linux and Windows. The task is disabled on Android/Termux because
