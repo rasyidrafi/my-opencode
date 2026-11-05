@@ -679,6 +679,11 @@ restarting it. If a registered service is stopped, the task starts it.
 The task installs missing CRD, XFCE and dbus-x11 packages and their required
 dependencies without recommended packages or upgrading installed packages. It
 does not install a browser; existing browsers remain available to the session.
+For a new XFCE profile it also installs Mint-Y icons, Whisker Menu, a cursor
+theme and XFCE Terminal. It downloads the checksum-pinned official Mint-Y-Aqua
+theme to the user's local theme directory, and seeds a Mint-inspired bottom panel.
+The panel uses generic application launchers and Debian assets. Existing XFCE settings
+are left untouched, and a running CRD session is never restarted to apply it.
 
 Run `mise run codex:setup` after applying chezmoi and installing tools with Mise
 to start the native Codex app-server daemon, or restart it if already running.

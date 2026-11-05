@@ -24,7 +24,7 @@ authenticate_sudo() {
 }
 
 missing=''
-for package in chrome-remote-desktop xfce4 dbus-x11; do
+for package in chrome-remote-desktop xfce4 dbus-x11 xfce4-whiskermenu-plugin mint-y-icons bibata-cursor-theme xfce4-terminal xfce4-notifyd desktop-base; do
   if [ "$(dpkg-query -W -f='${db:Status-Status}' "$package" 2>/dev/null || :)" != installed ]; then
     missing="$missing $package"
   fi
@@ -50,6 +50,34 @@ if [ -n "$missing" ]; then
   else
     sudo apt-get install -y --no-install-recommends --no-upgrade $missing
   fi
+fi
+
+# Seed a new XFCE profile only; never overwrite an existing desktop's settings.
+xfce_config="$HOME/.config/xfce4/xfconf/xfce-perchannel-xml"
+if [ ! -d "$HOME/.config/xfce4" ]; then
+  theme_dir="$HOME/.local/share/themes/Mint-Y-Aqua"
+  if [ ! -d "$theme_dir" ] && [ ! -d /usr/share/themes/Mint-Y-Aqua ]; then
+    tmpdir=$(mktemp -d)
+    trap 'rm -rf "$tmpdir"' EXIT HUP INT TERM
+    echo 'Downloading the official Mint-Y-Aqua theme (Linux Mint LMDE 7).'
+    curl -fsSL https://github.com/linuxmint/mint-themes/releases/download/master.lmde7/packages.tar.gz -o "$tmpdir/mint-themes.tar.gz"
+    printf '%s  %s\n' '84ab8925d64af713cee577a069b187bd9ccb6bd8fbd0be7e098a2de96bbcedfb' "$tmpdir/mint-themes.tar.gz" | sha256sum -c -
+    tar xOf "$tmpdir/mint-themes.tar.gz" packages/mint-themes_2.4.3_all.deb > "$tmpdir/mint-themes.deb"
+    mkdir -p "$tmpdir/extracted" "$HOME/.local/share/themes"
+    dpkg-deb --fsys-tarfile "$tmpdir/mint-themes.deb" | tar xf - -C "$tmpdir/extracted" ./usr/share/themes/Mint-Y-Aqua
+    mv "$tmpdir/extracted/usr/share/themes/Mint-Y-Aqua" "$theme_dir"
+    rm -rf "$tmpdir"
+    trap - EXIT HUP INT TERM
+  fi
+  mkdir -p "$xfce_config"
+  cp "$HOME/.config/chrome-remote-desktop/mint-preset/"*.xml "$xfce_config/"
+  mkdir -p "$HOME/.config/xfce4/panel"
+  cp -R "$HOME/.config/chrome-remote-desktop/mint-preset/panel/." "$HOME/.config/xfce4/panel/"
+  mkdir -p "$HOME/.config/xfce4/terminal"
+  cp "$HOME/.config/chrome-remote-desktop/mint-preset/terminalrc" "$HOME/.config/xfce4/terminal/terminalrc"
+  echo 'Created a Mint-inspired XFCE desktop preset for this user.'
+else
+  echo 'Existing XFCE configuration found; leaving its appearance unchanged.'
 fi
 
 session_file="$HOME/.chrome-remote-desktop-session"
