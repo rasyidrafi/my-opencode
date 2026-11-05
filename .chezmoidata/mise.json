@@ -437,6 +437,16 @@
         "androidCleanEnv": false
       },
       {
+        "name": "code-server:setup",
+        "description": "Install code-server from its official standalone release and restart its localhost service",
+        "script": "code-server/setup.mjs",
+        "args": "",
+        "platforms": [
+          "linux"
+        ],
+        "androidCleanEnv": false
+      },
+      {
         "name": "termux:node:setup",
         "description": "Check managed native Node/npm, or explicitly migrate pkg installations while preserving Codex shebangs",
         "script": "mise/termux-node-setup.sh",
