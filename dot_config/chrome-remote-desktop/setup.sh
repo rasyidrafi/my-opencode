@@ -38,11 +38,17 @@ if [ -n "$missing" ]; then
     trap 'rm -rf "$tmpdir"' EXIT HUP INT TERM
     curl -fsSL https://dl.google.com/linux/direct/chrome-remote-desktop_current_amd64.deb -o "$tmpdir/chrome-remote-desktop.deb"
     # The local package supplies Chrome Remote Desktop; apt resolves its dependencies.
-    sudo apt-get install -y "$tmpdir/chrome-remote-desktop.deb" xfce4 dbus-x11
+    chmod 755 "$tmpdir"
+    chmod 644 "$tmpdir/chrome-remote-desktop.deb"
+    set -- "$tmpdir/chrome-remote-desktop.deb"
+    for package in $missing; do
+      [ "$package" = chrome-remote-desktop ] || set -- "$@" "$package"
+    done
+    sudo apt-get install -y --no-install-recommends --no-upgrade "$@"
     rm -rf "$tmpdir"
     trap - EXIT HUP INT TERM
   else
-    sudo apt-get install -y $missing
+    sudo apt-get install -y --no-install-recommends --no-upgrade $missing
   fi
 fi
 

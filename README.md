@@ -676,6 +676,9 @@ authorization code into the terminal; then set the requested PIN. The code and
 PIN are not stored in the repository. An existing session configuration is
 preserved. If the service is already running, the task exits without changing or
 restarting it. If a registered service is stopped, the task starts it.
+The task installs missing CRD, XFCE and dbus-x11 packages and their required
+dependencies without recommended packages or upgrading installed packages. It
+does not install a browser; existing browsers remain available to the session.
 
 Run `mise run codex:setup` after applying chezmoi and installing tools with Mise
 to start the native Codex app-server daemon, or restart it if already running.
