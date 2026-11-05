@@ -705,6 +705,9 @@ Setup also ensures `fonts-liberation` is installed and sets XFCE Terminal to
 `Monospace` resolving to a proportional font on minimal desktops. It updates
 both terminalrc and live xfconf settings, preserves other terminal settings,
 backs up the original terminalrc once, and skips unchanged settings on reruns.
+It also sets `xfce4-terminal` as XFCE's default terminal emulator, preserving
+other helper preferences; this avoids a broken system fallback such as Zutty
+preventing Thunar's **Open Terminal Here** action from working.
 It also maintains `~/.config/fontconfig/conf.d/10-crd-monospace.conf` (under
 `XDG_CONFIG_HOME` when set), making the generic `monospace` family resolve to
 Liberation Mono for browser terminals such as code-server, not just XFCE.

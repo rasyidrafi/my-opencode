@@ -67,6 +67,7 @@ configure_terminal_font() {
 configure_timezone
 
 if systemctl is-active --quiet "$unit"; then
+  /usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-terminal-helper.py"
   configure_terminal_font
   /usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-whisker-shortcut.py"
   /usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-titlebuttons.py"
@@ -107,6 +108,7 @@ fi
 # Enable on every run, independently of the one-time Mint profile marker.
 /usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-whisker-shortcut.py"
 /usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-titlebuttons.py"
+/usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-terminal-helper.py"
 configure_panel_workarea
 
 # Seed once, including when a previous XFCE profile exists or setup was interrupted.

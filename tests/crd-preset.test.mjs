@@ -7,7 +7,7 @@ import { test } from 'node:test';
 
 const source = new URL('../dot_config/chrome-remote-desktop/', import.meta.url);
 function titlebuttonFixtures(config) {
-  for (const file of ['setup-titlebuttons.py', 'pwa-titlebuttons.css', 'setup-terminal-font.py', 'setup-whisker-shortcut.py']) {
+  for (const file of ['setup-titlebuttons.py', 'pwa-titlebuttons.css', 'setup-terminal-font.py', 'setup-terminal-helper.py', 'setup-whisker-shortcut.py']) {
     fs.copyFileSync(new URL(file, source), path.join(config, file));
   }
 }
@@ -38,6 +38,24 @@ test('terminal font setup is idempotent, preserves other settings and backs up o
   assert.equal(run().status, 0);
   assert.match(fs.readFileSync(alias, 'utf8'), /Liberation Mono/);
   assert.equal(fs.readFileSync(path.join(root, '.local/state/crd-mint/terminalrc-before-font'), 'utf8'), old);
+});
+
+test('default terminal helper setup is idempotent, repairs the terminal choice and preserves other helpers', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'crd-terminal-helper-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const config = path.join(root, '.config/xfce4/helpers.rc');
+  fs.mkdirSync(path.dirname(config), { recursive: true });
+  fs.writeFileSync(config, '# user helpers\nWebBrowser=google-chrome\nTerminalEmulator=debian-x-terminal-emulator\nMailReader=thunderbird\n');
+  const run = () => spawnSync('python3', [new URL('setup-terminal-helper.py', source).pathname], { env: { ...process.env, HOME: root }, encoding: 'utf8' });
+  assert.equal(run().status, 0);
+  const expected = '# user helpers\nWebBrowser=google-chrome\nTerminalEmulator=xfce4-terminal\nMailReader=thunderbird\n';
+  assert.equal(fs.readFileSync(config, 'utf8'), expected);
+  const mtime = fs.statSync(config).mtimeMs;
+  assert.equal(run().status, 0);
+  assert.equal(fs.statSync(config).mtimeMs, mtime);
+  fs.writeFileSync(config, 'WebBrowser=google-chrome\nTerminalEmulator=zutty\nTerminalEmulator=debian-x-terminal-emulator\n');
+  assert.equal(run().status, 0);
+  assert.equal(fs.readFileSync(config, 'utf8'), 'WebBrowser=google-chrome\nTerminalEmulator=xfce4-terminal\n');
 });
 
 test('PWA spacing targets Chromium nodes in both headerbar variants without tall padding', () => {
@@ -232,6 +250,7 @@ printf '%s' "$value" > "$HOME/shortcut"
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /already running/);
   assert.equal(fs.readFileSync(path.join(root, 'shortcut'), 'utf8'), 'xfce4-popup-whiskermenu');
+  assert.equal(fs.readFileSync(path.join(root, '.config/xfce4/helpers.rc'), 'utf8'), 'TerminalEmulator=xfce4-terminal\n');
   const autostart = path.join(root, '.config/autostart/crd-panel-workarea.desktop');
   const before = fs.statSync(autostart).mtimeMs;
   assert.equal(run().status, 0);
