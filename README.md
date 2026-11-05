@@ -684,8 +684,10 @@ theme and XFCE Terminal. It uses the official Mint 22.3 XFCE settings for the
 panel, window manager, desktop, terminal and notifications, with the official
 Mint-Y-Dark-Aqua theme, Mint wallpaper, and Ubuntu fonts installed locally. The
 menu uses a Debian logo and generic launchers; Mint-specific XApp and power
-manager panel plugins are omitted. Existing XFCE settings are left untouched,
-and a running CRD session is never restarted by setup. An existing session can
+manager panel plugins are omitted. The first setup backs up an existing XFCE
+profile before initializing the preset; later runs preserve user changes and
+repair missing theme assets. A running CRD session is never restarted or changed
+by setup. An existing session can
 be updated explicitly by running `sh ~/.config/chrome-remote-desktop/mint-assets.sh`
 and `python3 ~/.config/chrome-remote-desktop/apply-mint-live.py`; this backs up
 the previous XFCE configuration and restarts only the panel.

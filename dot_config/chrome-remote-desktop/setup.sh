@@ -52,21 +52,12 @@ if [ -n "$missing" ]; then
   fi
 fi
 
-# Seed a new XFCE profile only; never overwrite an existing desktop's settings.
-xfce_config="$HOME/.config/xfce4/xfconf/xfce-perchannel-xml"
-if [ ! -d "$HOME/.config/xfce4" ]; then
-  sh "$HOME/.config/chrome-remote-desktop/mint-assets.sh"
-  mkdir -p "$xfce_config"
-  cp "$HOME/.config/chrome-remote-desktop/mint-preset/"*.xml "$xfce_config/"
-  wallpaper="$HOME/.local/share/backgrounds/crd-mint/sele_ring.jpg"
-  WALLPAPER_PATH="$wallpaper" python3 -c 'import os,pathlib; p=pathlib.Path(os.environ["HOME"])/".config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml"; p.write_text(p.read_text().replace("MINT_WALLPAPER_PATH",os.environ["WALLPAPER_PATH"]))'
-  mkdir -p "$HOME/.config/xfce4/panel"
-  cp -R "$HOME/.config/chrome-remote-desktop/mint-preset/panel/." "$HOME/.config/xfce4/panel/"
-  mkdir -p "$HOME/.config/xfce4/terminal"
-  cp "$HOME/.config/chrome-remote-desktop/mint-preset/terminalrc" "$HOME/.config/xfce4/terminal/terminalrc"
-  echo 'Created a Mint-inspired XFCE desktop preset for this user.'
+# Seed once, including when a previous XFCE profile exists or setup was interrupted.
+sh "$HOME/.config/chrome-remote-desktop/mint-assets.sh"
+if [ ! -f "$HOME/.local/state/crd-mint/preset-v1-complete" ]; then
+  python3 "$HOME/.config/chrome-remote-desktop/seed-mint.py"
 else
-  echo 'Existing XFCE configuration found; leaving its appearance unchanged.'
+  echo 'Mint XFCE preset was already initialized; keeping current settings.'
 fi
 
 session_file="$HOME/.chrome-remote-desktop-session"

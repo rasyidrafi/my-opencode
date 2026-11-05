@@ -30,7 +30,22 @@
     </property>
   </property>
   <property name="plugins" type="empty">
-    <property name="plugin-1" type="string" value="whiskermenu" />
+    <property name="plugin-1" type="string" value="whiskermenu">
+      <property name="button-icon" type="string" value="/usr/share/icons/desktop-base/64x64/emblems/emblem-debian-white.png" />
+      <property name="launcher-show-name" type="bool" value="true" />
+      <property name="launcher-show-description" type="bool" value="true" />
+      <property name="hover-switch-category" type="bool" value="true" />
+      <property name="position-search-alternate" type="bool" value="true" />
+      <property name="position-commands-alternate" type="bool" value="false" />
+      <property name="position-categories-alternate" type="bool" value="true" />
+      <property name="item-icon-size" type="int" value="2" />
+      <property name="view-as-icons" type="bool" value="false" />
+      <property name="favorites" type="array">
+        <value type="string" value="xfce4-web-browser.desktop" />
+        <value type="string" value="thunar.desktop" />
+        <value type="string" value="xfce4-terminal.desktop" />
+      </property>
+    </property>
     <property name="plugin-2" type="string" value="showdesktop" />
     <property name="plugin-3" type="string" value="launcher">
       <property name="items" type="array">

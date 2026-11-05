@@ -66,16 +66,6 @@ try:
     for workspace in range(4):
         path = f'/backdrop/screen0/monitorDUMMY0/workspace{workspace}/last-image'
         set_property('xfce4-desktop', path, 'string', [('string', wallpaper)])
-    # Modern Whisker Menu migrates its rc file to xfconf. Set migrated keys too.
-    whisker = {
-        'button-icon': ('string', '/usr/share/icons/desktop-base/64x64/emblems/emblem-debian-white.png'),
-        'launcher-show-name': ('bool', 'true'), 'launcher-show-description': ('bool', 'true'),
-        'hover-switch-category': ('bool', 'true'), 'position-search-alternate': ('bool', 'true'),
-        'position-categories-alternate': ('bool', 'true'), 'item-icon-size': ('int', '2'),
-        'view-as-icons': ('bool', 'false'),
-    }
-    for name, (kind, value) in whisker.items():
-        set_property('xfce4-panel', '/plugins/plugin-1/' + name, kind, [(kind, value)])
 finally:
     subprocess.Popen(['xfce4-panel'], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
 print('Mint XFCE settings applied; previous XFCE configuration backed up at', backup)
