@@ -33,12 +33,16 @@ for (const [platform, env] of [['android', {}], ['linux', { TERMUX_VERSION: '0.1
     assert.ok(config.includes('{{ env.HOME }}'));
   });
 }
-test('Linux and Windows retain the same full desktop tool defaults', { skip: !available }, () => {
+test('Linux adds T3 CLI to the shared desktop tool defaults', { skip: !available }, () => {
   const linux = render('linux');
-  assert.deepEqual(tools(render('windows')), tools(linux));
+  const windows = tools(render('windows'));
+  assert.deepEqual(tools(linux).filter(line => !line.startsWith('\"npm:t3\"')), windows);
+  assert.ok(tools(linux).includes('\"npm:t3\" = \"0.1.7\"'));
+  assert.ok(!windows.some(line => line.startsWith('\"npm:t3\"')));
+  assert.ok(!tools(render('android')).some(line => line.startsWith('\"npm:t3\"')));
   assert.ok(tools(linux).includes('"npm:@bitwarden/cli" = "2026.10.1"'));
   assert.ok(tools(linux).includes('"node" = "26.13.0"'));
-  assert.equal(tools(linux).length, 20);
+  assert.equal(tools(linux).length, 21);
   assert.ok(!linux.includes('npm.shell_out'));
 });
 
@@ -48,8 +52,10 @@ for (const platform of ['linux', 'windows', 'android']) {
     const config = render(platform);
     const names = [...config.matchAll(/\[tasks\."([^"]+)"\]/g)].map(match => match[1]);
     assert.deepEqual(names, catalog.tasks.filter(task => task.platforms.includes(platform)).map(task => task.name));
-    assert.equal(names.length, { linux: 19, windows: 14, android: 11 }[platform]);
-    assert.equal(names.includes('t3code:setup'), platform === 'android');
+    assert.equal(names.length, { linux: 20, windows: 14, android: 11 }[platform]);
+    assert.equal(names.includes('t3code:setup'), platform !== 'windows');
+    if (platform === 'linux') assert.ok(config.includes('/.config/t3code/setup-linux.sh'));
+    if (platform === 'android') assert.ok(config.includes('/.config/t3code/setup.sh'));
     assert.equal(names.includes('codex:setup'), platform !== 'android');
     assert.equal(names.includes('openchamber:setup'), platform !== 'android');
   });

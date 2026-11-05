@@ -195,6 +195,13 @@
           "windows"
         ],
         "version": "0.9.0"
+      },
+      {
+        "package": "npm:t3",
+        "platforms": [
+          "linux"
+        ],
+        "version": "0.1.7"
       }
     ],
     "tasks": [
@@ -424,14 +431,16 @@
       },
       {
         "name": "t3code:setup",
-        "description": "Build and start the native Android ARM64 T3 Code server for the mobile app and existing Codex",
+        "description": "Set up T3 Connect on Linux or the native T3 Code server on Android ARM64",
         "script": "t3code/setup.sh",
         "args": "",
         "platforms": [
+          "linux",
           "android"
         ],
         "androidCleanEnv": true,
-        "runner": "sh"
+        "runner": "sh",
+        "linuxScript": "t3code/setup-linux.sh"
       }
     ]
   }

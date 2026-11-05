@@ -66,13 +66,21 @@ access. Run `mise run secrets:setup` interactively to log in and sync secrets.
 The manifest also configures GitHub authentication, which requires Git and
 GitHub CLI (`gh`). Mise installs `gh`; install Git with `pkg install git` before syncing.
 
+## T3 Connect on Linux
+
+After `chezmoi apply` and `mise install`, run `mise run t3code:setup` to
+start `t3 connect` using the mise-managed T3 CLI. Follow its sign-in prompts;
+over SSH, T3 can provide a URL and code for signing in on another device.
+The command configures T3 Connect and the T3 Code background service. Use
+`t3 connect status` to check it.
+
 ## T3 Code server on Android
 
 On ARM64 Termux, run `mise run t3code:setup` after `chezmoi apply` and installing
 mise Node. This builds T3 Code 0.1.7 from a pinned upstream commit using native
 Node, installs dependencies from a lockfile, and starts the server on
 `127.0.0.1:3773`. Install build prerequisites with `pkg install clang make python cloudflared`.
-No Debian environment or root access is required. This setup task is Android-only.
+No Debian environment or root access is required for the Android setup.
 
 For T3 Connect, run `t3 connect link --headless`, approve the printed login URL,
 and restart with `t3-server stop` then `t3-server start`. `t3 connect status`

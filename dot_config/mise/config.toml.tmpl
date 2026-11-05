@@ -17,14 +17,14 @@ npm.shell_out = true
 {{ if and $android (hasKey . "android") -}}
 {{ includeTemplate .android.template (dict "tool" .android "version" .version "arch" $.chezmoi.arch) }}
 {{ else -}}
-{{ if and $android (not (has "android" .platforms)) }}# {{ end }}{{ .package | quote }} = {{ if hasKey . "options" }}{ version = {{ .version | quote }}, {{ .options }} }{{ else }}{{ .version | quote }}{{ end }}
+{{ if not (has $platform .platforms) }}# {{ end }}{{ .package | quote }} = {{ if hasKey . "options" }}{ version = {{ .version | quote }}, {{ .options }} }{{ else }}{{ .version | quote }}{{ end }}
 {{ end -}}
 {{ end }}
 {{ range .mise.tasks -}}
 {{ if has $platform .platforms -}}
 [tasks.{{ .name | quote }}]
 description = {{ .description | quote }}
-run = '{{ if and $android .androidCleanEnv }}env -u LD_LIBRARY_PATH {{ end }}{{ if hasKey . "runner" }}{{ .runner }}{{ else }}node{{ end }} "{{ `{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}` }}/.config/{{ .script }}"{{ .args }}'
+run = '{{ if and $android .androidCleanEnv }}env -u LD_LIBRARY_PATH {{ end }}{{ if hasKey . "runner" }}{{ .runner }}{{ else }}node{{ end }} "{{ `{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}` }}/.config/{{ if and (eq $platform "linux") (hasKey . "linuxScript") }}{{ .linuxScript }}{{ else }}{{ .script }}{{ end }}"{{ .args }}'
 raw = true
 
 {{ end -}}
