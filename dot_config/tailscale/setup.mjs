@@ -1,3 +1,4 @@
+import { requireTaskPlatform } from '../my-opencode/platform.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -53,6 +54,7 @@ export async function setup(io) {
 
 export function runtime({ platform = process.platform, env = process.env, execute = spawnSync } = {}) {
   const spawnSync = execute;
+  requireTaskPlatform('tailscale:setup', ['linux', 'windows'], platform, env);
   const windows = platform === 'win32';
   if (!windows && platform !== 'linux') throw new Error('This helper supports Windows and Linux only.');
   const candidates = [windows ? 'tailscale.exe' : 'tailscale'];

@@ -1,3 +1,5 @@
+import { requireSystemPython } from '../my-opencode/prerequisites.mjs';
+import { requireTaskPlatform } from '../my-opencode/platform.mjs';
 import { execFileSync } from 'node:child_process';
 import { readFileSync, realpathSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -48,7 +50,7 @@ export function plan(installed, global, sources, prunable) {
 }
 
 export function main({ platform = process.platform, args = process.argv.slice(2), execute = execFileSync, canonical = realpathSync, elevate } = {}) {
-  if (!['linux', 'win32'].includes(platform)) throw new Error('tools:cleanup supports Linux and Windows only');
+  requireTaskPlatform('tools:cleanup', ['linux', 'windows'], platform);
   const execFileSync = execute;
   const realpathSync = canonical;
   const samePath = (a, b) => platform === 'win32'
@@ -57,6 +59,7 @@ export function main({ platform = process.platform, args = process.argv.slice(2)
   if (args.length > 1 || args.some(a => !['--apply', '--dry-run'].includes(a))) {
     throw new Error('Usage: tools:cleanup [--dry-run | --apply]');
   }
+  if (platform === 'linux') requireSystemPython('tools:cleanup', execute);
   const apply = args.includes('--apply');
   const mise = args => JSON.parse(execFileSync('mise', args, { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }));
   const snapshot = () => plan(

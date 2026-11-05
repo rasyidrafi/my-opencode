@@ -1,3 +1,5 @@
+import { requireSystemPython } from '../my-opencode/prerequisites.mjs';
+import { requireTaskPlatform } from '../my-opencode/platform.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -51,9 +53,10 @@ export function activateAssets(assets, io) {
 }
 
 export function setup(argv = process.argv.slice(2)) {
-  if (process.platform === 'win32') throw new Error('docker:forward:setup is not supported on Windows yet. Requires Linux/systemd.');
+  requireTaskPlatform('docker:forward:setup', ['linux']);
   if (argv.some(arg => arg !== '--dry-run')) throw new Error('Usage: mise run docker:forward:setup -- [--dry-run]');
   if (process.platform !== 'linux' || !fs.existsSync('/run/systemd/system')) throw new Error('Linux with systemd is required.');
+  requireSystemPython('docker:forward:setup');
   if (process.getuid() === 0) throw new Error('Run as the intended guest user; setup invokes sudo for installation.');
   for (const name of ['DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_CONFIG', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH']) {
     if (process.env[name]) throw new Error(`Unset ${name} before setup so the service uses the same Docker configuration.`);
@@ -65,7 +68,6 @@ export function setup(argv = process.argv.slice(2)) {
   const endpoint = run('/usr/bin/docker', ['context', 'inspect', config.context, '--format', '{{.Endpoints.docker.Host}}'], { capture: true });
   if (endpoint !== `ssh://${config.ssh_alias}`) throw new Error('Saved guest context and its SSH endpoint disagree. Rerun docker:setup.');
   run('/usr/bin/docker', ['--context', config.context, 'info', '--format', 'Docker host: {{.Name}}']);
-  run('/usr/bin/python3', ['--version']);
   run('/usr/bin/ssh', ['-V']);
   const user = run('id', ['-un'], { capture: true });
   const group = run('id', ['-gn'], { capture: true });

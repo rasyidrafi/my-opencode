@@ -1,0 +1,8 @@
+{{- $arch := get (dict "arm64" "aarch64" "amd64" "x86_64") .arch -}}
+{{- $checksum := get .tool.checksums .arch -}}
+{{- if and $arch $checksum -}}
+# Native Termux Codex; the npm distribution only ships desktop binaries.
+"http:codex" = { version = "{{ .version }}", url = "https://packages.termux.dev/apt/termux-main/pool/main/c/codex/codex_{{ .version }}_{{ $arch }}.deb", checksum = "sha256:{{ $checksum }}", bin = "codex.deb", bin_path = "bin", postinstall = 'sh "$HOME/.config/mise/install-termux-codex.sh"' }
+{{- else -}}
+# Codex has no native Termux package for this architecture.
+{{- end -}}

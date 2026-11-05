@@ -1,0 +1,31 @@
+{{- $android := or (eq .chezmoi.os "android") (ne (env "TERMUX_VERSION") "") (hasPrefix "/data/data/com.termux/" (env "PREFIX")) -}}
+{{- $optional := "" -}}
+{{- if $android -}}{{- $optional = "# " -}}{{- end -}}
+{{- $platform := .chezmoi.os -}}
+{{- if $android -}}{{- $platform = "android" -}}{{- end -}}
+[settings]
+minimum_release_age = "0s"
+{{ if $android }}# Use native npm: mise's built-in npm client cannot verify TLS on Android.
+npm.shell_out = true
+{{ end }}
+[plugins]
+# Override the embedded gcloud plugin missing lib/python.lua in mise 2026.10.21.
+{{ $optional }}"vfox:gcloud" = "https://github.com/jdx/vfox-gcloud#8bc2e33aa741c0935f219e0d5791f0dc92569ed9"
+
+[tools]
+{{ range .mise.tools -}}
+{{ if and $android (hasKey . "android") -}}
+{{ includeTemplate .android.template (dict "tool" .android "version" .version "arch" $.chezmoi.arch) }}
+{{ else -}}
+{{ if and $android (not (has "android" .platforms)) }}# {{ end }}{{ .package | quote }} = {{ if hasKey . "options" }}{ version = {{ .version | quote }}, {{ .options }} }{{ else }}{{ .version | quote }}{{ end }}
+{{ end -}}
+{{ end }}
+{{ range .mise.tasks -}}
+{{ if has $platform .platforms -}}
+[tasks.{{ .name | quote }}]
+description = {{ .description | quote }}
+run = '{{ if and $android .androidCleanEnv }}env -u LD_LIBRARY_PATH {{ end }}{{ if hasKey . "runner" }}{{ .runner }}{{ else }}node{{ end }} "{{ `{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}` }}/.config/{{ .script }}"{{ .args }}'
+raw = true
+
+{{ end -}}
+{{ end -}}

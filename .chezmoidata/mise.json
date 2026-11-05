@@ -1,0 +1,427 @@
+{
+  "mise": {
+    "tools": [
+      {
+        "package": "agy",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "version": "1.4.12"
+      },
+      {
+        "package": "azure",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "version": "2.92.0"
+      },
+      {
+        "package": "npm:@bitwarden/cli",
+        "platforms": [
+          "linux",
+          "windows",
+          "android"
+        ],
+        "version": "2026.10.1"
+      },
+      {
+        "package": "bun",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "version": "1.4.4"
+      },
+      {
+        "package": "chezmoi",
+        "platforms": [
+          "linux",
+          "windows",
+          "android"
+        ],
+        "version": "2.74.0"
+      },
+      {
+        "package": "cloudflared",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "version": "2026.10.7"
+      },
+      {
+        "package": "ffmpeg",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "version": "9.0.2"
+      },
+      {
+        "package": "gcloud",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "version": "592.0.0"
+      },
+      {
+        "package": "gh",
+        "platforms": [
+          "linux",
+          "windows",
+          "android"
+        ],
+        "android": {
+          "template": "mise/termux-gh",
+          "checksums": {
+            "386": "5bc1043fe1b5337cf148871afba20f8faf2b8fa444f2884bfc5ba397295d4bd4",
+            "arm64": "b94190b38c5c6aa4174d0ed252e9096b2b2f243c16491413b83cf3f769c71842",
+            "arm": "87c3230164d87455f3f072acd9deec79fa730a9519684af1a8196bc2eb4d0aea",
+            "amd64": "3b5739452119c2fefcbf00735a3be049786bfb1ad3ff11d385b0c8e1f42d26fa"
+          }
+        },
+        "version": "2.103.3"
+      },
+      {
+        "package": "kubectl",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "version": "1.37.2"
+      },
+      {
+        "package": "mysql-client",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "version": "9.7.4"
+      },
+      {
+        "package": "node",
+        "platforms": [
+          "linux",
+          "windows",
+          "android"
+        ],
+        "version": "26.13.0",
+        "android": {
+          "template": "mise/termux-node",
+          "checksums": {
+            "arm64": "1169a96a37be93d7aa7dcd773334ea4c9c0d0bea9fd100925d29ed7e7cc81320",
+            "arm": "078060e04e5c565b74d6e48a6867c54358e33e52d9366b6ac7a079c46ac57062",
+            "amd64": "0b02337f554ea09d3119354da71d1ba21701120c4bf6e522b3785c2829381e25",
+            "386": "ec8d912a389fc21743a69101334c0d5f92f53d03eea3451eb318f97f94c60bed"
+          },
+          "npm": {
+            "version": "12.2.2",
+            "checksum": "edb4a1dc3a6967f1e65872c7cb7588bd3672152beab6ae633ba848931371e9e1"
+          }
+        }
+      },
+      {
+        "package": "opencode",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "version": "2.2.5",
+        "options": "allow_builds = [\"@opencode/cli\"], allow_low_downloads = true"
+      },
+      {
+        "package": "uv",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "version": "0.13.7"
+      },
+      {
+        "package": "yarn",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "version": "4.18.1"
+      },
+      {
+        "package": "github:iOfficeAI/OfficeCLI",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "version": "1.0.160"
+      },
+      {
+        "package": "npm:@openai/codex",
+        "platforms": [
+          "linux",
+          "windows",
+          "android"
+        ],
+        "version": "0.166.0",
+        "android": {
+          "template": "mise/termux-codex",
+          "checksums": {
+            "arm64": "2a8dd2c3751311fb0b98056679291c6f0f5c44fd17151804a9354e29cbf2c1e1",
+            "amd64": "692632342a60832ce2364bd23d222cc5cd3eb36f6c530d5b2f9559a9042b1566"
+          }
+        }
+      },
+      {
+        "package": "npm:@openchamber/web",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "version": "2.6.1"
+      },
+      {
+        "package": "npm:opensrc",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "version": "0.7.3"
+      },
+      {
+        "package": "npm:playwriter",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "version": "0.9.0"
+      }
+    ],
+    "tasks": [
+      {
+        "name": "cloudflared:restart",
+        "description": "Switch the running cloudflared service to the global Mise version and restart",
+        "script": "cloudflared/restart.mjs",
+        "args": "",
+        "platforms": [
+          "linux"
+        ],
+        "androidCleanEnv": false
+      },
+      {
+        "name": "cloudflared:setup",
+        "description": "Integrate an existing cloudflared service with global Mise using a systemd drop-in",
+        "script": "cloudflared/setup.mjs",
+        "args": "",
+        "platforms": [
+          "linux"
+        ],
+        "androidCleanEnv": false
+      },
+      {
+        "name": "tools:cleanup",
+        "description": "Preview or safely remove unused older mise tool versions (Linux and Windows)",
+        "script": "tools-cleanup/setup.mjs",
+        "args": "",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "androidCleanEnv": false
+      },
+      {
+        "name": "secrets:setup",
+        "description": "Sync Bitwarden secrets into persistent user environment or private files",
+        "script": "secrets/setup.mjs",
+        "args": "",
+        "platforms": [
+          "linux",
+          "windows",
+          "android"
+        ],
+        "androidCleanEnv": true
+      },
+      {
+        "name": "github:setup",
+        "description": "Configure GitHub HTTPS credentials through the stable Mise gh shim",
+        "script": "github/setup.mjs",
+        "args": "",
+        "platforms": [
+          "linux",
+          "windows",
+          "android"
+        ],
+        "androidCleanEnv": false
+      },
+      {
+        "name": "shell:setup",
+        "description": "Install Linux/macOS/Termux Bash/Fish or Windows PowerShell/Git Bash hooks; CMD is opt-in",
+        "script": "shell/setup.mjs",
+        "args": "",
+        "platforms": [
+          "linux",
+          "windows",
+          "android"
+        ],
+        "androidCleanEnv": true
+      },
+      {
+        "name": "skills:install",
+        "description": "Interactively link optional skills globally or into a project",
+        "script": "skills/setup.mjs",
+        "args": " install",
+        "platforms": [
+          "linux",
+          "windows",
+          "android"
+        ],
+        "androidCleanEnv": false
+      },
+      {
+        "name": "skills:list",
+        "description": "List available optional skills",
+        "script": "skills/setup.mjs",
+        "args": " list",
+        "platforms": [
+          "linux",
+          "windows",
+          "android"
+        ],
+        "androidCleanEnv": false
+      },
+      {
+        "name": "provider:local",
+        "description": "Opt into local Rawroute for Codex and OpenCode on this machine",
+        "script": "rawroute/setup.mjs",
+        "args": " local",
+        "platforms": [
+          "linux",
+          "windows",
+          "android"
+        ],
+        "androidCleanEnv": false
+      },
+      {
+        "name": "provider:default",
+        "description": "Restore the default Rawroute endpoint for Codex and OpenCode",
+        "script": "rawroute/setup.mjs",
+        "args": " default",
+        "platforms": [
+          "linux",
+          "windows",
+          "android"
+        ],
+        "androidCleanEnv": false
+      },
+      {
+        "name": "rawroute:default",
+        "description": "Use the public Rawroute provider endpoint in OpenCode",
+        "script": "rawroute/setup.mjs",
+        "args": " default --rawroute",
+        "platforms": [
+          "linux",
+          "windows",
+          "android"
+        ],
+        "androidCleanEnv": false
+      },
+      {
+        "name": "rawroute:local",
+        "description": "Use the local Rawroute provider endpoint in OpenCode",
+        "script": "rawroute/setup.mjs",
+        "args": " local --rawroute",
+        "platforms": [
+          "linux",
+          "windows",
+          "android"
+        ],
+        "androidCleanEnv": false
+      },
+      {
+        "name": "chrome:setup",
+        "description": "Reuse an installed Chrome, Edge, Chromium, or Brave browser; otherwise install Chrome on Debian-family Linux amd64",
+        "script": "chrome/setup.mjs",
+        "args": "",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "androidCleanEnv": false
+      },
+      {
+        "name": "docker:setup",
+        "description": "Set up native Docker on a host, or native clients with a guest SSH context",
+        "script": "docker-setup/setup.mjs",
+        "args": "",
+        "platforms": [
+          "linux"
+        ],
+        "androidCleanEnv": false
+      },
+      {
+        "name": "docker:forward:setup",
+        "description": "Mirror remote Docker published TCP ports to guest localhost with SSH reuse and 2-minute polling",
+        "script": "docker-forward/setup.mjs",
+        "args": "",
+        "platforms": [
+          "linux"
+        ],
+        "androidCleanEnv": false
+      },
+      {
+        "name": "azure-mnt-cache:setup",
+        "description": "Move host Docker storage to /mnt and install shell cache paths; SSH guests keep using their host",
+        "script": "azure-mnt-cache/setup.mjs",
+        "args": "",
+        "platforms": [
+          "linux"
+        ],
+        "androidCleanEnv": false
+      },
+      {
+        "name": "tailscale:setup",
+        "description": "Connect Tailscale to qilin-elver.ts.net, preserving other saved accounts",
+        "script": "tailscale/setup.mjs",
+        "args": "",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "androidCleanEnv": false
+      },
+      {
+        "name": "codex:setup",
+        "description": "Start the Codex app-server daemon, or restart it if already running",
+        "script": "services/setup.mjs",
+        "args": " codex",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "androidCleanEnv": false
+      },
+      {
+        "name": "openchamber:setup",
+        "description": "Replace OpenChamber on port 3000 with its native user startup service",
+        "script": "services/setup.mjs",
+        "args": " openchamber",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "androidCleanEnv": false
+      },
+      {
+        "name": "termux:node:setup",
+        "description": "Check managed native Node/npm, or explicitly migrate pkg installations while preserving Codex shebangs",
+        "script": "mise/termux-node-setup.sh",
+        "args": "",
+        "platforms": [
+          "android"
+        ],
+        "androidCleanEnv": false,
+        "runner": "sh"
+      }
+    ]
+  }
+}

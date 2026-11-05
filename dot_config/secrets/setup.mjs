@@ -147,7 +147,7 @@ function extract(item, field) {
 }
 
 function main() {
-  if (!windows && process.platform !== 'linux') throw new Error('This helper currently supports Windows and Linux.');
+  if (!['win32', 'linux', 'android'].includes(process.platform)) throw new Error('This helper currently supports Windows, Linux and Android/Termux.');
   const manifest = JSON.parse(fs.readFileSync(path.join(directory, 'manifest.json'), 'utf8'));
   validate(manifest);
   if (process.argv.includes('--check')) {
@@ -155,6 +155,14 @@ function main() {
     return;
   }
   if (!process.stdin.isTTY) throw new Error('Run interactively: mise run secrets:setup (a real terminal is required).');
+
+  // Fail before unlocking the vault if Android's GitHub tools are missing.
+  if (process.platform === 'android' && manifest.secrets.some(entry => entry.output === 'gh-auth')) {
+    for (const command of ['git', 'gh']) {
+      const result = spawnSync(command, ['--version'], { encoding: 'utf8', timeout: 30_000 });
+      if (result.error || result.status !== 0) throw new Error('GitHub authentication requires Git and gh. Run pkg install git, mise install and mise reshim.');
+    }
+  }
 
   let lockRequired = false;
   try {

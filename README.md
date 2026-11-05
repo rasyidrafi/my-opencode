@@ -1,5 +1,110 @@
 # Dotfiles
 
+## Android / Termux tools
+
+On Android (including Termux), `chezmoi apply` enables chezmoi, Bitwarden CLI,
+GitHub CLI (`http:gh`), Node.js with npm (`http:node`), and Codex (`http:codex`,
+ARM64/x86_64 only). Node, GitHub CLI, and Codex
+use checksum-pinned native packages from the official Termux repository,
+extracted into mise. npm is checksum-pinned alongside Node in the same mise
+installation. Linux/Windows keep their default Node backend.
+
+Install native prerequisites first:
+
+```sh
+pkg install curl dpkg coreutils libc++ openssl c-ares libicu libsqlite zlib libffi
+mise install http:node
+mise install
+```
+
+The Node installer checks prerequisites and reports missing packages without
+installing them automatically. Its wrapper removes inherited `LD_LIBRARY_PATH`
+so Codex's private libc++ does not interfere with the native Termux runtime.
+Other tools and the gcloud plugin override remain commented out on Android.
+All platforms use the official `npm:@bitwarden/cli` package.
+
+Codex uses the Termux native build at the desktop catalog version. A normal
+`npm:@openai/codex` install on Android skips its Linux-only binary dependency.
+The old `@mmmbuto/codex-cli-termux` npm package is end-of-life; a third-party npm
+wrapper is not needed. Install with `mise install http:codex`, verify
+`mise which codex` and `codex --version`. To retain the old package while switching
+its Termux command entry points, close old Codex sessions and run:
+
+```sh
+sh ~/.config/mise/termux-codex-switch.sh
+hash -r
+codex --version
+codex
+```
+
+The switch stops the old Termux daemon and starts/verifies the mise-managed
+daemon, so run it only after closing old Codex sessions. It preserves the npm package and backs up its original command symlinks
+in `~/.local/state/mise-termux-codex-switch`. It redirects `codex` and
+`codex-exec` to the home mise configuration; cleanup can be done later.
+Existing Codex configuration and sessions remain in `~/.codex`.
+
+For an existing `pkg` Node/npm installation, use the explicit migration task:
+
+```sh
+mise run termux:node:setup -- --check
+mise run termux:node:setup -- --remove-native
+```
+
+Migration verifies mise Node/npm/npx and the installed Termux Codex launcher,
+marks runtime libraries as manually installed, backs up the old runtime files,
+and removes only the native `npm` and `nodejs` packages. It installs compatibility
+launchers at the original Termux `bin/node`, `bin/npm`, and `bin/npx` paths so
+hardcoded shebangs (including the Termux Codex launcher) continue working through
+mise. The bridge selects the home configuration's native `http:node`; no Node
+binary is kept in the Termux package prefix. On failure the task restores its
+backup files and reports how to repair native package registration. It never runs
+automatically. Future `pkg install nodejs`/`npm` overwrites these compatibility
+launchers; rerun migration after deliberately switching back to native packages.
+
+`mise run secrets:setup --check` validates the secrets manifest without vault
+access. Run `mise run secrets:setup` interactively to log in and sync secrets.
+The manifest also configures GitHub authentication, which requires Git and
+GitHub CLI (`gh`). Mise installs `gh`; install Git with `pkg install git` before syncing.
+
+## Multi-platform tools and tasks
+
+Edit `.chezmoidata/mise.json` to update tool versions, default installation
+platforms, task scripts, and task platform lists. Platform names are `linux`,
+`windows`, and `android`. A tool's `platforms` list controls default installation,
+not a claim that other platforms are unsupported. Tools excluded from Android
+remain commented out for manual opt-in after checking compatibility.
+
+Android backend overrides use the tool's `android` metadata and a template under
+`.chezmoitemplates/mise/`. GitHub CLI, Node.js, and Codex use native Termux packages with
+checksums per architecture; other platforms retain the default backend. Node
+Android metadata also pins npm. After changing only the npm version/checksum,
+run `mise install --force http:node` to rebuild the installation.
+
+Tasks are rendered only on their declared platforms: Linux has 19, Windows 14,
+and Android 10. Android includes secrets, GitHub, shell, skills, and provider
+configuration tasks, plus the explicit native Node migration task. Cloudflared integration, Docker setup/forwarding, and Azure
+mount-cache setup are Linux-only. Cleanup, browser setup, Tailscale setup, and
+Codex/OpenChamber startup are available on Linux/Windows only. Android/Termux
+Codex runs directly; its build disables automatic daemon startup. Installing a CLI
+manually on Android does not enable unsupported desktop startup tasks.
+
+Desktop task scripts also check platform support before invoking external tools,
+using `dot_config/my-opencode/platform.mjs`. Keep these guards aligned with the
+catalog when adding support. Linux-specific prerequisites such as systemd and
+Debian/Ubuntu remain checked by each feature. Termux detection checks the OS,
+`TERMUX_VERSION`, and `PREFIX` in both template and runtime code.
+
+On Linux, `cloudflared:setup`, `cloudflared:restart`, `docker:forward:setup`,
+and `tools:cleanup` require system Python 3 at `/usr/bin/python3`. They check
+the interpreter before making changes and report installation instructions
+if it is missing or cannot run. On Debian/Ubuntu, install it with
+`sudo apt install python3`. Windows cleanup uses PowerShell and does not
+require Python.
+
+Run `node --test tests/mise-config.test.mjs tests/platform.test.mjs` to verify
+the platform matrix. These tests render configuration without installing tools.
+Apply the repository with `chezmoi apply` to activate changes on your machine.
+
 ## GitHub HTTPS credentials
 
 After `chezmoi apply` and `mise install`, run `mise run github:setup` once
@@ -224,7 +329,7 @@ python3 -B -m unittest discover -s dot_local/share/my-opencode/optional-skills/t
 ```
 
 Run `mise run shell:setup` after `chezmoi apply` and `mise install` to install
-portable Bash and optional Fish startup integration on Linux/macOS, or PowerShell
+portable Bash and optional Fish startup integration on Linux/macOS/Android (Termux), or PowerShell
 and Git Bash integration on Windows. This is not a
 bare-OS bootstrap: it assumes the repository's generated files and Mise are
 available. Zsh and service/OS-wide environment setup are out of scope. No Codex,
@@ -235,6 +340,18 @@ The check does not source startup files or secret values; it reports validators,
 Fish config root, Bash login entrypoint, cache state, planned paths, and blockers.
 Fish syntax/runtime checks run only when Fish is installed. Startup fixtures cover
 bounded generic patterns; they do not certify any CachyOS-shipped defaults.
+
+On Android/Termux, setup uses native Node.js, Bash and sh from the Termux PATH.
+It preserves `$PREFIX/bin`, installs user startup hooks under `$HOME`, and
+activates the Termux-installed Mise from PATH. Optional Fish uses the same user
+`conf.d` hook. Native Node.js/npm are managed by mise (`http:node`); no system-wide
+Termux profiles are modified. The task clears `LD_LIBRARY_PATH` for its Node
+process to avoid inherited incompatible library paths.
+The shared Bash/POSIX and Fish PATH finalizers discard missing mise Node/Codex
+version directories and missing legacy Termux Codex npm directories. Existing
+mise activation paths and unrelated custom entries retain their order. No tool
+version paths need to be hardcoded in startup profiles; rerun `shell:setup` after
+applying template changes.
 
 On Windows, setup detects installed Windows PowerShell 5.1 and PowerShell 7 and
 asks each executable for its current-user, all-hosts profile, including redirected
@@ -508,6 +625,8 @@ updated loaders. Test with
 
 Run `mise run codex:setup` after applying chezmoi and installing tools with Mise
 to start the native Codex app-server daemon, or restart it if already running.
+This supports Linux and Windows. The task is disabled on Android/Termux because
+its native Codex build does not support this packaged daemon setup.
 This briefly interrupts an existing daemon. Check its status and versions with
 `codex app-server daemon version`.
 Both startup tasks support Windows, including npm `.ps1` and `.cmd` launchers.

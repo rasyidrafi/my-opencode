@@ -1,3 +1,4 @@
+import { requireTaskPlatform } from '../my-opencode/platform.mjs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,7 +33,8 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'OpenChamber startup task was registered but could not start.' }
 `;
 
-export function setup(app, { platform = process.platform, execute = spawnSync } = {}) {
+export function setup(app, { platform = process.platform, env = process.env, execute = spawnSync } = {}) {
+  requireTaskPlatform(app + ':setup', ['linux', 'windows'], platform, env);
   const commands = app === 'codex' ? [['app-server', 'daemon', 'restart']]
     : app === 'openchamber' ? [['startup', 'disable'], ['stop', '--port', '3000'], ['startup', 'enable', '--port', '3000']]
       : null;

@@ -3,9 +3,15 @@
 Tools live in mise, configuration lives in chezmoi, secret values live in Bitwarden.
 This directory contains only the helper and a manifest of references, never values.
 
-## Setup (Windows and Linux)
+## Setup (Windows, Linux and Android/Termux)
 
 1. Apply this repository with chezmoi and run `mise install`.
+   On Android/Termux, install the native library prerequisites documented in the
+   repository README, then run `mise install http:node` before `mise install`.
+   Native Node.js and npm are managed together by mise.
+   Mise installs the official `npm:@bitwarden/cli` package instead of the desktop
+   Bitwarden binary, plus GitHub CLI through `http:gh`. Install native Git
+   with `pkg install git` for the manifest's GitHub authentication. Other tools remain opt-in.
 2. Run `mise run secrets:setup` in an interactive terminal.
 3. Enter your Bitwarden master password (and login/2FA on a new machine).
 4. GitHub CLI and Git HTTPS authentication are ready immediately: run `gh auth status` in the same terminal.
@@ -28,7 +34,7 @@ Windows user environment updates require no administrator access and preserve
 Unicode values. If restricting the generated directory is denied, setup asks
 for administrator approval through UAC for that permission repair only, keeping
 the original user's SID. Cancelling UAC fails setup without printing secrets.
-Linux writes mode-0600
+Linux and Android/Termux write mode-0600
 shell files in a mode-0700 directory (`env.sh` for Bash/Zsh and `env.fish` for
 Fish, both with the same values) and adds an idempotent loader to bash/zsh
 profiles, preserving existing content. Fish loads `env.fish` through the

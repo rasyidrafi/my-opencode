@@ -57,7 +57,7 @@ test('rejects macOS before inspecting launchers or the host', async () => {
       platform,
       isExecutable: () => assert.fail('launcher discovery should not run'),
       readOsRelease: () => assert.fail('os-release should not be read'),
-    }), /Linux and Windows only/);
+    }), /not supported on darwin/);
   }
 });
 

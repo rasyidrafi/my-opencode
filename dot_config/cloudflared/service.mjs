@@ -1,10 +1,16 @@
+import { requireSystemPython } from '../my-opencode/prerequisites.mjs';
+import { requireTaskPlatform } from '../my-opencode/platform.mjs';
 import { spawnSync } from 'node:child_process';
 import { readFileSync, realpathSync } from 'node:fs';
 
 export function manage(operation, { platform = process.platform, uid = process.getuid?.(), args = process.argv.slice(2), run = spawnSync } = {}) {
-  if (platform === 'win32') throw new Error(`cloudflared:${operation} is not supported on Windows yet. Requires Linux/systemd.`);
+  requireTaskPlatform(`cloudflared:${operation}`, ['linux'], platform);
   if (platform !== 'linux') throw new Error('cloudflared integration requires Linux/systemd.');
   if (!['setup', 'restart'].includes(operation) || args.length) throw new Error('Usage: mise run cloudflared:setup or cloudflared:restart (no arguments)');
+  requireSystemPython(`cloudflared:${operation}`, (command, argv, options) => {
+    const result = run(command, argv, options);
+    if (result.error || result.status !== 0) throw new Error('Python probe failed');
+  });
   const listing = run('mise', ['ls', '--global', '--json'], { encoding: 'utf8' });
   if (listing.error || listing.status !== 0) throw new Error('Cannot resolve global Mise configuration.');
   const rows = JSON.parse(listing.stdout).cloudflared;

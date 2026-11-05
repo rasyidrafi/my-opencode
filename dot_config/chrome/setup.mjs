@@ -1,3 +1,4 @@
+import { requireTaskPlatform } from '../my-opencode/platform.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -226,6 +227,7 @@ export async function setup(dependencies = {}) {
     log = message => console.log(message),
   } = dependencies;
 
+  requireTaskPlatform('chrome:setup', ['linux', 'windows'], platform, env);
   if (platform === 'win32') return setupWindows({ env, spawn, log });
   if (platform !== 'linux') throw new Error('chrome:setup supports Linux and Windows only.');
   const candidates = discoverBrowserCandidates({ env, executable: isExecutable, includeFallbacks });

@@ -28,10 +28,10 @@ test('PowerShell 5.1 native stderr reaches access-denied recovery instead of ter
 
 test('Linux preserves native startup commands and stops on a failed command', () => {
   const calls = [];
-  setup('codex', { platform: 'linux', execute: (command, args) => { calls.push([command, args]); return { status: 0 }; } });
+  setup('codex', { platform: 'linux', env: {}, execute: (command, args) => { calls.push([command, args]); return { status: 0 }; } });
   assert.deepEqual(calls, [['codex', ['app-server', 'daemon', 'restart']]]);
   let count = 0;
-  assert.throws(() => setup('openchamber', { platform: 'linux', execute: () => { count++; return { status: 1 }; } }), /failed/);
+  assert.throws(() => setup('openchamber', { platform: 'linux', env: {}, execute: () => { count++; return { status: 1 }; } }), /failed/);
   assert.equal(count, 1);
 });
 

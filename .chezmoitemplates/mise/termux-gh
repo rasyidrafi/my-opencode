@@ -1,0 +1,5 @@
+{{- $termuxArch := get (dict "arm64" "aarch64" "arm" "arm" "amd64" "x86_64" "386" "i686") .arch -}}
+{{- $checksum := get .tool.checksums .arch -}}
+{{- if or (eq $termuxArch "") (eq $checksum "") -}}{{- fail "Unsupported Termux architecture for GitHub CLI" -}}{{- end -}}
+# Native Termux build: Linux binaries cannot use Android DNS.
+"http:gh" = { version = "{{ .version }}", url = "https://packages.termux.dev/apt/termux-main/pool/main/g/gh/gh_{{ .version }}_{{ $termuxArch }}.deb", checksum = "sha256:{{ $checksum }}", bin = "gh.deb", bin_path = "bin", postinstall = 'sh "$HOME/.config/mise/install-termux-gh.sh"' }

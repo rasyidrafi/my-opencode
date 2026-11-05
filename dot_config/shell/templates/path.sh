@@ -29,6 +29,14 @@ if [ -n "$_my_shell_managed" ]; then
                 *:*) _my_shell_entry=${_my_shell_rest%%:*}; _my_shell_rest=${_my_shell_rest#*:}; _my_shell_more=yes ;;
                 *) _my_shell_entry=$_my_shell_rest; _my_shell_rest=; _my_shell_more=no ;;
             esac
+            # Version directories can survive in an inherited PATH after an
+            # uninstall. Keep active mise paths and unrelated user entries.
+            case $_my_shell_entry in
+                "$_my_shell_data"/installs/node/*/bin|"$_my_shell_data"/installs/http-node/*/bin|"$_my_shell_data"/installs/http-codex/*/bin|"$_my_shell_data"/installs/npm-openai-codex/*/bin)
+                    [ -d "$_my_shell_entry" ] || continue ;;
+                */lib/node_modules/@mmmbuto/codex-cli-termux/bin)
+                    [ -d "$_my_shell_entry" ] || continue ;;
+            esac
             _my_shell_is_managed=no
             if [ -n "$_my_shell_bin" ] && [ "$_my_shell_entry" = "$_my_shell_bin" ]; then _my_shell_is_managed=yes; fi
             if [ -n "$_my_shell_local" ] && [ "$_my_shell_entry" = "$_my_shell_local" ]; then _my_shell_is_managed=yes; fi

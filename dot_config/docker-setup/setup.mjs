@@ -1,3 +1,4 @@
+import { requireTaskPlatform } from '../my-opencode/platform.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -176,7 +177,7 @@ export function migrateMise(enabled, dryRun, { root = home, dataRoot } = {}) {
 }
 
 export function setup(argv = process.argv.slice(2)) {
-  if (process.platform === 'win32') throw new Error('docker:setup is not supported on Windows yet. Requires Linux.');
+  requireTaskPlatform('docker:setup', ['linux']);
   if (process.platform !== 'linux') throw new Error('docker:setup supports Linux Debian/Ubuntu only.');
   const args = options(argv);
   const container = run('systemd-detect-virt', ['--container'], { capture: true, allowFailure: true });

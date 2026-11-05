@@ -21,6 +21,15 @@ if test (count $_my_shell_managed) -gt 0
     set -l _my_shell_after
     set -l _my_shell_found 0
     for _my_shell_entry in $PATH
+        if string match -q -- "$_my_shell_data/installs/node/*/bin" "$_my_shell_entry"; or \
+                string match -q -- "$_my_shell_data/installs/http-node/*/bin" "$_my_shell_entry"; or \
+                string match -q -- "$_my_shell_data/installs/http-codex/*/bin" "$_my_shell_entry"; or \
+                string match -q -- "$_my_shell_data/installs/npm-openai-codex/*/bin" "$_my_shell_entry"; or \
+                string match -q -- '*/lib/node_modules/@mmmbuto/codex-cli-termux/bin' "$_my_shell_entry"
+            if not test -d "$_my_shell_entry"
+                continue
+            end
+        end
         if contains -- "$_my_shell_entry" $_my_shell_managed
             if test $_my_shell_found -eq 0
                 set _my_shell_found 1

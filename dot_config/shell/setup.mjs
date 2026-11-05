@@ -396,7 +396,7 @@ function previousFishLoaderContent() {
 export function setup({ home = os.homedir(), platform = process.platform, env = process.env, dryRun = false, replaceLegacy = false, cmd = false } = {}) {
   if (platform === 'win32') return setupWindows({ home, env, dryRun, cmd });
   if (cmd) throw new Error('--cmd is supported only on Windows.');
-  if (!['linux', 'darwin'].includes(platform)) throw new Error('shell:setup supports Linux and macOS Bash/Fish environments only.');
+  if (!['linux', 'darwin', 'android'].includes(platform)) throw new Error('shell:setup supports Linux, macOS and Android/Termux Bash/Fish environments only.');
   home = path.resolve(home);
   const fishRoot = configRoot(home, env);
   const fishLoader = path.join(fishRoot, 'fish', 'conf.d', fishLoaderName);
@@ -564,7 +564,7 @@ function checkReport({ home, env, replaceLegacy, cmd }) {
   const cacheLoader = ['.profile', '.bashrc', '.bash_profile', '.bash_login']
     .map(name => read(path.join(home, name))).some(text => activeCacheLoader(text, home));
   console.log('Read-only structural check (shell configs and secret values are not sourced or printed).');
-  console.log('Supported: Bash + POSIX .profile on Linux/macOS; optional Fish; Zsh is not managed.');
+  console.log('Supported: Bash + POSIX .profile on Linux/macOS/Android (Termux); optional Fish; Zsh is not managed.');
   console.log(`Validators: bash and sh syntax checks; Fish ${hasFish ? 'syntax check available' : 'unavailable (Fish syntax check skipped)'}.`);
   console.log(`Fish config root: ${root}`);
   console.log(`Bash login entrypoint: ${selectedLogin(home)}.`);

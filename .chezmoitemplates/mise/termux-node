@@ -1,0 +1,5 @@
+{{- $arch := get (dict "arm64" "aarch64" "arm" "arm" "amd64" "x86_64" "386" "i686") .arch -}}
+{{- $checksum := get .tool.checksums .arch -}}
+{{- if or (eq $arch "") (eq $checksum "") -}}{{- fail "Unsupported Termux architecture for Node.js" -}}{{- end -}}
+# Native Node.js and npm live together in this mise installation.
+"http:node" = { version = "{{ .version }}", url = "https://packages-cf.termux.dev/apt/termux-main/pool/main/n/nodejs/nodejs_{{ .version }}_{{ $arch }}.deb", checksum = "sha256:{{ $checksum }}", bin = "node.deb", bin_path = "bin", postinstall = 'sh "$HOME/.config/mise/install-termux-node.sh" "{{ .tool.npm.version }}" "{{ .tool.npm.checksum }}"' }

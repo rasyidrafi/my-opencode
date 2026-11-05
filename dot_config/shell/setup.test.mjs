@@ -204,7 +204,7 @@ test('custom BASH_ENV is preserved and sourced by the wrapper', () => fixture((h
 test('legacy BASH_ENV hook runs once per Bash process, including automatic and explicit sources', () => fixture((home, write) => {
   write('custom.sh', 'printf x >> "$HOME/legacy-hook-count"\n');
   setup({ home, env: { BASH_ENV: path.join(home, 'custom.sh') } });
-  const r = spawnSync('bash', ['--norc', '-c', '. "$HOME/.bash_env"; . "$HOME/.bash_env"; bash --norc -c :'], {
+  const r = spawnSync('bash', ['--norc', '-c', '. "$HOME/.bash_env"; . "$HOME/.bash_env"; "$BASH" --norc -c :'], {
     env: { HOME: home, PATH: '/usr/bin:/bin', BASH_ENV: path.join(home, '.bash_env') }, encoding: 'utf8',
   });
   assert.equal(r.status, 0, r.stderr);
@@ -493,4 +493,63 @@ test('compatibility profile with a custom condition is still refused before writ
   assert.throws(() => setup({ home, env: {} }), /Unsupported inline or conditional .bashrc source/);
   assert.equal(fs.readFileSync(path.join(home, '.profile'), 'utf8'), profile);
   assert.equal(fs.existsSync(path.join(home, '.bashrc')), false);
+}));
+
+test('Termux preserves native PATH, loads hooks and secrets in Bash, and is idempotent', () => fixture((home, write) => {
+  const prefix = path.join(home, 'termux', 'usr');
+  fs.mkdirSync(path.join(prefix, 'bin'), { recursive: true });
+  fs.mkdirSync(path.join(home, '.local/share/mise/shims'), { recursive: true });
+  write('.bashrc', '# Termux customization\nexport TERMUX_CUSTOM=kept\n');
+  write('.config/shell/local.sh', 'export TERMUX_LOCAL=loaded\n');
+  write('.config/secrets/manifest.json', JSON.stringify({ secrets: [{ name: 'TERMUX_TEST_SECRET', output: 'env' }] }));
+  write('.config/secrets/generated/env.sh', renderEnvironment({ TERMUX_TEST_SECRET: 'fixture-value' }));
+  fs.symlinkSync(process.platform === 'android' ? path.join(process.env.PREFIX, 'bin', 'bash') : '/bin/bash', path.join(prefix, 'bin', 'bash'));
+  const env = { PREFIX: prefix, TERMUX_VERSION: '0.118.3' };
+  const preview = setup({ home, platform: 'android', env, dryRun: true });
+  assert.ok(preview.changed.length);
+  assert.ok(!fs.existsSync(path.join(home, '.profile')));
+  const result = setup({ home, platform: 'android', env });
+  assert.ok(result.backup);
+  assert.ok(result.changed.every(target => target.startsWith(`${home}/`) && !target.startsWith(`${prefix}/`)));
+  assert.deepEqual(setup({ home, platform: 'android', env }).changed, []);
+  const bash = spawnSync(path.join(prefix, 'bin', 'bash'), ['--noprofile', '--norc', '-c', '. "$HOME/.profile"; . "$HOME/.bashrc"; printf "%s|%s|%s|%s" "$PATH" "$TERMUX_CUSTOM" "$TERMUX_LOCAL" "$TERMUX_TEST_SECRET"'], {
+    env: { HOME: home, PREFIX: prefix, PATH: `${prefix}/bin` }, encoding: 'utf8',
+  });
+  assert.equal(bash.status, 0, bash.stderr);
+  assert.equal(bash.stdout, `${home}/.local/share/mise/shims:${prefix}/bin|kept|loaded|fixture-value`);
+  assert.ok(!fs.existsSync(path.join(prefix, 'etc/profile')));
+}));
+
+test('PATH finalizer removes missing Node/Codex installs and preserves active runtimes and custom paths', () => fixture((home) => {
+  const data = path.join(home, 'custom-mise');
+  const activeNode = path.join(data, 'installs/http-node/26.13.0/bin');
+  const activeCodex = path.join(data, 'installs/http-codex/0.166.0/bin');
+  const stale = [
+    path.join(data, 'installs/node/old/bin'),
+    path.join(data, 'installs/http-node/old/bin'),
+    path.join(data, 'installs/http-codex/old/bin'),
+    path.join(data, 'installs/npm-openai-codex/old/bin'),
+    path.join(home, 'termux/usr/lib/node_modules/@mmmbuto/codex-cli-termux/bin'),
+  ];
+  for (const directory of [path.join(data, 'shims'), activeNode, activeCodex]) fs.mkdirSync(directory, { recursive: true });
+  setup({ home, env: {} });
+  const custom = path.join(home, 'custom/node/bin');
+  const inherited = [...stale, activeNode, activeCodex, custom, path.join(data, 'shims'), '/usr/bin'];
+  const command = '. "$HOME/.config/shell/path.sh"; . "$HOME/.config/shell/path.sh"; printf "%s" "$PATH"';
+  const result = spawnSync('sh', ['-c', command], { env: { HOME: home, MISE_DATA_DIR: data, PATH: inherited.join(':') }, encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(result.stdout.split(':'), [activeNode, activeCodex, custom, path.join(data, 'shims'), '/usr/bin']);
+}));
+
+test('Fish PATH finalizer removes stale runtimes without replacing mise activation paths', { skip: !fishAvailable }, () => fixture((home) => {
+  const data = path.join(home, '.local/share/mise');
+  const active = path.join(data, 'installs/http-node/26.13.0/bin');
+  const stale = path.join(data, 'installs/http-codex/old/bin');
+  for (const directory of [path.join(data, 'shims'), active]) fs.mkdirSync(directory, { recursive: true });
+  setup({ home, env: {} });
+  const result = spawnSync('fish', ['--no-config', '-c', 'source "$HOME/.config/shell/path.fish"; string join : $PATH'], {
+    env: { HOME: home, PATH: [stale, active, path.join(data, 'shims'), '/usr/bin'].join(':') }, encoding: 'utf8',
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), [active, path.join(data, 'shims'), '/usr/bin'].join(':'));
 }));

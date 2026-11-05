@@ -1,3 +1,4 @@
+import { requireTaskPlatform } from '../my-opencode/platform.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -67,7 +68,7 @@ export function install(home) {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
-    if (process.platform === 'win32') throw new Error('azure-mnt-cache:setup is not supported on Windows yet. Requires Linux.');
+    requireTaskPlatform('azure-mnt-cache:setup', ['linux']);
     if (process.platform !== 'linux') throw new Error('This task supports Linux only.');
     const { dryRun } = options(process.argv.slice(2));
     if (spawnSync('docker', ['--version'], { encoding: 'utf8' }).status === 0) setupDocker(os.homedir(), { dryRun });
