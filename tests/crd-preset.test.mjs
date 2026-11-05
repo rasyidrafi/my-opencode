@@ -7,7 +7,7 @@ import { test } from 'node:test';
 
 const source = new URL('../dot_config/chrome-remote-desktop/', import.meta.url);
 function titlebuttonFixtures(config) {
-  for (const file of ['setup-titlebuttons.py', 'pwa-titlebuttons.css', 'setup-terminal-font.py']) {
+  for (const file of ['setup-titlebuttons.py', 'pwa-titlebuttons.css', 'setup-terminal-font.py', 'setup-whisker-shortcut.py']) {
     fs.copyFileSync(new URL(file, source), path.join(config, file));
   }
 }
@@ -66,6 +66,57 @@ test('titlebutton setup preserves user CSS, backs up once, repairs and is idempo
   const malformed = fs.readFileSync(css, 'utf8');
   assert.notEqual(run().status, 0);
   assert.equal(fs.readFileSync(css, 'utf8'), malformed);
+});
+
+test('Whisker shortcut setup is idempotent and repairs the configured key', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'crd-whisker-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const bin = path.join(root, 'bin');
+  fs.mkdirSync(bin);
+  const store = path.join(root, 'shortcut');
+  const query = path.join(bin, 'xfconf-query');
+  fs.writeFileSync(query, `#!/bin/sh
+if [ -f "$HOME/shortcut" ] && [ "$#" -eq 4 ]; then cat "$HOME/shortcut"; exit 0; fi
+value=''
+previous=''
+for arg do
+  [ "$previous" = -s ] && value=$arg
+  previous=$arg
+done
+[ -n "$value" ] || exit 1
+printf '%s' "$value" > "$HOME/shortcut"
+`, { mode: 0o755 });
+  const run = () => spawnSync('python3', [new URL('setup-whisker-shortcut.py', source).pathname], {
+    env: { ...process.env, HOME: root, PATH: `${bin}:${process.env.PATH}` }, encoding: 'utf8',
+  });
+  assert.equal(run().status, 0);
+  assert.equal(fs.readFileSync(store, 'utf8'), 'xfce4-popup-whiskermenu');
+  assert.match(run().stdout, /already opens/);
+  fs.writeFileSync(store, 'other-command');
+  assert.equal(run().status, 0);
+  assert.equal(fs.readFileSync(store, 'utf8'), 'xfce4-popup-whiskermenu');
+});
+
+test('Whisker shortcut setup falls back to persistent XFCE config without a session bus or xfconf-query', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'crd-whisker-offline-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const bin = path.join(root, 'bin');
+  fs.mkdirSync(bin);
+  const channel = path.join(root, '.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-keyboard-shortcuts.xml');
+  fs.mkdirSync(path.dirname(channel), { recursive: true });
+  fs.writeFileSync(channel, `<?xml version="1.0"?>\n<channel name="xfce4-keyboard-shortcuts" version="1.0"><property name="commands" type="empty"><property name="custom" type="empty"><property name="&lt;Primary&gt;&lt;Shift&gt;s" type="string" value="xfce4-screenshooter -r" /></property></property></channel>\n`);
+  const run = () => spawnSync('/usr/bin/python3', [new URL('setup-whisker-shortcut.py', source).pathname], {
+    env: { ...process.env, HOME: root, PATH: bin, DBUS_SESSION_BUS_ADDRESS: '' }, encoding: 'utf8',
+  });
+  let result = run();
+  assert.equal(result.status, 0, result.stderr);
+  let xml = fs.readFileSync(channel, 'utf8');
+  assert.match(xml, /name="&lt;Primary&gt;&lt;Shift&gt;s" type="string" value="xfce4-screenshooter -r"/);
+  assert.match(xml, /name="Super_L" type="string" value="xfce4-popup-whiskermenu"/);
+  const mtime = fs.statSync(channel).mtimeMs;
+  result = run();
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(fs.statSync(channel).mtimeMs, mtime);
 });
 
 test('a duplicate helper exits before touching panel settings', () => {
@@ -136,6 +187,7 @@ test('seeds an existing XFCE profile once, backs it up, and preserves later edit
   assert.ok(!desktop.includes('MINT_WALLPAPER_PATH'));
   const shortcuts = path.join(xfce, 'xfconf/xfce-perchannel-xml/xfce4-keyboard-shortcuts.xml');
   assert.match(fs.readFileSync(shortcuts, 'utf8'), /name="&lt;Primary&gt;&lt;Shift&gt;s" type="string" value="xfce4-screenshooter -r"/);
+  assert.match(fs.readFileSync(shortcuts, 'utf8'), /name="Super_L" type="string" value="xfce4-popup-whiskermenu"/);
   fs.writeFileSync(shortcuts, 'user shortcut');
   fs.writeFileSync(panel, 'user customized');
   result = run();
@@ -155,11 +207,23 @@ test('active CRD enables desktop fixes idempotently without unnecessary installa
   titlebuttonFixtures(config);
   fs.writeFileSync(path.join(root, 'dpkg-query'), '#!/bin/sh\nprintf installed\n', { mode: 0o755 });
   fs.writeFileSync(path.join(root, 'timezone'), 'Asia/Jakarta\n');
+  fs.writeFileSync(path.join(root, 'xfconf-query'), `#!/bin/sh
+if [ -f "$HOME/shortcut" ] && [ "$#" -eq 4 ]; then cat "$HOME/shortcut"; exit 0; fi
+value=''
+previous=''
+for arg do
+  [ "$previous" = -s ] && value=$arg
+  previous=$arg
+done
+[ -n "$value" ] || exit 1
+printf '%s' "$value" > "$HOME/shortcut"
+`, { mode: 0o755 });
   fs.writeFileSync(path.join(root, 'timedatectl'), '#!/bin/sh\ncat "$HOME/timezone"\n', { mode: 0o755 });
   const run = () => spawnSync('sh', [new URL('setup.sh', source).pathname], { env: { ...process.env, DISPLAY: '', DBUS_SESSION_BUS_ADDRESS: '', HOME: root, PATH: `${root}:${process.env.PATH}` }, encoding: 'utf8' });
   const result = run();
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /already running/);
+  assert.equal(fs.readFileSync(path.join(root, 'shortcut'), 'utf8'), 'xfce4-popup-whiskermenu');
   const autostart = path.join(root, '.config/autostart/crd-panel-workarea.desktop');
   const before = fs.statSync(autostart).mtimeMs;
   assert.equal(run().status, 0);
@@ -197,6 +261,17 @@ test('a stopped registered host installs only missing screenshot and audio packa
   fs.mkdirSync(config, { recursive: true });
   fs.writeFileSync(path.join(config, 'host#test.json'), '{}');
   titlebuttonFixtures(config);
+  fs.writeFileSync(path.join(root, 'xfconf-query'), `#!/bin/sh
+if [ -f "$HOME/shortcut" ] && [ "$#" -eq 4 ]; then cat "$HOME/shortcut"; exit 0; fi
+value=''
+previous=''
+for arg do
+  [ "$previous" = -s ] && value=$arg
+  previous=$arg
+done
+[ -n "$value" ] || exit 1
+printf '%s' "$value" > "$HOME/shortcut"
+`, { mode: 0o755 });
   fs.copyFileSync(new URL('crd-panel-workarea.desktop', source), path.join(config, 'crd-panel-workarea.desktop'));
   fs.writeFileSync(path.join(config, 'mint-assets.sh'), '#!/bin/sh\nexit 0\n');
   const state = path.join(root, '.local/state/crd-mint');
@@ -204,6 +279,7 @@ test('a stopped registered host installs only missing screenshot and audio packa
   fs.writeFileSync(path.join(state, 'preset-v1-complete'), 'done');
   const result = spawnSync('sh', [new URL('setup.sh', source).pathname], { env: { ...process.env, DISPLAY: '', DBUS_SESSION_BUS_ADDRESS: '', HOME: root, PATH: `${root}:${process.env.PATH}` }, encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
+  assert.equal(fs.readFileSync(path.join(root, 'shortcut'), 'utf8'), 'xfce4-popup-whiskermenu');
   const calls = fs.readFileSync(path.join(root, 'sudo-calls'), 'utf8');
   assert.match(calls, /apt-get install -y --no-install-recommends --no-upgrade xfce4-screenshooter pipewire wireplumber libasound2-plugins pulseaudio-utils/);
   assert.doesNotMatch(calls, /google-chrome|restart/);

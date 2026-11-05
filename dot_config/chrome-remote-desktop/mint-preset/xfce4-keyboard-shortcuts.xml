@@ -3,6 +3,7 @@
   <property name="commands" type="empty">
     <property name="custom" type="empty">
       <property name="&lt;Primary&gt;&lt;Shift&gt;s" type="string" value="xfce4-screenshooter -r" />
+      <property name="Super_L" type="string" value="xfce4-popup-whiskermenu" />
     </property>
   </property>
 </channel>

@@ -68,6 +68,7 @@ configure_timezone
 
 if systemctl is-active --quiet "$unit"; then
   configure_terminal_font
+  /usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-whisker-shortcut.py"
   /usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-titlebuttons.py"
   configure_panel_workarea
   printf 'Chrome Remote Desktop is already running (%s); leaving the service unchanged.\n' "$unit"
@@ -104,6 +105,7 @@ if [ -n "$missing" ]; then
 fi
 
 # Enable on every run, independently of the one-time Mint profile marker.
+/usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-whisker-shortcut.py"
 /usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-titlebuttons.py"
 configure_panel_workarea
 

@@ -681,8 +681,9 @@ The task installs missing CRD, XFCE and dbus-x11 packages and their required
 dependencies without recommended packages or upgrading installed packages. It
 does not install a browser; existing browsers remain available to the session.
 It installs `xfce4-screenshooter`; the initial XFCE preset binds **Ctrl+Shift+S**
-to interactive screenshot area selection. Later setup runs preserve shortcut
-customizations; the CRD service itself is never restarted.
+to interactive screenshot area selection and the **Super** key to Whisker Menu.
+Later setup runs preserve shortcut customizations except that they ensure the
+Super-key menu binding; the CRD service itself is never restarted.
 An XFCE autostart helper refreshes panel space reservations at login and after
 screen-size changes, working around stale work areas during CRD's “Resize to
 fit” with high-DPI mode off or on. It preserves panel sizes, does not force a
