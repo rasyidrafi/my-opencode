@@ -692,6 +692,12 @@ service is stopped, the task starts it.
 The task installs missing CRD, XFCE and dbus-x11 packages and their required
 dependencies without recommended packages or upgrading installed packages. It
 does not install a browser; existing browsers remain available to the session.
+Every setup run also installs missing `thunar`, `thunar-archive-plugin`,
+`xarchiver`, and `7zip` packages, including when CRD is already running. This
+adds **Extract Here** and **Extract To…** for `.7z` archives in Thunar. Repeated
+runs skip archive installation when these packages are already installed.
+Reopen Thunar after the first installation to load the plugin; setup leaves
+open file manager windows and the CRD session running.
 It installs `xfce4-screenshooter`; the initial XFCE preset binds **Ctrl+Shift+S**
 to interactive screenshot area selection and the **Super** key to Whisker Menu.
 Later setup runs preserve shortcut customizations except that they ensure the

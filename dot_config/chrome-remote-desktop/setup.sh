@@ -63,8 +63,24 @@ configure_terminal_font() {
   /usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-terminal-font.py"
 }
 
+configure_archive_support() {
+  archive_missing=''
+  for package in thunar thunar-archive-plugin xarchiver 7zip; do
+    if [ "$(dpkg-query -W -f='${db:Status-Status}' "$package" 2>/dev/null || :)" != installed ]; then
+      archive_missing="$archive_missing $package"
+    fi
+  done
+  if [ -n "$archive_missing" ]; then
+    authenticate_sudo
+    sudo apt-get update
+    sudo apt-get install -y --no-install-recommends --no-upgrade $archive_missing
+    echo 'Thunar archive support installed. Reopen Thunar to load Extract Here and Extract To for .7z files.'
+  fi
+}
+
 # Apply host defaults even when the remote desktop service is already active.
 configure_timezone
+configure_archive_support
 
 if systemctl is-active --quiet "$unit"; then
   /usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-terminal-helper.py"

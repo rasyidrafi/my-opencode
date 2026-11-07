@@ -260,7 +260,7 @@ printf '%s' "$value" > "$HOME/shortcut"
   assert.match(fs.readFileSync(path.join(root, '.config/xfce4/terminal/terminalrc'), 'utf8'), /FontName=Liberation Mono 10/);
   // A minimal machine missing the explicit font installs it once, even when
   // CRD is active; subsequent runs do not invoke apt again.
-  fs.writeFileSync(path.join(root, 'dpkg-query'), '#!/bin/sh\n[ -f "$HOME/font-installed" ] && printf installed\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(root, 'dpkg-query'), '#!/bin/sh\ncase "$*" in *fonts-liberation) [ -f "$HOME/font-installed" ] && printf installed;; *) printf installed;; esac\n', { mode: 0o755 });
   fs.writeFileSync(path.join(root, 'sudo'), '#!/bin/sh\n[ "$1" = -n ] && exit 0\nprintf "%s\\n" "$*" >> "$HOME/sudo-calls"\ncase "$*" in *install*) touch "$HOME/font-installed";; esac\n', { mode: 0o755 });
   assert.equal(run().status, 0);
   const calls = fs.readFileSync(path.join(root, 'sudo-calls'), 'utf8');
@@ -268,6 +268,14 @@ printf '%s' "$value" > "$HOME/shortcut"
   assert.doesNotMatch(calls, /systemctl|restart/);
   assert.equal(run().status, 0);
   assert.equal(fs.readFileSync(path.join(root, 'sudo-calls'), 'utf8'), calls);
+  // Repair archive support on an active host, then skip apt on reruns.
+  fs.writeFileSync(path.join(root, 'dpkg-query'), '#!/bin/sh\ncase "$*" in *thunar|*thunar-archive-plugin|*xarchiver|*7zip) [ -f "$HOME/archives-installed" ] && printf installed;; *) printf installed;; esac\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(root, 'sudo'), '#!/bin/sh\n[ "$1" = -n ] && exit 0\nprintf "%s\\n" "$*" >> "$HOME/archive-calls"\ncase "$*" in *install*) touch "$HOME/archives-installed";; esac\n', { mode: 0o755 });
+  assert.equal(run().status, 0);
+  const archiveCalls = fs.readFileSync(path.join(root, 'archive-calls'), 'utf8');
+  assert.equal(archiveCalls, 'apt-get update\napt-get install -y --no-install-recommends --no-upgrade thunar thunar-archive-plugin xarchiver 7zip\n');
+  assert.equal(run().status, 0);
+  assert.equal(fs.readFileSync(path.join(root, 'archive-calls'), 'utf8'), archiveCalls);
   fs.writeFileSync(path.join(root, 'timezone'), 'Etc/UTC\n');
   fs.writeFileSync(path.join(root, 'sudo'), '#!/bin/sh\n[ "$1" = -n ] && exit 0\nprintf "%s\\n" "$*" >> "$HOME/timezone-calls"\n[ "$*" = "timedatectl set-timezone Asia/Jakarta" ] || exit 1\nprintf "Asia/Jakarta\\n" > "$HOME/timezone"\n', { mode: 0o755 });
   assert.equal(run().status, 0);
