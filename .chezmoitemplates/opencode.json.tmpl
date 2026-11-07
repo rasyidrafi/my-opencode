@@ -79,6 +79,46 @@
               "write": 0
             }
           }
+        },
+        "spark": {
+          "name": "Spark",
+          "capabilities": {
+            "tools": true,
+            "input": ["text", "image"],
+            "output": ["text"],
+            "temperature": true,
+            "reasoning": {
+              "supported": true
+            }
+          },
+          "compatibility": {
+            "reasoningField": "reasoning_content"
+          },
+          "limit": {
+            "context": 1000000,
+            "input": 868928,
+            "output": 131072
+          }
+        },
+        "cipher": {
+          "name": "Cipher",
+          "capabilities": {
+            "tools": true,
+            "input": ["text", "image"],
+            "output": ["text"],
+            "temperature": true,
+            "reasoning": {
+              "supported": true
+            }
+          },
+          "compatibility": {
+            "reasoningField": "reasoning_content"
+          },
+          "limit": {
+            "context": 1000000,
+            "input": 936000,
+            "output": 64000
+          }
         }
       }
     }

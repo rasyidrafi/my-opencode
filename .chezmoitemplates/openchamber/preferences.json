@@ -1,6 +1,5 @@
 {
-  "defaultModel": "openai/gpt-6-luna",
-  "defaultVariant": "high",
+  "defaultModel": "rawroute/spark",
   "sessionTabsEnabled": true,
   "showReasoningTraces": true,
   "reportUsage": false,

@@ -1,6 +1,5 @@
 {
-  "defaultModel": "openai/gpt-6-luna",
-  "defaultVariant": "high",
+  "defaultModel": "rawroute/spark",
   "agentControlToolEnabled": false,
   "agentScheduleToolEnabled": false,
   "agentWebToolEnabled": false,

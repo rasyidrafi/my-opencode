@@ -767,15 +767,15 @@ Check the service with `openchamber startup status`.
 Chezmoi merges the approved OpenChamber preferences into
 `~/.config/openchamber/preferences.json` and selected instance settings into
 `~/.config/openchamber/settings.json`. Edit the allowlists in
-`.chezmoitemplates/openchamber/`: `preferences.json` owns the model/variant
-defaults and selected UI/notification preferences,
+`.chezmoitemplates/openchamber/`: `preferences.json` owns the model
+default and selected UI/notification preferences,
 including the explicitly pinned `showReasoningTraces: true`; `settings.json`
 owns the eight disabled agent tools (including image generation, secret and
 workflow) and default permission mode.
 The PWA app name (`pwaAppName`) is unmanaged and can differ on each machine;
 existing local names are preserved and fresh installs use the app default.
-The default model is `openai/gpt-6-luna` with the `high` variant. Apply removes
-the retired `hiddenModels` list and explicit `defaultAgent` from both files.
+The default model is `rawroute/spark` with no variant. Apply removes the retired `hiddenModels` list, explicit `defaultAgent`, and any stale `defaultVariant` from
+both files.
 **The managed permission mode is `auto` (Accept everything).**
 
 **The repository is authoritative for every allowlisted key.** Each apply
@@ -829,8 +829,9 @@ Per-agent files are generated from `agent-policy.json` on every apply, including
 their frontmatter and system prompts. The plugin enforces the same data at
 runtime. The title model in `opencode.json` is generated from that file too for
 OpenChamber compatibility. Explore defaults to
-`openai/gpt-6-luna-fast#xhigh`, General to `openai/gpt-6-luna-fast#max`, and
-Reviewer to `openai/gpt-6-astra#low`; Build and Plan inherit the session model.
+`rawroute/deepseek-v4.1-flash-1017#high`, General to
+`rawroute/deepseek-v4.1-flash-1017#max`, and Reviewer to
+`openai/gpt-6-astra#low`; Build and Plan inherit the session model.
 Build is explicitly selected as the default, and Plan remains disabled.
 `gpt-6-luna-fast` shares Luna's limits: 680,000 context, 552,000 input, 128,000 output.
 
@@ -850,6 +851,20 @@ RawRoute also includes `deepseek-v4.1-flash-1017`, using the official DeepSeek
 max output is overridden to 262,144 tokens, and input is 737,856 tokens (context minus output).
 It accepts text and images and supports tools, reasoning toggle and low/high/max
 effort. Pricing is copied from the DeepSeek entry, not verified RawRoute pricing.
+
+RawRoute also includes `spark`. Context is explicitly 1,000,000 tokens,
+input is 868,928 tokens (context minus output) and max output is 131,072 tokens.
+It accepts text and images and supports tools and temperature.
+Reasoning is always on: `reasoning` declares only `supported: true` with no
+`toggle` or `effort` list, so OpenCode builds no variant selector for it.
+No family, release date or pricing metadata is declared for it.
+
+RawRoute also includes `cipher`. Context is explicitly 1,000,000 tokens,
+input is 936,000 tokens (context minus output) and max output is 64,000 tokens.
+It accepts text and images and supports tools and temperature.
+Reasoning is always on: `reasoning` declares only `supported: true` with no
+`toggle` or `effort` list, so OpenCode builds no variant selector for it.
+No family, release date or pricing metadata is declared for it.
 
 Verify with `node --test tests/opencode-config.test.mjs dot_config/rawroute/setup.test.mjs`.
 

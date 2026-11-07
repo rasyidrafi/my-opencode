@@ -193,6 +193,58 @@ test('RawRoute includes DeepSeek V4.1 Flash 1017 with exact 1M context and image
   assert.deepEqual(apply(), first);
 });
 
+test('RawRoute includes Spark with a 1M context, image input and always-on reasoning', t => {
+  const { apply, put, read } = fixture(t);
+  put('opencode.json', JSON.stringify({ providers: { rawroute: { models: {
+    'spark': {
+      limit: { context: 1048576, input: 1048576, output: 65536 },
+      capabilities: { input: ['text'] },
+    },
+  } } } }));
+  const first = apply();
+  const models = JSON.parse(read('opencode.json')).providers.rawroute.models;
+  const model = models['spark'];
+  assert.equal(model.name, 'Spark');
+  assert.deepEqual(model.limit, { context: 1000000, input: 868928, output: 131072 });
+  assert.equal(model.limit.input, model.limit.context - model.limit.output);
+  assert.deepEqual(model.capabilities, {
+    tools: true,
+    input: ['text', 'image'],
+    output: ['text'],
+    temperature: true,
+    reasoning: { supported: true },
+  });
+  assert.deepEqual(model.compatibility, { reasoningField: 'reasoning_content' });
+  assert.equal(models['deepseek-v4.1-flash-1017'].limit.context, 1000000);
+  assert.deepEqual(apply(), first);
+});
+
+test('RawRoute includes Cipher with a 1M context, image input and always-on reasoning', t => {
+  const { apply, put, read } = fixture(t);
+  put('opencode.json', JSON.stringify({ providers: { rawroute: { models: {
+    'cipher': {
+      limit: { context: 1048576, input: 1048576, output: 65536 },
+      capabilities: { input: ['text'] },
+    },
+  } } } }));
+  const first = apply();
+  const models = JSON.parse(read('opencode.json')).providers.rawroute.models;
+  const model = models['cipher'];
+  assert.equal(model.name, 'Cipher');
+  assert.deepEqual(model.limit, { context: 1000000, input: 936000, output: 64000 });
+  assert.equal(model.limit.input, model.limit.context - model.limit.output);
+  assert.deepEqual(model.capabilities, {
+    tools: true,
+    input: ['text', 'image'],
+    output: ['text'],
+    temperature: true,
+    reasoning: { supported: true },
+  });
+  assert.deepEqual(model.compatibility, { reasoningField: 'reasoning_content' });
+  assert.equal(models['spark'].limit.context, 1000000);
+  assert.deepEqual(apply(), first);
+});
+
 test('applying removes retired Step 5 Preview without removing other local RawRoute models', t => {
   const { apply, put, read } = fixture(t);
   put('opencode.json', JSON.stringify({
