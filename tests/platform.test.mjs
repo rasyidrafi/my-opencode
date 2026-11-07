@@ -28,7 +28,7 @@ for (const task of catalog.tasks.filter(task => !task.platforms.includes('androi
     { TERMUX_VERSION: '', PREFIX: '/data/data/com.termux/files/usr' },
     { TERMUX_VERSION: 'test', PREFIX: '/data/data/com.termux/files/usr' },
   ]) {
-    test(task.name + ' rejects a Linux-reported Termux environment ' + JSON.stringify(termuxEnv) + ' before processing arguments', () => {
+    test(task.name + ' rejects a Linux-reported Termux environment ' + JSON.stringify(termuxEnv) + ' before processing arguments', { skip: process.platform !== 'android' }, () => {
       const script = new URL('../dot_config/' + task.script, import.meta.url);
       const args = task.args.trim().split(/\s+/).filter(Boolean);
       const runner = task.runner === 'sh' ? 'sh' : process.execPath;

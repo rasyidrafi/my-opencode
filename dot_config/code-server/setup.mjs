@@ -1,3 +1,4 @@
+import { requireTaskPlatform } from '../my-opencode/platform.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -64,7 +65,7 @@ function writeAtomic(filename, contents, mode) {
 }
 
 export function setup({ env = process.env, platform = process.platform, execute = spawnSync } = {}) {
-  if (platform !== 'linux') throw new Error('code-server:setup requires Linux with systemd.');
+  requireTaskPlatform('code-server:setup', ['linux'], platform, env);
   const home = env.HOME || os.homedir();
   const prefix = path.join(home, '.local');
   const binary = path.join(prefix, 'bin', 'code-server');
