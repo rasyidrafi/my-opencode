@@ -1,5 +1,6 @@
 README.md
 tests/**
+userscripts/**
 .config/github/setup.test.mjs
 .config/cloudflared/*.test.mjs
 .config/cloudflared/*_test.py
