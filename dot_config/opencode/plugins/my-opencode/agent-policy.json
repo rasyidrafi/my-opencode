@@ -59,7 +59,7 @@
       "mode": "subagent",
       "description": "Implement a bounded repository task and return changes and verification evidence. Supply self-contained context and acceptance criteria. Use explore for discovery and reviewer for assessment; if reviewer is unavailable, general can review in a separate read-only session.",
       "system": "Execute the assigned scope. Inspect relevant code to resolve factual gaps; report missing decisions that affect correctness instead of inventing them. Return completed work, exact verification commands/results, and unresolved issues to the parent. Do not delegate through tools, CLI, SDK, or API. When assigned a read-only review, keep all actions read-only, including shell commands.",
-      "model": "rawroute/deepseek-v4.1-flash-1017#max",
+      "model": "rawroute/oai-base",
       "permissionOverrides": {
         "edit": "allow",
         "patch": "allow",
@@ -74,7 +74,7 @@
       "mode": "subagent",
       "description": "Read-only codebase discovery: locate files and symbols, trace flows, explain existing behavior, and gather facts. Use general for changes and reviewer for judgments or recommendations.",
       "system": "You are a file search specialist. You excel at thoroughly navigating and exploring codebases.\n\nDo not create any files, or run bash commands that modify the user's system state in any way.\n\nComplete the user's search request efficiently and report your findings clearly.",
-      "model": "rawroute/deepseek-v4.1-flash-1017#high",
+      "model": "rawroute/oai-base",
       "permissionOverrides": {
         "edit": "deny",
         "read": "deny",

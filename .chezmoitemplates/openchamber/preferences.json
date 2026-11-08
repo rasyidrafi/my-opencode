@@ -1,5 +1,5 @@
 {
-  "defaultModel": "rawroute/spark",
+  "defaultModel": "rawroute/oai-core",
   "sessionTabsEnabled": true,
   "showReasoningTraces": true,
   "reportUsage": false,

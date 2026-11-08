@@ -49,8 +49,8 @@ export function configure({ mode, home = os.homedir(), env = process.env, source
   }
   if (typeof source !== 'string' || !path.isAbsolute(source)) throw new Error('The chezmoi source must be an absolute path.');
   source = path.resolve(source);
-  const selectedTargets = rawroute ? targets.slice(1) : targets;
-  const selectedSources = rawroute ? sources.slice(1) : sources;
+  const selectedTargets = rawroute ? targets.slice(1) : targets.slice(0, 1);
+  const selectedSources = rawroute ? sources.slice(1) : sources.slice(0, 1);
   const paths = selectedTargets.map(name => path.join(home, name));
   const marker = path.join(home, '.config/rawroute', rawroute ? 'rawroute-local-enabled' : 'local-enabled');
   for (const target of [...paths, marker]) assertSafe(home, target);
@@ -92,16 +92,15 @@ export function configure({ mode, home = os.homedir(), env = process.env, source
       else if (fs.existsSync(marker)) fs.unlinkSync(marker);
       for (const target of paths) fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
       cm(['apply', '--force', ...paths]);
-      const json = JSON.parse(fs.readFileSync(paths.at(-1), 'utf8'));
       const expected = selectedModes[mode];
       if (rawroute) {
+        const json = JSON.parse(fs.readFileSync(paths[0], 'utf8'));
         const provider = json.providers.rawroute;
         if (provider.settings.baseURL !== expected.baseURL || provider.env.length !== 1 || provider.env[0] !== expected.envKey) throw new Error('Rendered Rawroute settings do not match the requested mode.');
       } else {
-        const openCode = json.provider.openai.options;
         const query = '{{ $p := index (fromToml .chezmoi.stdin) "model_providers" "rawroute" }}{{ dict "baseURL" $p.base_url "envKey" $p.env_key | toJson }}';
         const codex = JSON.parse(cm(['execute-template', '--with-stdin', query], fs.readFileSync(paths[0], 'utf8')));
-        if (openCode.baseURL !== expected.baseURL || openCode.apiKey !== `{env:${expected.envKey}}` || codex.baseURL !== expected.baseURL || codex.envKey !== expected.envKey) throw new Error('Rendered provider settings do not match the requested mode.');
+        if (codex.baseURL !== expected.baseURL || codex.envKey !== expected.envKey) throw new Error('Rendered provider settings do not match the requested mode.');
       }
     } catch {
       let rollbackFailed = false;
@@ -126,7 +125,7 @@ export function configure({ mode, home = os.homedir(), env = process.env, source
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const result = configure(options(process.argv.slice(2)));
-    console.log(`${result.dryRun ? 'Dry run; no changes' : result.rawroute ? 'Updated OpenCode Rawroute' : 'Updated Codex and OpenCode'}: ${result.mode}, ${result.baseURL}, ${result.envKey}.`);
+    console.log(`${result.dryRun ? 'Dry run; no changes' : result.rawroute ? 'Updated OpenCode Rawroute' : 'Updated Codex'}: ${result.mode}, ${result.baseURL}, ${result.envKey}.`);
     if (result.backup) console.log(`Private backup: ${result.backup}. Restart existing applications/services separately if needed.`);
   } catch (error) { console.error(error.message); process.exitCode = 1; }
 }

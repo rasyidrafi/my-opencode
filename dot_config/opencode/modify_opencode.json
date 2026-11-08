@@ -21,8 +21,34 @@
   {{- end -}}
   {{- $config = setValueAtPath "plugins" $plugins $config -}}
 {{- end -}}
+{{- /* Retire all OpenAI provider overrides, including previously deployed routing,
+      credentials references and model limits, in both legacy and V2 shapes. */ -}}
+{{- range $key := list "provider" "providers" -}}
+  {{- if hasKey $config $key -}}
+    {{- $providers := index $config $key -}}
+    {{- $_ := unset $providers "openai" -}}
+    {{- if eq (len $providers) 0 -}}{{- $_ := unset $config $key -}}{{- end -}}
+  {{- end -}}
+{{- end -}}
 {{- $config = mustMergeOverwrite $config $managed -}}
-{{- /* Step 5 Preview is retired: a merge alone would retain its old entry. */ -}}
-{{- $_ := unset $config.providers.rawroute.models "step-5-preview" -}}
+{{- /* Retired RawRoute models must be removed: a merge alone retains old entries. */ -}}
+{{- range $retired := list "step-5-preview" "atria-dawn" "deepseek-v4.1-flash-1017" "spark" "cipher" -}}
+  {{- $_ := unset $config.providers.rawroute.models $retired -}}
+{{- end -}}
+{{- /* RawRoute input limits are intentionally omitted; remove legacy values,
+      including from locally-added models under this provider. */ -}}
+{{- range $model := $config.providers.rawroute.models -}}
+  {{- if hasKey $model "limit" -}}
+    {{- $_ := unset $model.limit "input" -}}
+  {{- end -}}
+{{- end -}}
+{{- /* These models support reasoning without selectable effort variants. Replace
+      nested metadata so stale toggle/effort keys do not survive deep merging. */ -}}
+{{- range $id := list "oai-base" "oai-core" "oai-peak" -}}
+  {{- $model := index $config.providers.rawroute.models $id -}}
+  {{- if and $model (hasKey $model "capabilities") -}}
+    {{- $_ := set $model.capabilities "reasoning" (dict "supported" true) -}}
+  {{- end -}}
+{{- end -}}
 {{- $config = setValueAtPath "disabled_providers" $disabled $config -}}
 {{- $config | toPrettyJson }}

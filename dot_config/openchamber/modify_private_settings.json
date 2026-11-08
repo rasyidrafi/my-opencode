@@ -6,12 +6,12 @@
 {{- if not (kindIs "map" $config) -}}
   {{- fail "OpenChamber settings.json must be a JSON object" -}}
 {{- end -}}
-{{- /* Remove retired catalog/agent/variant overrides; Spark has no variant. */ -}}
+{{- /* Remove retired catalog/agent/variant overrides; OAI Core has no variant. */ -}}
 {{- /* Catalog filtering is now handled by the OpenCode allowlist plugin. */ -}}
 {{- $_ := unset $config "hiddenModels" -}}
 {{- /* The repo intentionally leaves the default agent unset. */ -}}
 {{- $_ := unset $config "defaultAgent" -}}
-{{- /* Spark declares only reasoning.supported with no toggle/effort, so no variant selector exists. */ -}}
+{{- /* OAI Core declares only reasoning.supported with no toggle/effort, so no variant selector exists. */ -}}
 {{- $_ := unset $config "defaultVariant" -}}
 {{- range list "smallModelUseDefault" "smallModelOverride" "smallModelVariant" -}}
   {{- $_ := unset $config . -}}

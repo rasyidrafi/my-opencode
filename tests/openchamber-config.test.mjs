@@ -13,10 +13,10 @@ const managed = name => JSON.parse(fs.readFileSync(path.join(repository, '.chezm
 const preferences = managed('preferences.json');
 const settings = managed('settings.json');
 
-test('OpenChamber defaults to Spark without a variant in both profile and legacy copy', () => {
-  assert.equal(preferences.defaultModel, 'rawroute/spark');
+test('OpenChamber defaults to OAI Core without a variant in both profile and legacy copy', () => {
+  assert.equal(preferences.defaultModel, 'rawroute/oai-core');
   assert.ok(!Object.hasOwn(preferences, 'defaultVariant'));
-  assert.equal(settings.defaultModel, 'rawroute/spark');
+  assert.equal(settings.defaultModel, 'rawroute/oai-core');
   assert.ok(!Object.hasOwn(settings, 'defaultVariant'));
   assert.ok(!Object.hasOwn(preferences, 'defaultAgent'));
   assert.ok(!Object.hasOwn(settings, 'defaultAgent'));
@@ -223,9 +223,9 @@ test('repo-managed model overrides old local values and clears retired variants 
   const first = apply();
   const fields = JSON.parse(read('preferences.json')).fields;
   const config = JSON.parse(read('settings.json'));
-  assert.equal(fields.defaultModel.value, 'rawroute/spark');
+  assert.equal(fields.defaultModel.value, 'rawroute/oai-core');
   assert.ok(!Object.hasOwn(fields, 'defaultVariant'));
-  assert.equal(config.defaultModel, 'rawroute/spark');
+  assert.equal(config.defaultModel, 'rawroute/oai-core');
   assert.ok(!Object.hasOwn(config, 'defaultVariant'));
   assert.equal(config.keepLocal, true);
   assert.deepEqual(apply(), first);

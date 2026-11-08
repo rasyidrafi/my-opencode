@@ -14,7 +14,7 @@
 {{- $_ := unset $fields "hiddenModels" -}}
 {{- /* The repo intentionally leaves the default agent unset. */ -}}
 {{- $_ := unset $fields "defaultAgent" -}}
-{{- /* Spark declares only reasoning.supported with no toggle/effort, so no variant selector exists. */ -}}
+{{- /* OAI Core declares only reasoning.supported with no toggle/effort, so no variant selector exists. */ -}}
 {{- $_ := unset $fields "defaultVariant" -}}
 {{- /* The repo-managed model below replaces any local choice. */ -}}
 {{- /* Retire the old custom small model; absent keys use OpenCode's default. */ -}}

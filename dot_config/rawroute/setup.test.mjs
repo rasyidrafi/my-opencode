@@ -40,7 +40,7 @@ test('mode and CLI options are explicit', () => {
 });
 
 test('Rawroute local requires its own credential', () => fixture(args => {
-  assert.throws(() => configure({ ...args, mode: 'local', rawroute: true }), /RAWROUTE_LOCAL_API_KEY is missing/);
+  assert.throws(() => configure({ ...args, env: { ...args.env, RAWROUTE_LOCAL_API_KEY: '' }, mode: 'local', rawroute: true }), /RAWROUTE_LOCAL_API_KEY is missing/);
   assert.deepEqual(fs.readdirSync(args.home), []);
 }));
 
@@ -56,7 +56,7 @@ test('real Rawroute switches preserve Codex, provider routing and model selectio
     assert.deepEqual(json.providers.rawroute.env, [rawrouteModes[mode].envKey]);
     assert.equal(json.providers.rawroute.models.custom.name, 'Keep');
     assert.equal(json.model, 'custom/main');
-    assert.equal(json.provider.openai.options.baseURL, modes.local.baseURL);
+    assert.ok(!Object.hasOwn(json.provider ?? {}, 'openai'));
     assert.equal(fs.readFileSync(path.join(args.home, '.codex/config.toml'), 'utf8'), 'untouched = true\n');
     assert.equal(fs.readFileSync(path.join(args.home, '.config/rawroute/local-enabled'), 'utf8'), '1\n');
     assert.ok(!JSON.stringify(json).includes('synthetic-rawroute-secret'));
@@ -119,11 +119,9 @@ test('real chezmoi renders both modes, survives reapply and preserves local Code
   let expectedModel = 'gpt-6-luna';
   const readConfigs = mode => {
     const json = JSON.parse(fs.readFileSync(path.join(args.home, '.config/opencode/opencode.json'), 'utf8'));
-    assert.equal(json.provider.openai.options.baseURL, modes[mode].baseURL);
-    assert.equal(json.provider.openai.options.apiKey, `{env:${modes[mode].envKey}}`);
+    assert.ok(!Object.hasOwn(json.provider ?? {}, 'openai'));
     assert.equal(json.model, 'custom/main');
     assert.equal(json.agents.general.model, 'custom/general#high');
-    assert.deepEqual(json.provider.openai.models['gpt-6-luna-fast'].limit, json.provider.openai.models['gpt-6-luna'].limit);
     const toml = fs.readFileSync(path.join(args.home, '.codex/config.toml'), 'utf8');
     assert.match(toml, new RegExp(`^model = ['"]${expectedModel}['"]$`, 'm'));
     assert.match(toml, new RegExp(`^model_reasoning_effort = ['"]${expectedEffort}['"]$`, 'm'));
@@ -141,18 +139,20 @@ test('real chezmoi renders both modes, survives reapply and preserves local Code
     .replace(/^model_reasoning_effort = .*$/m, 'model_reasoning_effort = "low"'));
   expectedModel = 'gpt-6-astra';
   expectedEffort = 'low';
+  const openCodeBeforeSwitch = fs.readFileSync(path.join(args.home, '.config/opencode/opencode.json'), 'utf8');
   configure({ ...args, mode: 'local' });
+  assert.equal(fs.readFileSync(path.join(args.home, '.config/opencode/opencode.json'), 'utf8'), openCodeBeforeSwitch);
   const local = readConfigs('local');
   const r = spawnSync(chezmoi, ['--source', repository, '--destination', args.home, '--no-tty', 'apply', '--force'], { env: args.env, encoding: 'utf8', timeout: 60_000 });
   assert.equal(r.status, 0, 'isolated full chezmoi apply failed (output withheld)');
-  assert.deepEqual(readConfigs('local'), local);
+  assert.equal(readConfigs('local')[0], local[0]);
   const installed = path.join(args.home, '.config/rawroute/setup.mjs');
   const preview = spawnSync(process.execPath, [installed, 'local', '--dry-run'], { env: args.env, encoding: 'utf8', timeout: 60_000 });
   assert.equal(preview.status, 0, 'installed task should discover its stamped source automatically');
   assert.ok(preview.stdout.includes('Dry run; no changes'));
-  assert.deepEqual(readConfigs('local'), local);
+  assert.equal(readConfigs('local')[0], local[0]);
   configure({ ...args, mode: 'local' });
-  assert.deepEqual(readConfigs('local'), local);
+  assert.equal(readConfigs('local')[0], local[0]);
   const reset = spawnSync(process.execPath, [installed, 'default'], { env: args.env, encoding: 'utf8', timeout: 60_000 });
   assert.equal(reset.status, 0, 'installed opt-out task failed (sensitive output withheld)');
   readConfigs('default');

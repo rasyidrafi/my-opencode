@@ -1,4 +1,3 @@
-{{- $local := stat (joinPath .chezmoi.destDir ".config" "rawroute" "local-enabled") -}}
 {{- $rawrouteLocal := stat (joinPath .chezmoi.destDir ".config" "rawroute" "rawroute-local-enabled") -}}
 {{- $agentPolicy := includeTemplate "dot_config/opencode/plugins/my-opencode/agent-policy.json" . | mustFromJson -}}
 {
@@ -17,71 +16,8 @@
         "baseURL": "{{ if $rawrouteLocal }}https://rawroute.qilin-elver.ts.net/v1{{ else }}https://rawroute.qzz.io/v1{{ end }}"
       },
       "models": {
-        "deepseek-v4.1-flash-1017": {
-          "name": "DeepSeek V4.1 Flash 1017",
-          "family": "deepseek-flash",
-          "releaseDate": "2026-10-17",
-          "capabilities": {
-            "tools": true,
-            "input": ["text", "image"],
-            "output": ["text"],
-            "temperature": true,
-            "reasoning": {
-              "supported": true,
-              "toggle": true,
-              "effort": ["low", "high", "max"]
-            }
-          },
-          "compatibility": {
-            "reasoningField": "reasoning_content"
-          },
-          "limit": {
-            "context": 1000000,
-            "input": 737856,
-            "output": 262144
-          },
-          "cost": {
-            "input": 0.15,
-            "output": 0.6,
-            "cache": {
-              "read": 0.003
-            }
-          }
-        },
-        "atria-dawn": {
-          "name": "Atria Dawn",
-          "family": "glm",
-          "releaseDate": "2026-06-13",
-          "capabilities": {
-            "tools": true,
-            "input": ["text"],
-            "output": ["text"],
-            "temperature": true,
-            "reasoning": {
-              "supported": true,
-              "toggle": true,
-              "effort": ["high", "max"]
-            }
-          },
-          "compatibility": {
-            "reasoningField": "reasoning_content"
-          },
-          "limit": {
-            "context": 512000,
-            "input": 446464,
-            "output": 65536
-          },
-          "cost": {
-            "input": 1.19516,
-            "output": 4.18306,
-            "cache": {
-              "read": 0.29879,
-              "write": 0
-            }
-          }
-        },
-        "spark": {
-          "name": "Spark",
+        "oai-base": {
+          "name": "OAI Base",
           "capabilities": {
             "tools": true,
             "input": ["text", "image"],
@@ -91,17 +27,13 @@
               "supported": true
             }
           },
-          "compatibility": {
-            "reasoningField": "reasoning_content"
-          },
           "limit": {
             "context": 1000000,
-            "input": 868928,
-            "output": 131072
+            "output": 128000
           }
         },
-        "cipher": {
-          "name": "Cipher",
+        "oai-core": {
+          "name": "OAI Core",
           "capabilities": {
             "tools": true,
             "input": ["text", "image"],
@@ -111,60 +43,27 @@
               "supported": true
             }
           },
-          "compatibility": {
-            "reasoningField": "reasoning_content"
+          "limit": {
+            "context": 640000,
+            "output": 128000
+          }
+        },
+        "oai-peak": {
+          "name": "OAI Peak",
+          "capabilities": {
+            "tools": true,
+            "input": ["text", "image"],
+            "output": ["text"],
+            "temperature": true,
+            "reasoning": {
+              "supported": true
+            }
           },
-          "limit": {
-            "context": 1000000,
-            "input": 936000,
-            "output": 64000
-          }
-        }
-      }
-    }
-  },
-  "provider": {
-    "openai": {
-      "models": {
-        "gpt-6.1-terra": {
-          "limit": {
-            "context": 500000,
-            "input": 372000,
-            "output": 128000
-          }
-        },
-        "gpt-6.1-sol": {
-          "limit": {
-            "context": 500000,
-            "input": 372000,
-            "output": 128000
-          }
-        },
-        "gpt-6-luna": {
-          "limit": {
-            "context": 680000,
-            "input": 552000,
-            "output": 128000
-          }
-        },
-        "gpt-6-luna-fast": {
-          "limit": {
-            "context": 680000,
-            "input": 552000,
-            "output": 128000
-          }
-        },
-        "gpt-6-astra": {
           "limit": {
             "context": 400000,
-            "input": 272000,
             "output": 128000
           }
         }
-      },
-      "options": {
-        "baseURL": "{{ if $local }}https://rawroute.qilin-elver.ts.net/v1{{ else }}https://ccs.halotec.my.id/v1{{ end }}",
-        "apiKey": "{env:{{ if $local }}CCS_HALOTEC_LOCAL_API_KEY{{ else }}CCS_HALOTEC_API_KEY{{ end }}}"
       }
     }
   },

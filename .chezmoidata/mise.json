@@ -298,7 +298,7 @@
       },
       {
         "name": "provider:local",
-        "description": "Opt into local Rawroute for Codex and OpenCode on this machine",
+        "description": "Opt into local Rawroute for Codex on this machine",
         "script": "rawroute/setup.mjs",
         "args": " local",
         "platforms": [
@@ -310,7 +310,7 @@
       },
       {
         "name": "provider:default",
-        "description": "Restore the default Rawroute endpoint for Codex and OpenCode",
+        "description": "Restore the default Rawroute endpoint for Codex",
         "script": "rawroute/setup.mjs",
         "args": " default",
         "platforms": [

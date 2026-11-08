@@ -225,10 +225,7 @@ Test without restarting anything: `node --test dot_config/cloudflared/restart.te
 ## OpenCode plugin
 
 The managed OpenCode V2 plugin `local.my-opencode` lives at
-`dot_config/opencode/plugins/my-opencode/`. It limits OpenAI to
-GPT-6.1 Terra, GPT-6.1 Sol, GPT-6 Luna, GPT-6 Luna Fast and GPT-6 Astra.
-Other OpenAI models, including future catalog additions, are disabled on every
-catalog rebuild. Other providers are unchanged. The plugin also owns the
+`dot_config/opencode/plugins/my-opencode/`. It leaves provider model catalogs unchanged and owns the
 runtime policies for `build`, `general`, `explore`, and `reviewer`:
 repo-specific prompts and descriptions, permissions, model overrides, agent
 modes, and the Build default. It also removes OpenCode's built-in
@@ -242,8 +239,7 @@ permissions. Local edits to generated agent files are replaced on the next
 apply. Plan remains disabled by its `disabled: true` file setting; the plugin
 does not change its permissions or model. The plugin transforms already-loaded
 agents, so agent files are still needed. To change policy, edit
-`dot_config/opencode/plugins/my-opencode/agent-policy.json`. To change the
-OpenAI catalog selection, edit `allowedModels` in `index.js`. Apply removes the
+`dot_config/opencode/plugins/my-opencode/agent-policy.json`. Apply removes the
 old `openai-allowlist` entrypoint from the local plugin directory so it cannot
 be auto-discovered alongside the new plugin; unrelated files in that old
 directory are left untouched. The redundant OpenChamber `hiddenModels` list is
@@ -780,7 +776,7 @@ owns the eight disabled agent tools (including image generation, secret and
 workflow) and default permission mode.
 The PWA app name (`pwaAppName`) is unmanaged and can differ on each machine;
 existing local names are preserved and fresh installs use the app default.
-The default model is `rawroute/spark` with no variant. Apply removes the retired `hiddenModels` list, explicit `defaultAgent`, and any stale `defaultVariant` from
+The default model is `rawroute/oai-core` with no variant. Apply removes the retired `hiddenModels` list, explicit `defaultAgent`, and any stale `defaultVariant` from
 both files.
 **The managed permission mode is `auto` (Accept everything).**
 
@@ -827,56 +823,33 @@ reasoning effort defaults to `xhigh` only when `model_reasoning_effort` is absen
 Existing values for both fields are preserved, including during Rawroute switches.
 
 OpenCode's global config is `~/.config/opencode/opencode.json`. Its
-`dot_config/opencode/modify_opencode.json` template updates managed provider
-routing and model limits while retaining unmanaged root settings. Soy currently
-has no root `model` or `default_agent` selection there; its provider routing is
-configured. Rawroute switches use the same merge.
+`dot_config/opencode/modify_opencode.json` template updates the separate Rawroute provider while retaining unmanaged root settings.
+OpenAI uses OpenCode’s built-in configuration: no custom routing, API-key
+reference, model limits, or model allowlist is installed. Apply removes existing
+`openai` overrides from both `provider` and `providers` to retire the old settings.
+Rawroute switches use the same merge.
 Per-agent files are generated from `agent-policy.json` on every apply, including
 their frontmatter and system prompts. The plugin enforces the same data at
 runtime. The title model in `opencode.json` is generated from that file too for
-OpenChamber compatibility. Explore defaults to
-`rawroute/deepseek-v4.1-flash-1017#high`, General to
-`rawroute/deepseek-v4.1-flash-1017#max`, and Reviewer to
+OpenChamber compatibility. Explore and General default to
+`rawroute/oai-base`, Reviewer to
 `openai/gpt-6-astra#low`; Build and Plan inherit the session model.
 Build is explicitly selected as the default, and Plan remains disabled.
-`gpt-6-luna-fast` shares Luna's limits: 680,000 context, 552,000 input, 128,000 output.
 
-RawRoute includes `atria-dawn` in place of the retired `step-5-preview` (removed
-from existing configs on apply). Atria Dawn was not listed in models.dev when
-configured, so its metadata uses the official `zhipuai/glm-5.2` entry from
-`https://models.dev/api.json` as a fallback, with context overridden to 512,000
-tokens, max output to 65,536 tokens, and input to 446,464 tokens (context minus
-max output). This includes text-only input/output,
-tools, temperature, reasoning toggle and high/max effort, release date and
-pricing metadata. These are fallback estimates, not verified Atria Dawn
-capabilities, release date or RawRoute prices.
+The retired RawRoute models `step-5-preview`, `atria-dawn`, and
+`deepseek-v4.1-flash-1017` are removed from existing configs on apply.
 
-RawRoute also includes `deepseek-v4.1-flash-1017`, using the official DeepSeek
-`deepseek-flash` metadata from `https://models.dev/api.json` (canonical model
-`deepseek/deepseek-v4.1-flash-1017`). Context is explicitly 1,000,000 tokens,
-max output is overridden to 262,144 tokens, and input is 737,856 tokens (context minus output).
-It accepts text and images and supports tools, reasoning toggle and low/high/max
-effort. Pricing is copied from the DeepSeek entry, not verified RawRoute pricing.
-
-RawRoute also includes `spark`. Context is explicitly 1,000,000 tokens,
-input is 868,928 tokens (context minus output) and max output is 131,072 tokens.
-It accepts text and images and supports tools and temperature.
-Reasoning is always on: `reasoning` declares only `supported: true` with no
-`toggle` or `effort` list, so OpenCode builds no variant selector for it.
-No family, release date or pricing metadata is declared for it.
-
-RawRoute also includes `cipher`. Context is explicitly 1,000,000 tokens,
-input is 936,000 tokens (context minus output) and max output is 64,000 tokens.
-It accepts text and images and supports tools and temperature.
-Reasoning is always on: `reasoning` declares only `supported: true` with no
-`toggle` or `effort` list, so OpenCode builds no variant selector for it.
-No family, release date or pricing metadata is declared for it.
+RawRoute also exposes three stable OpenAI gateway aliases: `oai-base` (OAI Base,
+1,000,000 context), `oai-core` (OAI Core, 640,000 context), and `oai-peak`
+(OAI Peak, 400,000 context). Each has a 128,000-token output limit. The backend
+can change which OpenAI model each alias resolves to without changing the
+OpenCode model IDs.
 
 Verify with `node --test tests/opencode-config.test.mjs dot_config/rawroute/setup.test.mjs`.
 
 ### Rawroute endpoint opt-in
 
-Both Codex and OpenCode default to `https://ccs.halotec.my.id/v1` using
+Codex defaults to `https://ccs.halotec.my.id/v1` using
 `CCS_HALOTEC_API_KEY`. After applying these task assets, opt into the local route
 **on this machine only**:
 
@@ -905,17 +878,18 @@ Default mode uses `https://rawroute.qzz.io/v1` with `RAWROUTE_API_KEY`.
 Local mode uses `https://rawroute.qilin-elver.ts.net/v1` with
 `RAWROUTE_LOCAL_API_KEY`, which must already be in the invoking environment.
 These tasks only apply OpenCode configuration; they do not switch Codex,
-the `openai` provider route controlled by `provider:*`, or model selections.
+OpenAI configuration, or model selections.
 The separate local-mode marker persists across chezmoi applies. Backups,
 rollback, and `--dry-run` work like `provider:*`; no models are added.
 Both sets of switches support Windows. Config backups are restricted to the
 current Windows account with an ACL; Linux/macOS use private file modes.
 
-Mode is stored in `~/.config/rawroute/local-enabled`, never in Git. Both templates
-check this marker, so later ordinary `chezmoi apply` preserves local mode until
+Mode is stored in `~/.config/rawroute/local-enabled`, never in Git. The Codex template
+checks this marker, so later ordinary `chezmoi apply` preserves local mode until
 explicit opt-out. Existing machines remain default when the marker is absent.
-The task applies **only** the Codex and OpenCode targets, creates private backups
-under `~/.local/state/rawroute-backups`, and restores both target files and the
+`provider:*` applies **only** the Codex target; `rawroute:*` applies only the
+OpenCode target. Each creates private backups
+under `~/.local/state/rawroute-backups`, and restores its target file and the
 previous marker on failure. Symlink targets and concurrent switches are refused.
 Keep backups private: pre-existing configs may contain credentials.
 

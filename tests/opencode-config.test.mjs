@@ -93,7 +93,7 @@ test('chezmoi apply removes the stale renamed plugin file but preserves unrelate
   );
 });
 
-test('fresh installs leave agent policy to the plugin and seed identical Luna limits', t => {
+test('fresh installs generate agent policy without OpenAI provider overrides', t => {
   const { apply, read, agent } = fixture(t);
   const first = apply();
   assert.deepEqual(apply(), first);
@@ -104,11 +104,8 @@ test('fresh installs leave agent policy to the plugin and seed identical Luna li
   }
   assert.deepEqual(agent('plan'), { disabled: true });
   assert.deepEqual(config.agents, { title: { model: 'openai/gpt-6-luna' } });
-  const models = JSON.parse(read('opencode.json')).provider.openai.models;
-  assert.deepEqual(models['gpt-6-luna-fast'].limit, models['gpt-6-luna'].limit);
-  assert.deepEqual(models['gpt-6-luna-fast'].limit, { context: 680000, input: 552000, output: 128000 });
-  assert.deepEqual(models['gpt-6.1-terra'].limit, models['gpt-6.1-sol'].limit);
-  assert.deepEqual(models['gpt-6.1-terra'].limit, { context: 500000, input: 372000, output: 128000 });
+  assert.ok(!Object.hasOwn(config, 'provider'));
+  assert.ok(!Object.hasOwn(config.providers, 'openai'));
 });
 
 test('generated agent files expose the plugin policy to the UI', t => {
@@ -141,123 +138,52 @@ test('title model remains in config for OpenChamber model resolution', t => {
   assert.deepEqual(apply(), first);
 });
 
-test('RawRoute includes Atria Dawn with GLM 5.2 fallback metadata and a 512K context', t => {
+test('RawRoute includes OAI tier aliases with configured names and limits, without input limits', t => {
   const { apply, read } = fixture(t);
-  const first = apply();
+  apply();
   const models = JSON.parse(read('opencode.json')).providers.rawroute.models;
-  assert.ok(!Object.hasOwn(models, 'step-5-preview'));
-  const model = models['atria-dawn'];
-  assert.equal(model.name, 'Atria Dawn');
-  assert.equal(model.family, 'glm');
-  assert.equal(model.releaseDate, '2026-06-13');
-  assert.deepEqual(model.limit, { context: 512000, input: 446464, output: 65536 });
-  assert.equal(model.limit.input, model.limit.context - model.limit.output);
-  assert.deepEqual(model.capabilities, {
-    tools: true,
-    input: ['text'],
-    output: ['text'],
-    temperature: true,
-    reasoning: { supported: true, toggle: true, effort: ['high', 'max'] },
-  });
-  assert.deepEqual(model.compatibility, { reasoningField: 'reasoning_content' });
-  assert.deepEqual(model.cost, { input: 1.19516, output: 4.18306, cache: { read: 0.29879, write: 0 } });
-  assert.deepEqual(apply(), first);
+  assert.deepEqual(Object.keys(models).sort(), ['oai-base', 'oai-core', 'oai-peak']);
+  for (const [id, name, context] of [
+    ['oai-base', 'OAI Base', 1000000],
+    ['oai-core', 'OAI Core', 640000],
+    ['oai-peak', 'OAI Peak', 400000],
+  ]) {
+    assert.equal(models[id].name, name);
+    assert.deepEqual(models[id].limit, { context, output: 128000 });
+    assert.ok(!Object.hasOwn(models[id].limit, 'input'));
+    assert.deepEqual(models[id].capabilities, {
+      tools: true,
+      input: ['text', 'image'],
+      output: ['text'],
+      temperature: true,
+      reasoning: { supported: true },
+    });
+  }
 });
 
-test('RawRoute includes DeepSeek V4.1 Flash 1017 with exact 1M context and image input', t => {
-  const { apply, put, read } = fixture(t);
-  put('opencode.json', JSON.stringify({ providers: { rawroute: { models: {
-    'deepseek-v4.1-flash-1017': {
-      limit: { context: 1048576, input: 1048576, output: 65536 },
-      capabilities: { input: ['text'] },
-    },
-  } } } }));
-  const first = apply();
-  const models = JSON.parse(read('opencode.json')).providers.rawroute.models;
-  const model = models['deepseek-v4.1-flash-1017'];
-  assert.equal(model.name, 'DeepSeek V4.1 Flash 1017');
-  assert.equal(model.family, 'deepseek-flash');
-  assert.equal(model.releaseDate, '2026-10-17');
-  assert.deepEqual(model.limit, { context: 1000000, input: 737856, output: 262144 });
-  assert.equal(model.limit.input, model.limit.context - model.limit.output);
-  assert.deepEqual(model.capabilities, {
-    tools: true,
-    input: ['text', 'image'],
-    output: ['text'],
-    temperature: true,
-    reasoning: { supported: true, toggle: true, effort: ['low', 'high', 'max'] },
-  });
-  assert.deepEqual(model.compatibility, { reasoningField: 'reasoning_content' });
-  assert.deepEqual(model.cost, { input: 0.15, output: 0.6, cache: { read: 0.003 } });
-  assert.equal(models['atria-dawn'].limit.context, 512000);
-  assert.deepEqual(apply(), first);
-});
-
-test('RawRoute includes Spark with a 1M context, image input and always-on reasoning', t => {
-  const { apply, put, read } = fixture(t);
-  put('opencode.json', JSON.stringify({ providers: { rawroute: { models: {
-    'spark': {
-      limit: { context: 1048576, input: 1048576, output: 65536 },
-      capabilities: { input: ['text'] },
-    },
-  } } } }));
-  const first = apply();
-  const models = JSON.parse(read('opencode.json')).providers.rawroute.models;
-  const model = models['spark'];
-  assert.equal(model.name, 'Spark');
-  assert.deepEqual(model.limit, { context: 1000000, input: 868928, output: 131072 });
-  assert.equal(model.limit.input, model.limit.context - model.limit.output);
-  assert.deepEqual(model.capabilities, {
-    tools: true,
-    input: ['text', 'image'],
-    output: ['text'],
-    temperature: true,
-    reasoning: { supported: true },
-  });
-  assert.deepEqual(model.compatibility, { reasoningField: 'reasoning_content' });
-  assert.equal(models['deepseek-v4.1-flash-1017'].limit.context, 1000000);
-  assert.deepEqual(apply(), first);
-});
-
-test('RawRoute includes Cipher with a 1M context, image input and always-on reasoning', t => {
-  const { apply, put, read } = fixture(t);
-  put('opencode.json', JSON.stringify({ providers: { rawroute: { models: {
-    'cipher': {
-      limit: { context: 1048576, input: 1048576, output: 65536 },
-      capabilities: { input: ['text'] },
-    },
-  } } } }));
-  const first = apply();
-  const models = JSON.parse(read('opencode.json')).providers.rawroute.models;
-  const model = models['cipher'];
-  assert.equal(model.name, 'Cipher');
-  assert.deepEqual(model.limit, { context: 1000000, input: 936000, output: 64000 });
-  assert.equal(model.limit.input, model.limit.context - model.limit.output);
-  assert.deepEqual(model.capabilities, {
-    tools: true,
-    input: ['text', 'image'],
-    output: ['text'],
-    temperature: true,
-    reasoning: { supported: true },
-  });
-  assert.deepEqual(model.compatibility, { reasoningField: 'reasoning_content' });
-  assert.equal(models['spark'].limit.context, 1000000);
-  assert.deepEqual(apply(), first);
-});
-
-test('applying removes retired Step 5 Preview without removing other local RawRoute models', t => {
+test('applying removes retired RawRoute models without removing other local models', t => {
   const { apply, put, read } = fixture(t);
   put('opencode.json', JSON.stringify({
     providers: { rawroute: { models: {
       'step-5-preview': { name: 'Retired local entry', limit: { context: 1000000 } },
-      personal: { name: 'Keep local model' },
+      'atria-dawn': { name: 'Retired local Atria Dawn', limit: { context: 512000, output: 65536 } },
+      'deepseek-v4.1-flash-1017': { name: 'Retired local DeepSeek', limit: { context: 1000000, output: 262144 } },
+      spark: { name: 'Retired model' },
+      cipher: { name: 'Retired model' },
+      personal: { name: 'Keep local model', limit: { context: 200000, input: 150000, output: 16000 } },
     } } },
   }));
   const first = apply();
   const models = JSON.parse(read('opencode.json')).providers.rawroute.models;
   assert.ok(!Object.hasOwn(models, 'step-5-preview'));
-  assert.equal(models['atria-dawn'].limit.context, 512000);
-  assert.deepEqual(models.personal, { name: 'Keep local model' });
+  assert.ok(!Object.hasOwn(models, 'atria-dawn'));
+  assert.ok(!Object.hasOwn(models, 'deepseek-v4.1-flash-1017'));
+  assert.ok(!Object.hasOwn(models, 'spark'));
+  assert.ok(!Object.hasOwn(models, 'cipher'));
+  assert.deepEqual(models.personal, { name: 'Keep local model', limit: { context: 200000, output: 16000 } });
+  for (const model of Object.values(models)) {
+    assert.ok(!Object.hasOwn(model.limit ?? {}, 'input'));
+  }
   assert.deepEqual(apply(), first);
 });
 
@@ -276,11 +202,12 @@ test('applying replaces local agent edits with the canonical plugin policy', t =
   assert.equal(agentBody('general'), agentSystemPrompts.general);
 });
 
-test('OpenCode merges owned limits and routing while preserving user models and unrelated settings', t => {
+test('OpenCode retires OpenAI overrides in both shapes while preserving unrelated settings', t => {
   const { apply, put, read } = fixture(t);
   const selections = { general: { model: 'custom/general#high' }, personal: { model: 'custom/personal' } };
   put('opencode.json', JSON.stringify({
     model: 'custom/main', agents: selections, disabled_providers: ['other'],
+    providers: { openai: { settings: { baseURL: 'https://old.example', apiKey: 'old-key-reference' }, models: { personal: {} } }, custom: { name: 'Keep' } },
     provider: { custom: { models: { personal: {} } }, openai: {
       options: { baseURL: 'https://old.example', timeout: 1234 },
       models: { 'gpt-6-luna-fast': { name: 'Local name', limit: { context: 1 } }, personal: { limit: { context: 42 } } },
@@ -292,10 +219,8 @@ test('OpenCode merges owned limits and routing while preserving user models and 
   assert.deepEqual(config.agents, { ...selections, title: { model: 'openai/gpt-6-luna' } });
   assert.deepEqual(config.disabled_providers, ['other', 'opencode']);
   assert.deepEqual(config.provider.custom, { models: { personal: {} } });
-  assert.equal(config.provider.openai.options.timeout, 1234);
-  assert.equal(config.provider.openai.options.baseURL, 'https://ccs.halotec.my.id/v1');
-  assert.equal(config.provider.openai.models['gpt-6-luna-fast'].name, 'Local name');
-  assert.equal(config.provider.openai.models['gpt-6-luna-fast'].limit.context, 680000);
-  assert.equal(config.provider.openai.models.personal.limit.context, 42);
+  assert.ok(!Object.hasOwn(config.provider, 'openai'));
+  assert.ok(!Object.hasOwn(config.providers, 'openai'));
+  assert.deepEqual(config.providers.custom, { name: 'Keep' });
   assert.deepEqual(apply(), first);
 });
