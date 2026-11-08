@@ -43,7 +43,7 @@ test('plugin centrally configures loaded agents without adding or removing agent
     assert.equal(agents[id].system, agentSystemPrompts[id]);
   }
   for (const id of ['build', 'general', 'explore', 'reviewer']) {
-    for (const action of ['openchamber', 'openchamber_schedule', 'openchamber_web', 'openchamber_memory', 'openchamber_knowledge', 'openchamber_notify', 'openchamber_render', 'openchamber_image']) {
+    for (const action of ['openchamber', 'openchamber_schedule', 'openchamber_web', 'openchamber_memory', 'openchamber_knowledge', 'openchamber_notify', 'openchamber_usage', 'openchamber_render', 'openchamber_image']) {
       assert.ok(agents[id].permissions.some(rule => rule.action === action && rule.effect === 'deny'), `${id} denies ${action}`);
     }
   }

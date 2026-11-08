@@ -12,6 +12,7 @@
     "openchamber_memory",
     "openchamber_knowledge",
     "openchamber_notify",
+    "openchamber_usage",
     "openchamber_render",
     "openchamber_image",
     "edit",
@@ -39,6 +40,7 @@
     "openchamber_memory": "deny",
     "openchamber_knowledge": "deny",
     "openchamber_notify": "deny",
+    "openchamber_usage": "deny",
     "openchamber_render": "deny",
     "openchamber_image": "deny"
   },
