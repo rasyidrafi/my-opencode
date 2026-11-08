@@ -53,3 +53,8 @@ test('plugin centrally configures loaded agents without adding or removing agent
   assert.ok(agents.build.permissions.some(rule => rule.action === 'edit' && rule.effect === 'allow'));
   assert.ok(agents.explore.permissions.some(rule => rule.action === 'edit' && rule.effect === 'deny'));
 });
+
+test('subagent prompts specify simplicity and delegation boundaries', () => {
+  assert.match(agentSystemPrompts.general, /speculative edge cases/);
+  assert.match(agentSystemPrompts.explore, /Do not delegate through tools, CLI, SDK, or API/);
+});

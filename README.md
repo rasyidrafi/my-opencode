@@ -245,6 +245,14 @@ be auto-discovered alongside the new plugin; unrelated files in that old
 directory are left untouched. The redundant OpenChamber `hiddenModels` list is
 removed from preferences and legacy settings on apply.
 
+The visible `coding-workflow` skill provides role-specific coding, verification
+and review guidance. The visible `delegation-rule` skill covers proportional
+delegation and context-rich handoffs; simple tasks can be handled directly. For
+complex delegated tasks, the parent records research, decisions, worktree state
+and checks in a task-specific Markdown file and still gives each delegate a
+bounded brief. Skills are discoverable guidance, not automatically loaded or a
+guarantee of compliance; agent permissions still apply.
+
 Test: `node --test tests/my-opencode-plugin.test.mjs tests/opencode-agent-plugin.test.mjs tests/opencode-config.test.mjs`.
 
 ## Tool version cleanup

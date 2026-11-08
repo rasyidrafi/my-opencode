@@ -76,6 +76,21 @@ test('applying retires explicit local plugin paths without changing other plugin
   assert.deepEqual(apply(), first);
 });
 
+test('workflow skills are installed and discoverable without changing configured instructions', t => {
+  const { applyAll, put, read } = fixture(t);
+  put('opencode.json', JSON.stringify({ instructions: ['~/existing.md'] }));
+  applyAll();
+  assert.deepEqual(JSON.parse(read('opencode.json')).instructions, ['~/existing.md']);
+  for (const name of ['coding-workflow', 'delegation-rule']) {
+    const skill = read(`skills/${name}/SKILL.md`);
+    const frontmatter = skill.match(/^---\n([\s\S]*?)\n---/);
+    assert.ok(frontmatter, `${name} has frontmatter`);
+    assert.match(frontmatter[1], new RegExp(`^name: ${name}$`, 'm'));
+    assert.match(frontmatter[1], /^description: \S/m);
+    assert.doesNotMatch(frontmatter[1], /disable-model-invocation:\s*true|opencode\/autoinvoke:\s*false/);
+  }
+});
+
 test('chezmoi apply removes the stale renamed plugin file but preserves unrelated files', t => {
   const { applyAll, directory } = fixture(t);
   const legacy = path.join(directory, 'plugins/openai-allowlist');
