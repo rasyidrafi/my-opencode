@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { agentDescriptions, agentPolicies, agentSystemPrompts, setupAgentTransform } from '../dot_config/opencode/plugins/my-opencode/agents.js';
+import { agentDescriptions, agentPolicies, agentPolicyData, agentSystemPrompts, setupAgentTransform } from '../dot_config/opencode/plugins/my-opencode/agents.js';
+
+test('title uses the RawRoute GPT Base model', () => {
+  assert.equal(agentPolicyData.titleModel, 'rawroute/gpt-base');
+});
+
+test('reviewer uses the RawRoute GPT Core model without a variant', () => {
+  assert.deepEqual(agentPolicies.reviewer.model, { providerID: 'rawroute', id: 'gpt-core' });
+});
 
 test('plugin centrally configures loaded agents without adding or removing agents', async () => {
   const agents = Object.fromEntries(Object.keys(agentPolicies).map(id => [id, {

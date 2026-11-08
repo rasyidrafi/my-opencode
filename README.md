@@ -831,9 +831,9 @@ Rawroute switches use the same merge.
 Per-agent files are generated from `agent-policy.json` on every apply, including
 their frontmatter and system prompts. The plugin enforces the same data at
 runtime. The title model in `opencode.json` is generated from that file too for
-OpenChamber compatibility. Explore and General default to
+OpenChamber compatibility. Title uses `rawroute/gpt-base`. Explore and General default to
 `rawroute/gpt-base`, Reviewer to
-`openai/gpt-6-astra#low`; Build and Plan inherit the session model.
+`rawroute/gpt-core`; Build and Plan inherit the session model.
 Build is explicitly selected as the default, and Plan remains disabled.
 
 The retired RawRoute models `step-5-preview`, `atria-dawn`, and

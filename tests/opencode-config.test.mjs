@@ -103,7 +103,7 @@ test('fresh installs generate agent policy without OpenAI provider overrides', t
     assert.deepEqual(agent(name), expectedAgentFrontmatter(name));
   }
   assert.deepEqual(agent('plan'), { disabled: true });
-  assert.deepEqual(config.agents, { title: { model: 'openai/gpt-6-luna' } });
+  assert.deepEqual(config.agents, { title: { model: 'rawroute/gpt-base' } });
   assert.ok(!Object.hasOwn(config, 'provider'));
   assert.ok(!Object.hasOwn(config.providers, 'openai'));
 });
@@ -134,7 +134,7 @@ test('plan agent remains disabled and its stub rejects local policy overrides', 
 test('title model remains in config for OpenChamber model resolution', t => {
   const { apply, read } = fixture(t);
   const first = apply();
-  assert.equal(JSON.parse(read('opencode.json')).agents.title.model, 'openai/gpt-6-luna');
+  assert.equal(JSON.parse(read('opencode.json')).agents.title.model, 'rawroute/gpt-base');
   assert.deepEqual(apply(), first);
 });
 
@@ -252,7 +252,7 @@ test('OpenCode retires OpenAI overrides in both shapes while preserving unrelate
   const first = apply();
   const config = JSON.parse(read('opencode.json'));
   assert.equal(config.model, 'custom/main');
-  assert.deepEqual(config.agents, { ...selections, title: { model: 'openai/gpt-6-luna' } });
+  assert.deepEqual(config.agents, { ...selections, title: { model: 'rawroute/gpt-base' } });
   assert.deepEqual(config.disabled_providers, ['other', 'opencode']);
   assert.deepEqual(config.provider.custom, { models: { personal: {} } });
   assert.ok(!Object.hasOwn(config.provider, 'openai'));
