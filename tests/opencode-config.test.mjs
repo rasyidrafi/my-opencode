@@ -153,18 +153,19 @@ test('title model remains in config for OpenChamber model resolution', t => {
   assert.deepEqual(apply(), first);
 });
 
-test('RawRoute includes GPT tier aliases with configured names and limits, without input limits', t => {
+test('RawRoute includes managed models with configured names and limits, without input limits', t => {
   const { apply, read } = fixture(t);
   apply();
   const models = JSON.parse(read('opencode.json')).providers.rawroute.models;
-  assert.deepEqual(Object.keys(models).sort(), ['gpt-base', 'gpt-core', 'gpt-peak']);
-  for (const [id, name, context] of [
-    ['gpt-base', 'GPT Base', 1000000],
-    ['gpt-core', 'GPT Core', 640000],
-    ['gpt-peak', 'GPT Peak', 400000],
+  assert.deepEqual(Object.keys(models).sort(), ['base-flash', 'gpt-base', 'gpt-core', 'gpt-peak']);
+  for (const [id, name, context, output] of [
+    ['base-flash', 'Base Flash', 1000000, 256000],
+    ['gpt-base', 'GPT Base', 1000000, 128000],
+    ['gpt-core', 'GPT Core', 640000, 128000],
+    ['gpt-peak', 'GPT Peak', 400000, 128000],
   ]) {
     assert.equal(models[id].name, name);
-    assert.deepEqual(models[id].limit, { context, output: 128000 });
+    assert.deepEqual(models[id].limit, { context, output });
     assert.ok(!Object.hasOwn(models[id].limit, 'input'));
     assert.deepEqual(models[id].capabilities, {
       tools: true,

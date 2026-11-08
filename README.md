@@ -851,7 +851,9 @@ RawRoute also exposes three stable GPT gateway aliases: `gpt-base` (GPT Base,
 1,000,000 context), `gpt-core` (GPT Core, 640,000 context), and `gpt-peak`
 (GPT Peak, 400,000 context). Each has a 128,000-token output limit. The backend
 can change which OpenAI model each alias resolves to without changing the
-OpenCode model IDs.
+OpenCode model IDs. RawRoute also exposes `base-flash` (Base Flash) with a
+1,000,000-token context and a 256,000-token output limit; its other capabilities
+match the GPT aliases.
 
 Verify with `node --test tests/opencode-config.test.mjs dot_config/rawroute/setup.test.mjs`.
 

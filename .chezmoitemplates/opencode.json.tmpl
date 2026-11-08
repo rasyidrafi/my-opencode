@@ -16,6 +16,22 @@
         "baseURL": "{{ if $rawrouteLocal }}https://rawroute.qilin-elver.ts.net/v1{{ else }}https://rawroute.qzz.io/v1{{ end }}"
       },
       "models": {
+        "base-flash": {
+          "name": "Base Flash",
+          "capabilities": {
+            "tools": true,
+            "input": ["text", "image"],
+            "output": ["text"],
+            "temperature": true,
+            "reasoning": {
+              "supported": true
+            }
+          },
+          "limit": {
+            "context": 1000000,
+            "output": 256000
+          }
+        },
         "gpt-base": {
           "name": "GPT Base",
           "capabilities": {
