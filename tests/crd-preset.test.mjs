@@ -7,6 +7,7 @@ import { test } from 'node:test';
 
 const source = new URL('../dot_config/chrome-remote-desktop/', import.meta.url);
 function titlebuttonFixtures(config) {
+  fs.writeFileSync(path.join(config, 'install-docklike-fork.sh'), '#!/bin/sh\nexit 0\n');
   for (const file of ['setup-titlebuttons.py', 'pwa-titlebuttons.css', 'setup-terminal-font.py', 'setup-terminal-helper.py', 'setup-whisker-shortcut.py']) {
     fs.copyFileSync(new URL(file, source), path.join(config, file));
   }
@@ -210,6 +211,8 @@ test('seeds an existing XFCE profile once, backs it up, and preserves later edit
   assert.equal(fs.readFileSync(path.join(root, '.local/state/crd-mint/xfce4-before-mint/existing-setting'), 'utf8'), 'keep me');
   const panel = path.join(xfce, 'xfconf/xfce-perchannel-xml/xfce4-panel.xml');
   assert.match(fs.readFileSync(panel, 'utf8'), /Mint|whiskermenu/);
+  assert.match(fs.readFileSync(panel, 'utf8'), /name="plugin-6" type="string" value="docklike"/);
+  assert.match(fs.readFileSync(path.join(xfce, 'panel/docklike-6.rc'), 'utf8'), /pinned=xfce4-web-browser;xfce4-terminal;thunar;/);
   const desktop = fs.readFileSync(path.join(xfce, 'xfconf/xfce-perchannel-xml/xfce4-desktop.xml'), 'utf8');
   assert.ok(desktop.includes('crd &amp; preset-'));
   assert.ok(!desktop.includes('MINT_WALLPAPER_PATH'));
@@ -259,6 +262,10 @@ test('active CRD enables desktop fixes idempotently without unnecessary installa
   fs.copyFileSync(new URL('crd-panel-workarea.desktop', source), path.join(config, 'crd-panel-workarea.desktop'));
   fs.writeFileSync(path.join(config, 'mint-assets.sh'), '#!/bin/sh\nexit 0\n');
   titlebuttonFixtures(config);
+  const oldHelper = '[Desktop Entry]\nName=old managed PWA helper\n';
+  fs.writeFileSync(path.join(config, 'crd-pwa-window-class.desktop'), oldHelper);
+  fs.mkdirSync(path.join(root, '.config/autostart'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.config/autostart/crd-pwa-window-class.desktop'), oldHelper);
   fs.writeFileSync(path.join(root, 'dpkg-query'), '#!/bin/sh\nprintf installed\n', { mode: 0o755 });
   fs.writeFileSync(path.join(root, 'timezone'), 'Asia/Jakarta\n');
   fs.writeFileSync(path.join(root, 'xfconf-query'), `#!/bin/sh
@@ -277,6 +284,7 @@ printf '%s' "$value" > "$HOME/shortcut"
   const result = run();
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /already running/);
+  assert.ok(!fs.existsSync(path.join(root, '.config/autostart/crd-pwa-window-class.desktop')));
   assert.equal(fs.readFileSync(path.join(root, 'shortcut'), 'utf8'), 'xfce4-popup-whiskermenu');
   assert.equal(fs.readFileSync(path.join(root, '.config/xfce4/helpers.rc'), 'utf8'), 'TerminalEmulator=xfce4-terminal\n');
   const autostart = path.join(root, '.config/autostart/crd-panel-workarea.desktop');

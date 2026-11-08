@@ -87,6 +87,22 @@ configure_archive_support() {
 # Apply host defaults even when the remote desktop service is already active.
 configure_timezone
 configure_archive_support
+sh "$HOME/.config/chrome-remote-desktop/install-docklike-fork.sh"
+# Retire only our previous temporary helper after the fork is installed. Its
+# old source remains available for comparison; do not remove user autostarts.
+old_helper="$HOME/.config/chrome-remote-desktop/crd-pwa-window-class.desktop"
+old_autostart="$HOME/.config/autostart/crd-pwa-window-class.desktop"
+if [ -f "$old_helper" ] && cmp -s "$old_helper" "$old_autostart"; then
+  rm "$old_autostart"
+fi
+if command -v pgrep >/dev/null 2>&1; then
+  for pid in $(pgrep -u "$(id -u)" -f '^/usr/bin/python3 .*pwa-window-class[.]py$' || :); do
+    [ -r "/proc/$pid/cmdline" ] || continue
+    cmd=$(tr '\000' '\n' < "/proc/$pid/cmdline")
+    expected=$(printf '/usr/bin/python3\n%s' "$HOME/.config/chrome-remote-desktop/pwa-window-class.py")
+    [ "$cmd" != "$expected" ] || kill "$pid" 2>/dev/null || :
+  done
+fi
 
 if systemctl is-active --quiet "$unit"; then
   sh "$HOME/.config/chrome-remote-desktop/mint-assets.sh"

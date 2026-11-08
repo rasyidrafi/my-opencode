@@ -17,9 +17,6 @@
         <value type="int" value="1" />
         <value type="int" value="2" />
         <value type="int" value="14" />
-        <value type="int" value="3" />
-        <value type="int" value="4" />
-        <value type="int" value="5" />
         <value type="int" value="6" />
         <value type="int" value="7" />
         <value type="int" value="8" />
@@ -62,10 +59,7 @@
         <value type="string" value="files.desktop" />
       </property>
     </property>
-    <property name="plugin-6" type="string" value="tasklist">
-      <property name="show-handle" type="bool" value="false" />
-      <property name="middle-click" type="uint" value="1" />
-    </property>
+    <property name="plugin-6" type="string" value="docklike" />
     <property name="plugin-7" type="string" value="separator">
       <property name="expand" type="bool" value="true" />
       <property name="style" type="uint" value="0" />

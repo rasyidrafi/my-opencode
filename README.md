@@ -756,6 +756,18 @@ be updated explicitly by running `sh ~/.config/chrome-remote-desktop/mint-assets
 and `python3 ~/.config/chrome-remote-desktop/apply-mint-live.py`; this backs up
 the previous XFCE configuration and restarts only the panel.
 
+New presets use Docklike Taskbar to combine pinned applications and running
+windows into one icon-based list. Its preferences allow grouped or separate
+buttons for each window; new CRD presets default to separate buttons.
+Right-click an application to pin or unpin it. Setup installs the plugin even
+on active hosts, but preserves existing panel layouts and pins on later runs.
+Setup builds the pinned revision of the `rasyidrafi/xfce4-docklike-plugin` fork
+and installs it through a local dpkg diversion, retaining the distro plugin.
+The fork recognizes Chromium PWA windows separately without changing their X11
+properties. Existing panels must be restarted to load an updated plugin; setup
+does not restart an active panel or CRD. Build dependencies require sudo and
+the fork requires libxfce4windowing 4.19.4 or newer.
+
 Both `Mint-Y-Dark-Aqua` and its light counterpart `Mint-Y-Aqua` are installed
 locally, including on an already running host. Dark remains the default. To use
 light for a **first-time preset initialization**, run
