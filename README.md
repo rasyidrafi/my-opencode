@@ -776,7 +776,7 @@ owns the eight disabled agent tools (including image generation, secret and
 workflow) and default permission mode.
 The PWA app name (`pwaAppName`) is unmanaged and can differ on each machine;
 existing local names are preserved and fresh installs use the app default.
-The default model is `rawroute/oai-core` with no variant. Apply removes the retired `hiddenModels` list, explicit `defaultAgent`, and any stale `defaultVariant` from
+The default model is `rawroute/gpt-core` with no variant. Apply removes the retired `hiddenModels` list, explicit `defaultAgent`, and any stale `defaultVariant` from
 both files.
 **The managed permission mode is `auto` (Accept everything).**
 
@@ -832,16 +832,16 @@ Per-agent files are generated from `agent-policy.json` on every apply, including
 their frontmatter and system prompts. The plugin enforces the same data at
 runtime. The title model in `opencode.json` is generated from that file too for
 OpenChamber compatibility. Explore and General default to
-`rawroute/oai-base`, Reviewer to
+`rawroute/gpt-base`, Reviewer to
 `openai/gpt-6-astra#low`; Build and Plan inherit the session model.
 Build is explicitly selected as the default, and Plan remains disabled.
 
 The retired RawRoute models `step-5-preview`, `atria-dawn`, and
 `deepseek-v4.1-flash-1017` are removed from existing configs on apply.
 
-RawRoute also exposes three stable OpenAI gateway aliases: `oai-base` (OAI Base,
-1,000,000 context), `oai-core` (OAI Core, 640,000 context), and `oai-peak`
-(OAI Peak, 400,000 context). Each has a 128,000-token output limit. The backend
+RawRoute also exposes three stable GPT gateway aliases: `gpt-base` (GPT Base,
+1,000,000 context), `gpt-core` (GPT Core, 640,000 context), and `gpt-peak`
+(GPT Peak, 400,000 context). Each has a 128,000-token output limit. The backend
 can change which OpenAI model each alias resolves to without changing the
 OpenCode model IDs.
 

@@ -1,5 +1,5 @@
 {
-  "defaultModel": "rawroute/oai-core",
+  "defaultModel": "rawroute/gpt-core",
   "agentControlToolEnabled": false,
   "agentScheduleToolEnabled": false,
   "agentWebToolEnabled": false,

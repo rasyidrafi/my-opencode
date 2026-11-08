@@ -1,5 +1,5 @@
 {
-  "defaultModel": "rawroute/oai-core",
+  "defaultModel": "rawroute/gpt-core",
   "sessionTabsEnabled": true,
   "showReasoningTraces": true,
   "reportUsage": false,

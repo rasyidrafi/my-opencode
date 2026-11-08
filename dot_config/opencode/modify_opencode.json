@@ -31,8 +31,38 @@
   {{- end -}}
 {{- end -}}
 {{- $config = mustMergeOverwrite $config $managed -}}
+{{- /* Migrate only known RawRoute OAI aliases in OpenCode's model-selection fields.
+      Keep variants and all custom/provider selections untouched. */ -}}
+{{- $modelAliases := dict "rawroute/oai-base" "rawroute/gpt-base" "rawroute/oai-core" "rawroute/gpt-core" "rawroute/oai-peak" "rawroute/gpt-peak" -}}
+{{- range $key := list "model" "small_model" -}}
+  {{- $selection := get $config $key -}}
+  {{- if kindIs "string" $selection -}}
+    {{- range $old, $new := $modelAliases -}}
+      {{- if or (eq $selection $old) (hasPrefix (printf "%s#" $old) $selection) -}}
+        {{- $_ := set $config $key (printf "%s%s" $new (trimPrefix $old $selection)) -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- range $scope := list "agents" "agent" -}}
+  {{- $agents := get $config $scope -}}
+  {{- if kindIs "map" $agents -}}
+    {{- range $agent := $agents -}}
+      {{- if kindIs "map" $agent -}}
+        {{- $selection := get $agent "model" -}}
+        {{- if kindIs "string" $selection -}}
+          {{- range $old, $new := $modelAliases -}}
+            {{- if or (eq $selection $old) (hasPrefix (printf "%s#" $old) $selection) -}}
+              {{- $_ := set $agent "model" (printf "%s%s" $new (trimPrefix $old $selection)) -}}
+            {{- end -}}
+          {{- end -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
 {{- /* Retired RawRoute models must be removed: a merge alone retains old entries. */ -}}
-{{- range $retired := list "step-5-preview" "atria-dawn" "deepseek-v4.1-flash-1017" "spark" "cipher" -}}
+{{- range $retired := list "step-5-preview" "atria-dawn" "deepseek-v4.1-flash-1017" "spark" "cipher" "oai-base" "oai-core" "oai-peak" -}}
   {{- $_ := unset $config.providers.rawroute.models $retired -}}
 {{- end -}}
 {{- /* RawRoute input limits are intentionally omitted; remove legacy values,
@@ -44,7 +74,7 @@
 {{- end -}}
 {{- /* These models support reasoning without selectable effort variants. Replace
       nested metadata so stale toggle/effort keys do not survive deep merging. */ -}}
-{{- range $id := list "oai-base" "oai-core" "oai-peak" -}}
+{{- range $id := list "gpt-base" "gpt-core" "gpt-peak" -}}
   {{- $model := index $config.providers.rawroute.models $id -}}
   {{- if and $model (hasKey $model "capabilities") -}}
     {{- $_ := set $model.capabilities "reasoning" (dict "supported" true) -}}

@@ -138,15 +138,15 @@ test('title model remains in config for OpenChamber model resolution', t => {
   assert.deepEqual(apply(), first);
 });
 
-test('RawRoute includes OAI tier aliases with configured names and limits, without input limits', t => {
+test('RawRoute includes GPT tier aliases with configured names and limits, without input limits', t => {
   const { apply, read } = fixture(t);
   apply();
   const models = JSON.parse(read('opencode.json')).providers.rawroute.models;
-  assert.deepEqual(Object.keys(models).sort(), ['oai-base', 'oai-core', 'oai-peak']);
+  assert.deepEqual(Object.keys(models).sort(), ['gpt-base', 'gpt-core', 'gpt-peak']);
   for (const [id, name, context] of [
-    ['oai-base', 'OAI Base', 1000000],
-    ['oai-core', 'OAI Core', 640000],
-    ['oai-peak', 'OAI Peak', 400000],
+    ['gpt-base', 'GPT Base', 1000000],
+    ['gpt-core', 'GPT Core', 640000],
+    ['gpt-peak', 'GPT Peak', 400000],
   ]) {
     assert.equal(models[id].name, name);
     assert.deepEqual(models[id].limit, { context, output: 128000 });
@@ -161,13 +161,16 @@ test('RawRoute includes OAI tier aliases with configured names and limits, witho
   }
 });
 
-test('applying removes retired RawRoute models without removing other local models', t => {
+test('applying removes retired RawRoute and OAI alias models without removing other local models', t => {
   const { apply, put, read } = fixture(t);
   put('opencode.json', JSON.stringify({
     providers: { rawroute: { models: {
       'step-5-preview': { name: 'Retired local entry', limit: { context: 1000000 } },
       'atria-dawn': { name: 'Retired local Atria Dawn', limit: { context: 512000, output: 65536 } },
       'deepseek-v4.1-flash-1017': { name: 'Retired local DeepSeek', limit: { context: 1000000, output: 262144 } },
+      'oai-base': { name: 'Retired OAI Base', limit: { context: 1000000, output: 128000 } },
+      'oai-core': { name: 'Retired OAI Core', limit: { context: 640000, output: 128000 } },
+      'oai-peak': { name: 'Retired OAI Peak', limit: { context: 400000, output: 128000 } },
       spark: { name: 'Retired model' },
       cipher: { name: 'Retired model' },
       personal: { name: 'Keep local model', limit: { context: 200000, input: 150000, output: 16000 } },
@@ -178,12 +181,45 @@ test('applying removes retired RawRoute models without removing other local mode
   assert.ok(!Object.hasOwn(models, 'step-5-preview'));
   assert.ok(!Object.hasOwn(models, 'atria-dawn'));
   assert.ok(!Object.hasOwn(models, 'deepseek-v4.1-flash-1017'));
+  assert.ok(!Object.hasOwn(models, 'oai-base'));
+  assert.ok(!Object.hasOwn(models, 'oai-core'));
+  assert.ok(!Object.hasOwn(models, 'oai-peak'));
   assert.ok(!Object.hasOwn(models, 'spark'));
   assert.ok(!Object.hasOwn(models, 'cipher'));
   assert.deepEqual(models.personal, { name: 'Keep local model', limit: { context: 200000, output: 16000 } });
   for (const model of Object.values(models)) {
     assert.ok(!Object.hasOwn(model.limit ?? {}, 'input'));
   }
+  assert.deepEqual(apply(), first);
+});
+
+test('applying migrates retired RawRoute OAI selections without changing unrelated values', t => {
+  const { apply, put, read } = fixture(t);
+  const local = {
+    model: 'rawroute/oai-base#high',
+    small_model: 'rawroute/oai-core',
+    agents: {
+      general: { model: 'rawroute/oai-peak#low', description: 'rawroute/oai-core is mentioned here' },
+      custom: { model: 'custom/provider-model' },
+      unrelated: { model: 'custom/rawroute/oai-core' },
+    },
+    agent: { legacy: { model: 'rawroute/oai-core#medium' } },
+    prompt: 'rawroute/oai-base',
+    extra: { selection: 'rawroute/oai-peak' },
+  };
+  put('opencode.json', JSON.stringify(local));
+
+  const first = apply();
+  const config = JSON.parse(read('opencode.json'));
+  assert.equal(config.model, 'rawroute/gpt-base#high');
+  assert.equal(config.small_model, 'rawroute/gpt-core');
+  assert.equal(config.agents.general.model, 'rawroute/gpt-peak#low');
+  assert.equal(config.agents.general.description, local.agents.general.description);
+  assert.equal(config.agents.custom.model, 'custom/provider-model');
+  assert.equal(config.agents.unrelated.model, 'custom/rawroute/oai-core');
+  assert.equal(config.agent.legacy.model, 'rawroute/gpt-core#medium');
+  assert.equal(config.prompt, 'rawroute/oai-base');
+  assert.equal(config.extra.selection, 'rawroute/oai-peak');
   assert.deepEqual(apply(), first);
 });
 

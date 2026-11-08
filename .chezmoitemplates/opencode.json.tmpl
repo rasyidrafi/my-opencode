@@ -16,8 +16,8 @@
         "baseURL": "{{ if $rawrouteLocal }}https://rawroute.qilin-elver.ts.net/v1{{ else }}https://rawroute.qzz.io/v1{{ end }}"
       },
       "models": {
-        "oai-base": {
-          "name": "OAI Base",
+        "gpt-base": {
+          "name": "GPT Base",
           "capabilities": {
             "tools": true,
             "input": ["text", "image"],
@@ -32,8 +32,8 @@
             "output": 128000
           }
         },
-        "oai-core": {
-          "name": "OAI Core",
+        "gpt-core": {
+          "name": "GPT Core",
           "capabilities": {
             "tools": true,
             "input": ["text", "image"],
@@ -48,8 +48,8 @@
             "output": 128000
           }
         },
-        "oai-peak": {
-          "name": "OAI Peak",
+        "gpt-peak": {
+          "name": "GPT Peak",
           "capabilities": {
             "tools": true,
             "input": ["text", "image"],
