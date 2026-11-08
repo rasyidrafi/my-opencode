@@ -26,8 +26,10 @@ test('terminal font setup is idempotent, preserves other settings and backs up o
   const alias = path.join(root, '.config/fontconfig/conf.d/10-crd-monospace.conf');
   const aliasTime = fs.statSync(alias).mtimeMs;
   assert.match(fs.readFileSync(alias, 'utf8'), /<family>monospace<\/family>/);
-  assert.match(fs.readFileSync(alias, 'utf8'), /<prefer><family>Liberation Mono<\/family><\/prefer>/);
-  assert.match(first, /FontName=Liberation Mono 10/);
+  assert.match(fs.readFileSync(alias, 'utf8'), /<prefer><family>Ubuntu Mono<\/family><\/prefer>/);
+  assert.match(fs.readFileSync(alias, 'utf8'), /<family>sans-serif<\/family>/);
+  assert.match(fs.readFileSync(alias, 'utf8'), /<prefer><family>Ubuntu<\/family><\/prefer>/);
+  assert.match(first, /FontName=Ubuntu Mono 10/);
   assert.match(first, /FontUseSystem=FALSE\n\[Other\]/);
   assert.match(first, /# user comment/);
   assert.match(first, /ColorBackground=#123456/);
@@ -36,7 +38,7 @@ test('terminal font setup is idempotent, preserves other settings and backs up o
   assert.equal(fs.statSync(alias).mtimeMs, aliasTime);
   fs.writeFileSync(alias, '<fontconfig/>');
   assert.equal(run().status, 0);
-  assert.match(fs.readFileSync(alias, 'utf8'), /Liberation Mono/);
+  assert.match(fs.readFileSync(alias, 'utf8'), /Ubuntu Mono/);
   assert.equal(fs.readFileSync(path.join(root, '.local/state/crd-mint/terminalrc-before-font'), 'utf8'), old);
 });
 
@@ -283,7 +285,7 @@ printf '%s' "$value" > "$HOME/shortcut"
   assert.equal(fs.statSync(autostart).mtimeMs, before);
   assert.equal(fs.readFileSync(autostart, 'utf8'), fs.readFileSync(new URL('crd-panel-workarea.desktop', source), 'utf8'));
   assert.ok(!fs.existsSync(path.join(root, '.config/xfce4/xfconf')));
-  assert.match(fs.readFileSync(path.join(root, '.config/xfce4/terminal/terminalrc'), 'utf8'), /FontName=Liberation Mono 10/);
+  assert.match(fs.readFileSync(path.join(root, '.config/xfce4/terminal/terminalrc'), 'utf8'), /FontName=Ubuntu Mono 10/);
   // A minimal machine missing the explicit font installs it once, even when
   // CRD is active; subsequent runs do not invoke apt again.
   fs.writeFileSync(path.join(root, 'dpkg-query'), '#!/bin/sh\ncase "$*" in *fonts-liberation) [ -f "$HOME/font-installed" ] && printf installed;; *) printf installed;; esac\n', { mode: 0o755 });

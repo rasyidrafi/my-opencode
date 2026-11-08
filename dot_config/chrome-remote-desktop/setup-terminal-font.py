@@ -18,7 +18,11 @@ fontconfig_xml = '''<?xml version="1.0"?>
   <!-- Managed by mise run crd:setup. -->
   <alias binding="strong">
     <family>monospace</family>
-    <prefer><family>Liberation Mono</family></prefer>
+    <prefer><family>Ubuntu Mono</family></prefer>
+  </alias>
+  <alias binding="strong">
+    <family>sans-serif</family>
+    <prefer><family>Ubuntu</family></prefer>
   </alias>
 </fontconfig>
 '''
@@ -29,7 +33,7 @@ if not fontconfig.exists() or fontconfig.read_text() != fontconfig_xml:
 target = home / '.config/xfce4/terminal/terminalrc'
 old = target.read_text() if target.exists() else ''
 lines = old.splitlines(keepends=True)
-values = {'FontName': 'Liberation Mono 10', 'FontUseSystem': 'FALSE'}
+values = {'FontName': 'Ubuntu Mono 10', 'FontUseSystem': 'FALSE'}
 result = []
 in_config = False
 found = False
@@ -69,5 +73,5 @@ if shutil.which('xfconf-query') and (os.environ.get('DBUS_SESSION_BUS_ADDRESS') 
         if current.returncode == 0 and current.stdout.strip() == value:
             continue
         subprocess.run(args + ['-n', '-t', kind, '-s', value], check=True)
-print('XFCE Terminal font configured: Liberation Mono 10.')
-print('System monospace default configured: Liberation Mono (reload browser terminals to apply).')
+print('XFCE Terminal font configured: Ubuntu Mono 10.')
+print('System sans-serif and monospace defaults configured: Ubuntu and Ubuntu Mono (restart browsers to apply).')

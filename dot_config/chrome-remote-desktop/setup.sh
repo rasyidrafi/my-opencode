@@ -55,10 +55,16 @@ configure_timezone() {
 }
 
 configure_terminal_font() {
-  if [ "$(dpkg-query -W -f='${db:Status-Status}' fonts-liberation 2>/dev/null || :)" != installed ]; then
+  font_missing=''
+  for package in fonts-liberation fonts-dejavu-core fonts-dejavu-mono fonts-noto-core fonts-noto-color-emoji; do
+    if [ "$(dpkg-query -W -f='${db:Status-Status}' "$package" 2>/dev/null || :)" != installed ]; then
+      font_missing="$font_missing $package"
+    fi
+  done
+  if [ -n "$font_missing" ]; then
     authenticate_sudo
     sudo apt-get update
-    sudo apt-get install -y --no-install-recommends --no-upgrade fonts-liberation
+    sudo apt-get install -y --no-install-recommends --no-upgrade $font_missing
   fi
   /usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-terminal-font.py"
 }

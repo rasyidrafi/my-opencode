@@ -23,12 +23,15 @@ if [ ! -f "$wallpaper" ]; then
   cp "$tmpdir/artwork/usr/share/backgrounds/linuxmint/sele_ring.jpg" "$wallpaper"
 fi
 fontdir="$HOME/.local/share/fonts/crd-mint"
-if [ ! -f "$fontdir/Ubuntu-Regular.ttf" ] || [ ! -f "$fontdir/Ubuntu-Medium.ttf" ] || [ ! -f "$fontdir/Ubuntu-Bold.ttf" ]; then
+fonts_changed=false
+for font in Ubuntu-Regular Ubuntu-Medium Ubuntu-Bold Ubuntu-Italic Ubuntu-BoldItalic UbuntuMono-Regular UbuntuMono-Bold UbuntuMono-Italic UbuntuMono-BoldItalic; do
+  [ -f "$fontdir/$font.ttf" ] && continue
+  case "$font" in UbuntuMono-*) directory=ubuntumono;; *) directory=ubuntu;; esac
   mkdir -p "$fontdir"
-  for weight in Regular Medium Bold; do
-    [ ! -f "$fontdir/Ubuntu-$weight.ttf" ] || continue
-    curl -fsSL "https://raw.githubusercontent.com/google/fonts/a50de97857f6626d6628c91e6a34c12ee8a16ede/ufl/ubuntu/Ubuntu-$weight.ttf" -o "$tmpdir/Ubuntu-$weight.ttf"
-    cp "$tmpdir/Ubuntu-$weight.ttf" "$fontdir/"
-  done
+  curl -fsSL "https://raw.githubusercontent.com/google/fonts/a50de97857f6626d6628c91e6a34c12ee8a16ede/ufl/$directory/$font.ttf" -o "$tmpdir/$font.ttf"
+  cp "$tmpdir/$font.ttf" "$fontdir/"
+  fonts_changed=true
+done
+if [ "$fonts_changed" = true ]; then
   fc-cache -f "$fontdir"
 fi

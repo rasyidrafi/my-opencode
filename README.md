@@ -722,8 +722,8 @@ PWA headerbars without changing Thunar's buttons. Reopen Chrome/PWAs to load
 it; setup never closes them.
 Button spacing matches the bundled Mint XFWM theme's 32-pixel center-to-center
 distance (26-pixel GTK button plus Chromium's 6-pixel gap).
-Setup also ensures `fonts-liberation` is installed and sets XFCE Terminal to
-`Liberation Mono 10` with system-font inheritance disabled. This avoids generic
+Setup also installs Liberation, DejaVu, Noto and color emoji fallback fonts and sets XFCE Terminal to
+`Ubuntu Mono 10` with system-font inheritance disabled. This avoids generic
 `Monospace` resolving to a proportional font on minimal desktops. It updates
 both terminalrc and live xfconf settings, preserves other terminal settings,
 backs up the original terminalrc once, and skips unchanged settings on reruns.
@@ -731,8 +731,8 @@ It also sets `xfce4-terminal` as XFCE's default terminal emulator, preserving
 other helper preferences; this avoids a broken system fallback such as Zutty
 preventing Thunar's **Open Terminal Here** action from working.
 It also maintains `~/.config/fontconfig/conf.d/10-crd-monospace.conf` (under
-`XDG_CONFIG_HOME` when set), making the generic `monospace` family resolve to
-Liberation Mono for browser terminals such as code-server, not just XFCE.
+`XDG_CONFIG_HOME` when set), making generic `monospace` resolve to Ubuntu Mono
+and `sans-serif` to Ubuntu, including in browser applications.
 Relaunch the browser after setup to clear its cached font selection.
 These desktop fixes also run when CRD is already active; missing terminal fonts
 may require sudo, but CRD and existing terminal sessions are never restarted.
