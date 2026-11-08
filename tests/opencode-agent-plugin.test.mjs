@@ -48,7 +48,8 @@ test('plugin centrally configures loaded agents without adding or removing agent
     }
   }
   for (const id of ['build', 'general', 'explore', 'reviewer']) {
-    assert.ok(agents[id].permissions.some(rule => rule.action === 'openchamber_secret' && rule.effect === 'deny'));
+    const effect = id === 'build' ? 'allow' : 'deny';
+    assert.ok(agents[id].permissions.some(rule => rule.action === 'openchamber_secret' && rule.effect === effect));
   }
   assert.ok(agents.build.permissions.some(rule => rule.action === 'edit' && rule.effect === 'allow'));
   assert.ok(agents.explore.permissions.some(rule => rule.action === 'edit' && rule.effect === 'deny'));

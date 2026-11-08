@@ -27,8 +27,8 @@ test('OpenChamber no longer manages a redundant model denylist', () => {
   assert.ok(!Object.hasOwn(settings, 'hiddenModels'));
 });
 
-test('OpenChamber secret and workflow tools are disabled', () => {
-  assert.equal(settings.agentSecretToolEnabled, false);
+test('OpenChamber secret tool is enabled and workflow tool is disabled', () => {
+  assert.equal(settings.agentSecretToolEnabled, true);
   assert.equal(settings.agentWorkflowToolEnabled, false);
 });
 
@@ -101,6 +101,7 @@ test('managed preferences replace only their values, retain unchanged timestamps
     desktopUiPassword: 'synthetic-local-secret',
     defaultModel: 'legacy/profile-copy',
     unknownFutureSetting: { keep: true },
+    agentSecretToolEnabled: false,
     permissionDefaultMode: 'ask',
   };
   put('settings.json', local);

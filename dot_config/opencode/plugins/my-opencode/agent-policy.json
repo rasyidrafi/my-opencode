@@ -52,7 +52,7 @@
         "glob": "deny",
         "grep": "deny",
         "subagent": "allow",
-        "openchamber_secret": "deny"
+        "openchamber_secret": "allow"
       }
     },
     "general": {

@@ -6,7 +6,7 @@
   "agentKnowledgeToolEnabled": false,
   "agentRenderToolEnabled": false,
   "agentImageToolEnabled": false,
-  "agentSecretToolEnabled": false,
+  "agentSecretToolEnabled": true,
   "agentWorkflowToolEnabled": false,
   "permissionDefaultMode": "auto"
 }

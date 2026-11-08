@@ -780,8 +780,11 @@ Chezmoi merges the approved OpenChamber preferences into
 `.chezmoitemplates/openchamber/`: `preferences.json` owns the model
 default and selected UI/notification preferences,
 including the explicitly pinned `showReasoningTraces: true`; `settings.json`
-owns the eight disabled agent tools (including image generation, secret and
-workflow) and default permission mode.
+enables the agent secret tool, disables the other seven managed agent tools
+(including image generation and workflow), and owns the default permission mode.
+The secret tool is allowed only for Build and denied for General, Explore,
+and Reviewer. Secrets stay out of chat, but saved values are
+readable by agent commands on the OpenChamber host and expire after 24 hours.
 The PWA app name (`pwaAppName`) is unmanaged and can differ on each machine;
 existing local names are preserved and fresh installs use the app default.
 The default model is `rawroute/gpt-core` with no variant. Apply removes the retired `hiddenModels` list, explicit `defaultAgent`, and any stale `defaultVariant` from
