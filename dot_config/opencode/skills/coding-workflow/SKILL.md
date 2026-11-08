@@ -25,6 +25,5 @@ Apply the guidance for your role within the user's instructions, repository conv
 
 ## Verify and debug
 
-- Select a relevant check before editing when practical; establish a baseline if useful. Run the real check, inspect its output, and report the command, result, and any unverified behavior. Run broader checks when appropriate for the change.
+- Select a relevant check before editing when practical; establish a baseline if useful. Run the real check and broader checks when appropriate. Report commands and results, distinguishing observations from assumptions and unexecuted checks; explain any blocked verification.
 - Fix the root cause rather than hiding a failure or weakening a check. If two attempts fail in the same way, stop varying the fix: identify and test their shared assumption before choosing a new approach.
-- Report observed results separately from assumptions and unexecuted checks. If verification is blocked, state why rather than claiming success.
