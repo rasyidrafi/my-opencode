@@ -756,6 +756,16 @@ be updated explicitly by running `sh ~/.config/chrome-remote-desktop/mint-assets
 and `python3 ~/.config/chrome-remote-desktop/apply-mint-live.py`; this backs up
 the previous XFCE configuration and restarts only the panel.
 
+Both `Mint-Y-Dark-Aqua` and its light counterpart `Mint-Y-Aqua` are installed
+locally, including on an already running host. Dark remains the default. To use
+light for a **first-time preset initialization**, run
+`CRD_MINT_THEME=light mise run crd:setup` after applying chezmoi. This option
+does not overwrite an existing preset or change an active session. For an
+existing desktop, select `Mint-Y-Aqua` in XFCE **Appearance** and **Window
+Manager** settings; choose `Mint-Y-Dark-Aqua` to switch back. Installing assets
+may require internet access even when CRD is already running. The explicit
+`apply-mint-live.py` command above reapplies the dark preset.
+
 Run `mise run codex:setup` after applying chezmoi and installing tools with Mise
 to start the native Codex app-server daemon, or restart it if already running.
 This supports Linux and Windows. The task is disabled on Android/Termux because

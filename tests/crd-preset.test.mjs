@@ -222,6 +222,31 @@ test('seeds an existing XFCE profile once, backs it up, and preserves later edit
   assert.equal(fs.readFileSync(shortcuts, 'utf8'), 'user shortcut');
 });
 
+test('light theme is an opt-in for initial GTK and window manager settings', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'crd-light-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const config = path.join(root, '.config/chrome-remote-desktop');
+  fs.mkdirSync(config, { recursive: true });
+  fs.cpSync(new URL('mint-preset/', source), path.join(config, 'mint-preset'), { recursive: true });
+  for (const name of ['.local/share/backgrounds/crd-mint/sele_ring.jpg', '.local/share/themes/Mint-Y-Aqua/gtk-3.0/gtk.css']) {
+    const file = path.join(root, name);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, 'fixture');
+  }
+  const run = variant => spawnSync('python3', [new URL('seed-mint.py', source).pathname], { env: { ...process.env, HOME: root, CRD_MINT_THEME: variant }, encoding: 'utf8' });
+  assert.notEqual(run('invalid').status, 0);
+  const result = run('light');
+  assert.equal(result.status, 0, result.stderr);
+  const channels = path.join(root, '.config/xfce4/xfconf/xfce-perchannel-xml');
+  for (const file of ['xsettings.xml', 'xfwm4.xml']) {
+    const xml = fs.readFileSync(path.join(channels, file), 'utf8');
+    assert.match(xml, /value="Mint-Y-Aqua"/);
+    assert.doesNotMatch(xml, /Mint-Y-Dark-Aqua/);
+  }
+  assert.equal(run('dark').status, 0);
+  assert.match(fs.readFileSync(path.join(channels, 'xsettings.xml'), 'utf8'), /value="Mint-Y-Aqua"/);
+});
+
 test('active CRD enables desktop fixes idempotently without unnecessary installation or restart', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'crd-active-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -230,6 +255,7 @@ test('active CRD enables desktop fixes idempotently without unnecessary installa
   const config = path.join(root, '.config/chrome-remote-desktop');
   fs.mkdirSync(config, { recursive: true });
   fs.copyFileSync(new URL('crd-panel-workarea.desktop', source), path.join(config, 'crd-panel-workarea.desktop'));
+  fs.writeFileSync(path.join(config, 'mint-assets.sh'), '#!/bin/sh\nexit 0\n');
   titlebuttonFixtures(config);
   fs.writeFileSync(path.join(root, 'dpkg-query'), '#!/bin/sh\nprintf installed\n', { mode: 0o755 });
   fs.writeFileSync(path.join(root, 'timezone'), 'Asia/Jakarta\n');

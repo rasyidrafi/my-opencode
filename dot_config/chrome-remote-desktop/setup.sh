@@ -83,6 +83,7 @@ configure_timezone
 configure_archive_support
 
 if systemctl is-active --quiet "$unit"; then
+  sh "$HOME/.config/chrome-remote-desktop/mint-assets.sh"
   /usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-terminal-helper.py"
   configure_terminal_font
   /usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-whisker-shortcut.py"
