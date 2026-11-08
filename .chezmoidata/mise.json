@@ -436,6 +436,14 @@
         "androidCleanEnv": false
       },
       {
+        "name": "openchamber:restart",
+        "description": "Schedule an independent restart of the OpenChamber user service on Linux",
+        "script": "services/restart-openchamber.mjs",
+        "args": "",
+        "platforms": ["linux"],
+        "androidCleanEnv": false
+      },
+      {
         "name": "openchamber:setup",
         "description": "Replace OpenChamber on port 3000 with its native user startup service",
         "script": "services/setup.mjs",

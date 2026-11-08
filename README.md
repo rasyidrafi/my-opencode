@@ -772,6 +772,18 @@ startup service and stops the existing OpenChamber instance on that port first;
 instances on other ports are left alone. It briefly interrupts an existing server.
 Check the service with `openchamber startup status`.
 
+On Linux, use `mise run openchamber:restart` to restart the already installed
+`openchamber.service`, including from an OpenChamber terminal. It schedules the
+restart with the systemd user manager after five seconds and returns immediately;
+the connection will drop, so reconnect afterward. Success means the restart was
+scheduled, not that the server has started successfully. Check it with
+`systemctl --user status openchamber.service` and, if needed,
+`journalctl --user -u openchamber.service -n 100 --no-pager`.
+This requires a working systemd user manager and an existing startup service.
+Restart uses the installed service configuration; run `openchamber:setup` from
+an independent terminal when the service must be regenerated, such as after an
+upgrade. Do not run setup from the OpenChamber terminal it stops.
+
 ### OpenChamber preferences
 
 Chezmoi merges the approved OpenChamber preferences into
