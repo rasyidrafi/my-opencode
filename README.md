@@ -833,7 +833,7 @@ their frontmatter and system prompts. The plugin enforces the same data at
 runtime. The title model in `opencode.json` is generated from that file too for
 OpenChamber compatibility. Title uses `rawroute/gpt-base`. Explore and General default to
 `rawroute/gpt-base`, Reviewer to
-`rawroute/gpt-core`; Build and Plan inherit the session model.
+`rawroute/gpt-peak`; Build and Plan inherit the session model.
 Build is explicitly selected as the default, and Plan remains disabled.
 
 The retired RawRoute models `step-5-preview`, `atria-dawn`, and
