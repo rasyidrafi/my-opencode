@@ -13,10 +13,10 @@ const managed = name => JSON.parse(fs.readFileSync(path.join(repository, '.chezm
 const preferences = managed('preferences.json');
 const settings = managed('settings.json');
 
-test('OpenChamber defaults to GPT Core without a variant in both profile and legacy copy', () => {
-  assert.equal(preferences.defaultModel, 'rawroute/gpt-core');
+test('OpenChamber defaults to Base Flash without a variant in both profile and legacy copy', () => {
+  assert.equal(preferences.defaultModel, 'rawroute/base-flash');
   assert.ok(!Object.hasOwn(preferences, 'defaultVariant'));
-  assert.equal(settings.defaultModel, 'rawroute/gpt-core');
+  assert.equal(settings.defaultModel, 'rawroute/base-flash');
   assert.ok(!Object.hasOwn(settings, 'defaultVariant'));
   assert.ok(!Object.hasOwn(preferences, 'defaultAgent'));
   assert.ok(!Object.hasOwn(settings, 'defaultAgent'));
@@ -122,6 +122,20 @@ test('managed preferences replace only their values, retain unchanged timestamps
   assert.deepEqual(apply(), first);
 });
 
+test('matching managed values leave the app-formatted file byte for byte untouched', t => {
+  const { directory, read, apply } = fixture(t);
+  const prefs = JSON.stringify({
+    version: 1,
+    fields: Object.fromEntries(Object.entries(preferences).map(([key, value]) => [key, { value, updatedAt: 1 }])),
+  }, null, 2);
+  const instance = JSON.stringify(settings, null, 2);
+  fs.writeFileSync(path.join(directory, 'preferences.json'), prefs);
+  fs.writeFileSync(path.join(directory, 'settings.json'), instance);
+  apply();
+  assert.equal(read('preferences.json'), prefs);
+  assert.equal(read('settings.json'), instance);
+});
+
 test('applying removes hiddenModels from both documents and preserves unrelated values', t => {
   const { put, read, apply } = fixture(t);
   const hiddenModels = [{ providerID: 'openai', modelID: 'legacy' }];
@@ -224,9 +238,9 @@ test('repo-managed model overrides old local values and clears retired variants 
   const first = apply();
   const fields = JSON.parse(read('preferences.json')).fields;
   const config = JSON.parse(read('settings.json'));
-  assert.equal(fields.defaultModel.value, 'rawroute/gpt-core');
+  assert.equal(fields.defaultModel.value, 'rawroute/base-flash');
   assert.ok(!Object.hasOwn(fields, 'defaultVariant'));
-  assert.equal(config.defaultModel, 'rawroute/gpt-core');
+  assert.equal(config.defaultModel, 'rawroute/base-flash');
   assert.ok(!Object.hasOwn(config, 'defaultVariant'));
   assert.equal(config.keepLocal, true);
   assert.deepEqual(apply(), first);

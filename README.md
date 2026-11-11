@@ -842,7 +842,7 @@ and Reviewer. Secrets stay out of chat, but saved values are
 readable by agent commands on the OpenChamber host and expire after 24 hours.
 The PWA app name (`pwaAppName`) is unmanaged and can differ on each machine;
 existing local names are preserved and fresh installs use the app default.
-The default model is `rawroute/gpt-core` with no variant. Apply removes the retired `hiddenModels` list, explicit `defaultAgent`, and any stale `defaultVariant` from
+The default model is `rawroute/base-flash` with no variant. Apply removes the retired `hiddenModels` list, explicit `defaultAgent`, and any stale `defaultVariant` from
 both files.
 **The managed permission mode is `auto` (Accept everything).**
 
@@ -868,6 +868,11 @@ state. Other unmanaged entries are left alone, not deleted. Both files are
 private (0600 on Unix). Preference timestamps are generated only when a managed
 value changes, not copied from the original machine or refreshed on every apply.
 Malformed JSON and unsupported preference document versions are refused.
+When every managed value already matches, the modify templates emit the existing
+file's bytes unchanged, preserving OpenChamber's own key order and EOF formatting
+so `chezmoi status` stays clean. If a managed value changes, apply writes
+canonical JSON once; run apply again after OpenChamber re-saves and the status
+returns to clean.
 
 Apply with `chezmoi apply ~/.config/openchamber/preferences.json ~/.config/openchamber/settings.json`,
 then reload clients to pick up the stored preferences. UI changes to managed
