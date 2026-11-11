@@ -355,6 +355,17 @@
         "androidCleanEnv": false
       },
       {
+        "name": "muse:setup",
+        "description": "Install or update Meta's Muse Code CLI natively via its official installer",
+        "script": "muse/setup.mjs",
+        "args": "",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "androidCleanEnv": false
+      },
+      {
         "name": "chrome:setup",
         "description": "Reuse an installed Chrome, Edge, Chromium, or Brave browser; otherwise install Chrome on Debian-family Linux amd64",
         "script": "chrome/setup.mjs",

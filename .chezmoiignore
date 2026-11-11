@@ -18,6 +18,7 @@ userscripts/**
 .config/tailscale/README.md
 .config/tailscale/setup.test.mjs
 .config/chrome/setup.test.mjs
+.config/muse/setup.test.mjs
 .config/azure-mnt-cache/setup.test.mjs
 .config/azure-mnt-cache/docker-enabled
 .config/azure-mnt-cache/shell-enabled

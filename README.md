@@ -512,6 +512,27 @@ downloads on subsequent runs once setup is complete. Windows, macOS, and
 Android/Termux are not supported. Test without system changes with
 `node --test tests/mpv-setup.test.mjs`.
 
+### Muse Code
+
+Run `mise run muse:setup` on Linux or Windows to install or update Meta's
+[Muse Code](https://dev.meta.ai/docs/muse-code) CLI through its official
+installer. The task downloads the installer instead of piping it to a shell,
+installs into `~/.local/bin`, and sets `MUSE_NO_MODIFY_PATH=1` so the installer
+does not edit your shell profiles; `shell:setup` already puts that directory on
+PATH. It then verifies `muse --version`. On Linux it warns when `bwrap` is
+missing, because Muse Code's sandbox needs it.
+
+The installer follows the `muse-stable` channel and the launcher self-updates, so
+mise does not pin the version and the task upgrades to the latest release on each
+run. The binary is a native install in `~/.local/bin` (not a mise-managed tool),
+so it is not listed by `mise ls` and is not touched by `tools:cleanup`.
+Android/Termux is not supported by the task.
+
+The first `muse` run needs a Meta account: sign in through the browser, or set
+`META_API_KEY` for headless/SSH use. Credentials are not managed by the task.
+
+Test without installing: `node --test dot_config/muse/setup.test.mjs`.
+
 ## Shared native Docker
 
 `docker:setup` is opt-in and deterministic, for Debian/Ubuntu amd64/arm64.
