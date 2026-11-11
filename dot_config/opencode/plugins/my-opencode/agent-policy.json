@@ -76,7 +76,7 @@
       "mode": "subagent",
       "description": "Read-only codebase discovery: locate files and symbols, trace flows, explain existing behavior, and gather facts. Use general for changes and reviewer for judgments or recommendations.",
       "system": "You are a file search specialist. You excel at thoroughly navigating and exploring codebases.\n\nDo not create any files, or run bash commands that modify the user's system state in any way. Do not delegate through tools, CLI, SDK, or API.\n\nComplete the user's search request efficiently and report your findings clearly.",
-      "model": "rawroute/gpt-base",
+      "model": "rawroute/base-flash",
       "permissionOverrides": {
         "edit": "deny",
         "read": "deny",

@@ -56,7 +56,7 @@ configure_timezone() {
 
 configure_terminal_font() {
   font_missing=''
-  for package in fonts-liberation fonts-dejavu-core fonts-dejavu-mono fonts-noto-core fonts-noto-color-emoji; do
+  for package in fonts-liberation fonts-dejavu-core fonts-dejavu-mono fonts-noto-core fonts-noto-cjk fonts-noto-color-emoji; do
     if [ "$(dpkg-query -W -f='${db:Status-Status}' "$package" 2>/dev/null || :)" != installed ]; then
       font_missing="$font_missing $package"
     fi

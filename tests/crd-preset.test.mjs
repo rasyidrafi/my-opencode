@@ -296,11 +296,11 @@ printf '%s' "$value" > "$HOME/shortcut"
   assert.match(fs.readFileSync(path.join(root, '.config/xfce4/terminal/terminalrc'), 'utf8'), /FontName=Ubuntu Mono 10/);
   // A minimal machine missing the explicit font installs it once, even when
   // CRD is active; subsequent runs do not invoke apt again.
-  fs.writeFileSync(path.join(root, 'dpkg-query'), '#!/bin/sh\ncase "$*" in *fonts-liberation) [ -f "$HOME/font-installed" ] && printf installed;; *) printf installed;; esac\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(root, 'dpkg-query'), '#!/bin/sh\ncase "$*" in *fonts-liberation|*fonts-noto-cjk) [ -f "$HOME/font-installed" ] && printf installed;; *) printf installed;; esac\n', { mode: 0o755 });
   fs.writeFileSync(path.join(root, 'sudo'), '#!/bin/sh\n[ "$1" = -n ] && exit 0\nprintf "%s\\n" "$*" >> "$HOME/sudo-calls"\ncase "$*" in *install*) touch "$HOME/font-installed";; esac\n', { mode: 0o755 });
   assert.equal(run().status, 0);
   const calls = fs.readFileSync(path.join(root, 'sudo-calls'), 'utf8');
-  assert.match(calls, /apt-get install -y --no-install-recommends --no-upgrade fonts-liberation/);
+  assert.match(calls, /apt-get install -y --no-install-recommends --no-upgrade fonts-liberation fonts-noto-cjk/);
   assert.doesNotMatch(calls, /systemctl|restart/);
   assert.equal(run().status, 0);
   assert.equal(fs.readFileSync(path.join(root, 'sudo-calls'), 'utf8'), calls);

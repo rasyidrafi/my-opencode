@@ -722,7 +722,7 @@ PWA headerbars without changing Thunar's buttons. Reopen Chrome/PWAs to load
 it; setup never closes them.
 Button spacing matches the bundled Mint XFWM theme's 32-pixel center-to-center
 distance (26-pixel GTK button plus Chromium's 6-pixel gap).
-Setup also installs Liberation, DejaVu, Noto and color emoji fallback fonts and sets XFCE Terminal to
+Setup also installs Liberation, DejaVu, Noto (including CJK) and color emoji fallback fonts and sets XFCE Terminal to
 `Ubuntu Mono 10` with system-font inheritance disabled. This avoids generic
 `Monospace` resolving to a proportional font on minimal desktops. It updates
 both terminalrc and live xfconf settings, preserves other terminal settings,
@@ -876,8 +876,8 @@ Rawroute switches use the same merge.
 Per-agent files are generated from `agent-policy.json` on every apply, including
 their frontmatter and system prompts. The plugin enforces the same data at
 runtime. The title model in `opencode.json` is generated from that file too for
-OpenChamber compatibility. Title uses `rawroute/gpt-base`. Explore and General default to
-`rawroute/gpt-base`, Reviewer to
+OpenChamber compatibility. Title uses `rawroute/gpt-base`. Explore defaults to
+`rawroute/base-flash`, General to `rawroute/gpt-base`, Reviewer to
 `rawroute/gpt-peak`; Build and Plan inherit the session model.
 Build is explicitly selected as the default, and Plan remains disabled.
 

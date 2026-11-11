@@ -10,6 +10,10 @@ test('reviewer uses the RawRoute GPT Peak model without a variant', () => {
   assert.deepEqual(agentPolicies.reviewer.model, { providerID: 'rawroute', id: 'gpt-peak' });
 });
 
+test('explore uses the RawRoute Base Flash model without a variant', () => {
+  assert.deepEqual(agentPolicies.explore.model, { providerID: 'rawroute', id: 'base-flash' });
+});
+
 test('plugin centrally configures loaded agents without adding or removing agents', async () => {
   const agents = Object.fromEntries(Object.keys(agentPolicies).map(id => [id, {
     id,
