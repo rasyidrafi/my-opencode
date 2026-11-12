@@ -2,7 +2,7 @@
 {{- $agentPolicy := includeTemplate "dot_config/opencode/plugins/my-opencode/agent-policy.json" . | mustFromJson -}}
 {
   "websearch": false,
-  "plugins": ["@rasyid_rafi/opencode-muse"],
+  "plugins": ["@rasyid_rafi/opencode-muse@0.1.2"],
   "agents": {
     "title": {
       "model": "{{ $agentPolicy.titleModel }}"
