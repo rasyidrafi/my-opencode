@@ -245,6 +245,11 @@ be auto-discovered alongside the new plugin; unrelated files in that old
 directory are left untouched. The redundant OpenChamber `hiddenModels` list is
 removed from preferences and legacy settings on apply.
 
+The generated `opencode.json` also loads the published npm plugin
+`@rasyid_rafi/opencode-muse`, which runs Muse Code as an OpenCode
+`LanguageModelV3` provider. Apply unions it with local `plugins` entries instead
+of replacing them, and the auto-discovered `my-opencode` plugin stays implicit.
+
 The visible `coding-workflow` skill provides role-specific coding, verification
 and review guidance. The visible `delegation-rule` skill covers proportional
 delegation and context-rich handoffs; simple tasks can be handled directly. For

@@ -7,19 +7,19 @@
 {{- /* Keep local model/agent selections and unrelated settings. The repo owns
       provider routing and model limits, and adds its disabled provider. */ -}}
 {{- $disabled := concat (get $config "disabled_providers" | default list) $managed.disabled_providers | uniq -}}
-{{- /* The local plugin is auto-discovered; retire redundant explicit paths. */ -}}
-{{- if hasKey $config "plugins" -}}
-  {{- $oldPath := joinPath .chezmoi.destDir ".config" "opencode" "plugins" "openai-allowlist" | replace "\\" "/" -}}
-  {{- $path := joinPath .chezmoi.destDir ".config" "opencode" "plugins" "my-opencode" | replace "\\" "/" -}}
-  {{- $plugins := list -}}
-  {{- range $config.plugins -}}
-    {{- $normalized := . -}}
-    {{- if kindIs "string" . -}}{{- $normalized = replace "\\" "/" . -}}{{- end -}}
-    {{- if and (ne (toJson $normalized) (toJson $oldPath)) (ne (toJson $normalized) (toJson $path)) -}}
-      {{- $plugins = append $plugins . -}}
-    {{- end -}}
+{{- /* The local plugin is auto-discovered; retire redundant explicit paths and
+      add repo-managed plugins while keeping local entries. */ -}}
+{{- $localPlugins := get $config "plugins" | default list -}}
+{{- $managedPlugins := get $managed "plugins" | default list -}}
+{{- $oldPath := joinPath .chezmoi.destDir ".config" "opencode" "plugins" "openai-allowlist" | replace "\\" "/" -}}
+{{- $path := joinPath .chezmoi.destDir ".config" "opencode" "plugins" "my-opencode" | replace "\\" "/" -}}
+{{- $plugins := list -}}
+{{- range concat $localPlugins $managedPlugins | uniq -}}
+  {{- $normalized := . -}}
+  {{- if kindIs "string" . -}}{{- $normalized = replace "\\" "/" . -}}{{- end -}}
+  {{- if and (ne (toJson $normalized) (toJson $oldPath)) (ne (toJson $normalized) (toJson $path)) -}}
+    {{- $plugins = append $plugins . -}}
   {{- end -}}
-  {{- $config = setValueAtPath "plugins" $plugins $config -}}
 {{- end -}}
 {{- /* Retire all OpenAI provider overrides, including previously deployed routing,
       credentials references and model limits, in both legacy and V2 shapes. */ -}}
@@ -31,6 +31,7 @@
   {{- end -}}
 {{- end -}}
 {{- $config = mustMergeOverwrite $config $managed -}}
+{{- $config = setValueAtPath "plugins" $plugins $config -}}
 {{- /* Migrate only known RawRoute OAI aliases in OpenCode's model-selection fields.
       Keep variants and all custom/provider selections untouched. */ -}}
 {{- $modelAliases := dict "rawroute/oai-base" "rawroute/gpt-base" "rawroute/oai-core" "rawroute/gpt-core" "rawroute/oai-peak" "rawroute/gpt-peak" -}}
