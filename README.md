@@ -210,7 +210,9 @@ The generated `opencode.json` also loads the published npm plugin
 `LanguageModelV3` provider. Apply unions it with local `plugins` entries instead
 of replacing them, and the auto-discovered `my-opencode` plugin stays implicit.
 Local entries that name the same package as a repo-managed plugin are replaced
-by the managed pin, so older version pins do not accumulate.
+by the managed pin, so older version pins do not accumulate. A local checkout
+of a managed package is retired the same way, so the published npm version is
+used instead.
 
 The visible `coding-workflow` skill provides role-specific coding, verification
 and review guidance. The visible `delegation-rule` skill covers proportional

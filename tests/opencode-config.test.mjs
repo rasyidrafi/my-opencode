@@ -72,7 +72,7 @@ test('applying retires explicit local plugin paths without changing other plugin
     others[1],
   ] }));
   const first = apply();
-  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, '@rasyid_rafi/opencode-muse@0.1.3']);
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, '@rasyid_rafi/opencode-muse@0.1.4']);
   assert.deepEqual(apply(), first);
 });
 
@@ -88,8 +88,45 @@ test('applying retires stale local versions of managed plugins', t => {
   assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [
     'another-plugin',
     { package: 'custom-plugin', options: { keep: true } },
-    '@rasyid_rafi/opencode-muse@0.1.3',
+    '@rasyid_rafi/opencode-muse@0.1.4',
   ]);
+  assert.deepEqual(apply(), first);
+});
+
+test('applying retires a local checkout of a managed plugin without changing other plugins', t => {
+  const { apply, put, read, directory } = fixture(t);
+  const home = path.dirname(path.dirname(directory));
+  const checkout = path.join(home, 'projects', 'opencode-muse');
+  fs.mkdirSync(checkout, { recursive: true });
+  fs.writeFileSync(path.join(checkout, 'package.json'), JSON.stringify({ name: '@rasyid_rafi/opencode-muse', version: '0.1.4' }));
+  const others = ['another-plugin', { package: 'custom-plugin', options: { keep: true } }];
+  put('opencode.json', JSON.stringify({ plugins: [checkout, ...others] }));
+  const first = apply();
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, '@rasyid_rafi/opencode-muse@0.1.4']);
+  assert.deepEqual(apply(), first);
+});
+
+test('applying retires a missing local checkout of a managed plugin by directory name', t => {
+  const { apply, put, read, directory } = fixture(t);
+  const home = path.dirname(path.dirname(directory));
+  const checkout = path.join(home, 'projects', 'opencode-muse');
+  const others = ['another-plugin'];
+  put('opencode.json', JSON.stringify({ plugins: [checkout, ...others] }));
+  const first = apply();
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, '@rasyid_rafi/opencode-muse@0.1.4']);
+  assert.deepEqual(apply(), first);
+});
+
+test('applying keeps a local checkout that is not a managed package', t => {
+  const { apply, put, read, directory } = fixture(t);
+  const home = path.dirname(path.dirname(directory));
+  const checkout = path.join(home, 'projects', 'other-plugin');
+  fs.mkdirSync(checkout, { recursive: true });
+  fs.writeFileSync(path.join(checkout, 'package.json'), JSON.stringify({ name: '@someone/other-plugin', version: '1.0.0' }));
+  const others = ['another-plugin'];
+  put('opencode.json', JSON.stringify({ plugins: [checkout, ...others] }));
+  const first = apply();
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [checkout, ...others, '@rasyid_rafi/opencode-muse@0.1.4']);
   assert.deepEqual(apply(), first);
 });
 
@@ -130,7 +167,7 @@ test('fresh installs generate agent policy without OpenAI provider overrides', t
   const first = apply();
   assert.deepEqual(apply(), first);
   const config = JSON.parse(read('opencode.json'));
-  assert.deepEqual(config.plugins, ['@rasyid_rafi/opencode-muse@0.1.3']);
+  assert.deepEqual(config.plugins, ['@rasyid_rafi/opencode-muse@0.1.4']);
   for (const name of ['build', 'general', 'explore', 'reviewer']) {
     assert.deepEqual(agent(name), expectedAgentFrontmatter(name));
   }

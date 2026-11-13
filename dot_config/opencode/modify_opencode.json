@@ -17,14 +17,17 @@
 {{- /* npm package name is the specifier without its version suffix. Scoped
       names start with "@", so only strip a final "@version" for them. */ -}}
 {{- $managedPackages := list -}}
+{{- $managedNames := list -}}
 {{- range $managedPlugins -}}
   {{- if kindIs "string" . -}}
     {{- $name := . -}}
     {{- $parts := splitList "@" $name -}}
     {{- if hasPrefix "@" $name -}}
       {{- if gt (len $parts) 2 -}}{{- $name = printf "@%s" (index $parts 1) -}}{{- end -}}
+      {{- $managedNames = append $managedNames (index (splitList "/" $name) 1) -}}
     {{- else -}}
       {{- $name = index $parts 0 -}}
+      {{- $managedNames = append $managedNames $name -}}
     {{- end -}}
     {{- $managedPackages = append $managedPackages $name -}}
   {{- end -}}
@@ -44,6 +47,19 @@
         {{- $name = index $parts 0 -}}
       {{- end -}}
       {{- if has $name $managedPackages -}}{{- $include = false -}}{{- end -}}
+      {{- /* A local checkout of a repo-managed package is retired too: read its
+          package.json when present, otherwise fall back to the directory name. */ -}}
+      {{- if and $include (not (hasPrefix "@" .)) (contains "/" $normalized) -}}
+        {{- $localName := base $normalized -}}
+        {{- $pkgPath := printf "%s/package.json" (trimSuffix "/" $normalized) -}}
+        {{- if stat $pkgPath -}}
+          {{- $pkg := include $pkgPath | fromJson -}}
+          {{- if kindIs "map" $pkg -}}{{- $localName = index $pkg "name" -}}{{- end -}}
+        {{- end -}}
+        {{- $localUnscoped := $localName -}}
+        {{- if hasPrefix "@" $localName -}}{{- $localUnscoped = index (splitList "/" $localName) 1 -}}{{- end -}}
+        {{- if has $localUnscoped $managedNames -}}{{- $include = false -}}{{- end -}}
+      {{- end -}}
     {{- end -}}
     {{- if $include -}}{{- $plugins = append $plugins . -}}{{- end -}}
   {{- end -}}
