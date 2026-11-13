@@ -8,18 +8,48 @@
       provider routing and model limits, and adds its disabled provider. */ -}}
 {{- $disabled := concat (get $config "disabled_providers" | default list) $managed.disabled_providers | uniq -}}
 {{- /* The local plugin is auto-discovered; retire redundant explicit paths and
-      add repo-managed plugins while keeping local entries. */ -}}
+      stale local versions of repo-managed packages, then add the managed pins
+      while keeping other local entries. */ -}}
 {{- $localPlugins := get $config "plugins" | default list -}}
 {{- $managedPlugins := get $managed "plugins" | default list -}}
 {{- $oldPath := joinPath .chezmoi.destDir ".config" "opencode" "plugins" "openai-allowlist" | replace "\\" "/" -}}
 {{- $path := joinPath .chezmoi.destDir ".config" "opencode" "plugins" "my-opencode" | replace "\\" "/" -}}
+{{- /* npm package name is the specifier without its version suffix. Scoped
+      names start with "@", so only strip a final "@version" for them. */ -}}
+{{- $managedPackages := list -}}
+{{- range $managedPlugins -}}
+  {{- if kindIs "string" . -}}
+    {{- $name := . -}}
+    {{- $parts := splitList "@" $name -}}
+    {{- if hasPrefix "@" $name -}}
+      {{- if gt (len $parts) 2 -}}{{- $name = printf "@%s" (index $parts 1) -}}{{- end -}}
+    {{- else -}}
+      {{- $name = index $parts 0 -}}
+    {{- end -}}
+    {{- $managedPackages = append $managedPackages $name -}}
+  {{- end -}}
+{{- end -}}
 {{- $plugins := list -}}
-{{- range concat $localPlugins $managedPlugins | uniq -}}
+{{- range $localPlugins -}}
   {{- $normalized := . -}}
   {{- if kindIs "string" . -}}{{- $normalized = replace "\\" "/" . -}}{{- end -}}
   {{- if and (ne (toJson $normalized) (toJson $oldPath)) (ne (toJson $normalized) (toJson $path)) -}}
-    {{- $plugins = append $plugins . -}}
+    {{- $include := true -}}
+    {{- if kindIs "string" . -}}
+      {{- $name := . -}}
+      {{- $parts := splitList "@" $name -}}
+      {{- if hasPrefix "@" $name -}}
+        {{- if gt (len $parts) 2 -}}{{- $name = printf "@%s" (index $parts 1) -}}{{- end -}}
+      {{- else -}}
+        {{- $name = index $parts 0 -}}
+      {{- end -}}
+      {{- if has $name $managedPackages -}}{{- $include = false -}}{{- end -}}
+    {{- end -}}
+    {{- if $include -}}{{- $plugins = append $plugins . -}}{{- end -}}
   {{- end -}}
+{{- end -}}
+{{- range $managedPlugins -}}
+  {{- $plugins = append $plugins . -}}
 {{- end -}}
 {{- /* Retire all OpenAI provider overrides, including previously deployed routing,
       credentials references and model limits, in both legacy and V2 shapes. */ -}}

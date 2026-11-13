@@ -76,6 +76,23 @@ test('applying retires explicit local plugin paths without changing other plugin
   assert.deepEqual(apply(), first);
 });
 
+test('applying retires stale local versions of managed plugins', t => {
+  const { apply, put, read } = fixture(t);
+  put('opencode.json', JSON.stringify({ plugins: [
+    '@rasyid_rafi/opencode-muse',
+    '@rasyid_rafi/opencode-muse@0.1.2',
+    'another-plugin',
+    { package: 'custom-plugin', options: { keep: true } },
+  ] }));
+  const first = apply();
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [
+    'another-plugin',
+    { package: 'custom-plugin', options: { keep: true } },
+    '@rasyid_rafi/opencode-muse@0.1.3',
+  ]);
+  assert.deepEqual(apply(), first);
+});
+
 test('workflow skills are installed and discoverable without changing configured instructions', t => {
   const { applyAll, put, read } = fixture(t);
   put('opencode.json', JSON.stringify({ instructions: ['~/existing.md'] }));
