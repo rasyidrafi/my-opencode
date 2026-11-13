@@ -72,7 +72,7 @@ test('applying retires explicit local plugin paths without changing other plugin
     others[1],
   ] }));
   const first = apply();
-  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, '@rasyid_rafi/opencode-muse@0.1.2']);
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, '@rasyid_rafi/opencode-muse@0.1.3']);
   assert.deepEqual(apply(), first);
 });
 
@@ -113,7 +113,7 @@ test('fresh installs generate agent policy without OpenAI provider overrides', t
   const first = apply();
   assert.deepEqual(apply(), first);
   const config = JSON.parse(read('opencode.json'));
-  assert.deepEqual(config.plugins, ['@rasyid_rafi/opencode-muse@0.1.2']);
+  assert.deepEqual(config.plugins, ['@rasyid_rafi/opencode-muse@0.1.3']);
   for (const name of ['build', 'general', 'explore', 'reviewer']) {
     assert.deepEqual(agent(name), expectedAgentFrontmatter(name));
   }
