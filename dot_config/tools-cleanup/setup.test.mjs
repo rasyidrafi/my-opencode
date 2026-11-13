@@ -98,6 +98,28 @@ test('Linux process scan detects a process using a candidate working directory',
   }
 });
 
+test('Linux process scan survives an oversized argument and still matches its ancestor', { skip: process.platform !== 'linux' }, async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'tools-cleanup-arg-'));
+  const work = join(dir, 'work');
+  mkdirSync(work);
+  // Chrome passes its whole command line as one argument, longer than NAME_MAX.
+  const child = spawn('python3', ['-c', 'import time; time.sleep(30)', `${dir}/${'x'.repeat(400)}/file`], { cwd: work });
+  await new Promise((resolve, reject) => { child.once('spawn', resolve); child.once('error', reject); });
+  try {
+    const scanner = fileURLToPath(new URL('./scan.py', import.meta.url));
+    const code = `import runpy,json,sys; m=runpy.run_path(sys.argv[1]); print(json.dumps(m['scan'](json.loads(sys.argv[2]), sys.argv[3])))`;
+    const proc = join(dir, 'proc');
+    mkdirSync(proc);
+    symlinkSync(`/proc/${child.pid}`, join(proc, String(child.pid)));
+    const hits = JSON.parse(execFileSync('python3', ['-B', '-c', code, scanner, JSON.stringify([{ id: 'demo@1', path: dir }]), proc], { encoding: 'utf8' }));
+    assert.ok(hits.some(h => h.pid === child.pid && h.kind === 'argument'));
+  } finally {
+    child.kill();
+    await new Promise(resolve => child.once('exit', resolve));
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('scanner skips permission-denied zombies but refuses inaccessible live processes', { skip: process.platform !== 'linux' }, () => {
   const scanner = fileURLToPath(new URL('./scan.py', import.meta.url));
   const code = `import runpy,sys,errno,io

@@ -27,7 +27,10 @@ def scan(targets, proc='/proc'):
                     hits.add((tool, int(pid), kind))
                     return
             except OSError as error:
-                if error.errno not in (errno.ENOENT, errno.ESRCH, errno.ENOTDIR):
+                # ENAMETOOLONG means the component cannot exist. Command lines
+                # can be a single argument longer than NAME_MAX, so keep walking
+                # up: a real ancestor may still be the install path.
+                if error.errno not in (errno.ENOENT, errno.ESRCH, errno.ENOTDIR, errno.ENAMETOOLONG):
                     raise
             path = os.path.dirname(path)
 
