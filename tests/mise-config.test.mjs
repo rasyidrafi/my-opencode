@@ -27,7 +27,7 @@ for (const [platform, env] of [['android', {}], ['linux', { TERMUX_VERSION: '0.1
     assert.ok(config.includes(`gh_${gh.version}_aarch64.deb`));
     assert.ok(config.includes(`checksum = "sha256:${gh.android.checksums.arm64}"`));
     assert.ok(!config.includes('github:cli/cli'));
-    assert.ok(config.includes('npm.shell_out = true'));
+    assert.ok(config.includes('[settings.npm]\nshell_out = true'));
     assert.ok(config.includes('"http:node" = '));
     assert.ok(config.includes('nodejs_26.13.1_aarch64.deb'));
     assert.ok(config.includes('codex_0.167.2_aarch64.deb'));
@@ -46,7 +46,7 @@ test('Linux and Windows use the shared desktop tool defaults', { skip: !availabl
   assert.ok(tools(linux).includes('"npm:@bitwarden/cli" = "2026.10.1"'));
   assert.ok(tools(linux).includes('"node" = "26.13.1"'));
   assert.equal(tools(linux).length, 20);
-  assert.ok(!linux.includes('npm.shell_out'));
+  assert.ok(linux.includes('[settings.npm]\nshell_out = true'));
 });
 
 const catalog = JSON.parse(fs.readFileSync(new URL('../.chezmoidata/mise.json', import.meta.url))).mise;
@@ -55,7 +55,7 @@ for (const platform of ['linux', 'windows', 'android']) {
     const config = render(platform);
     const names = [...config.matchAll(/\[tasks\."([^"]+)"\]/g)].map(match => match[1]);
     assert.deepEqual(names, catalog.tasks.filter(task => task.platforms.includes(platform)).map(task => task.name));
-    assert.equal(names.length, { linux: 26, windows: 15, android: 11 }[platform]);
+    assert.equal(names.length, { linux: 25, windows: 15, android: 11 }[platform]);
     assert.equal(names.includes('mpv:setup'), platform === 'linux');
     assert.equal(names.includes('muse:setup'), platform !== 'android');
     assert.equal(names.includes('cua:startup'), platform === 'linux');
@@ -65,7 +65,7 @@ for (const platform of ['linux', 'windows', 'android']) {
     if (platform === 'android') assert.ok(config.includes('/.config/t3code/setup.sh'));
     assert.equal(names.includes('codex:setup'), platform !== 'android');
     assert.equal(names.includes('openchamber:setup'), platform !== 'android');
-    assert.equal(names.includes('openchamber:restart'), platform === 'linux');
+    assert.equal(names.includes('openchamber:restart'), false);
   });
 }
 

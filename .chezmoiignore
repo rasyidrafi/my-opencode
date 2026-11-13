@@ -9,7 +9,6 @@ userscripts/**
 .config/tools-cleanup/__pycache__/**
 .config/skills/setup.test.mjs
 .config/services/setup.test.mjs
-.config/services/restart-openchamber.test.mjs
 .local/share/my-opencode/optional-skills/tests/**
 .config/secrets/README.md
 .config/secrets/setup.test.mjs

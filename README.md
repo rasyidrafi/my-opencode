@@ -191,8 +191,8 @@ files and repeated SSH config merges stay consistent across platforms.
 
 ## Restart the Cloudflare tunnel
 
-After `chezmoi apply` and `mise install`, integrate an existing, running system
-`cloudflared.service` on Linux/systemd once, then switch it to the global Mise pin:
+After `chezmoi apply` and `mise install`, switch an existing, running system
+`cloudflared.service` on Linux/systemd to the global Mise pin:
 
 ```sh
 mise run cloudflared:setup
@@ -200,24 +200,28 @@ mise run cloudflared:restart
 mise run tools:cleanup -- --apply
 ```
 
-Setup adds `/etc/systemd/system/cloudflared.service.d/90-my-opencode.conf` without
-editing the original service. It reloads systemd but does not restart the tunnel;
-reruns are idempotent. Restart requires setup, refreshes the executable path to
-the installed global Mise version, then uses `try-restart`. It verifies both
-running state and the new PID's executable path/identity, not just `--version`
-or tunnel connectivity. This briefly interrupts the tunnel. After upgrades, run
+Setup consolidates the service-specific drop-ins under
+`/etc/systemd/system/cloudflared.service.d/90-my-opencode.conf` without editing
+the original service. It reloads systemd but does not restart the tunnel.
+`cloudflared:restart` also performs this consolidation automatically, then
+refreshes the executable path to the installed global Mise version and uses
+`try-restart`. It verifies both running state and the new PID's executable
+path/identity, not just `--version` or tunnel connectivity. This briefly
+interrupts the tunnel. After upgrades, run
 `mise install`, `cloudflared:restart`, then cleanup; old install paths are no
 longer held by this service.
 
 Both tasks refuse missing/inactive/non-running services. No tunnel installation,
 enablement or token provisioning occurs. Existing command arguments are preserved
-privately. Only a single direct cloudflared ExecStart with `--no-autoupdate` is
-supported; unrelated drop-ins, modified managed files, unsafe permissions and
-unsupported command syntax require manual review rather than guessing. The drop-in
-is root-owned mode 0600 because arguments may contain credentials. A system lock
-serializes setup/restart. On failure, the previous drop-in is restored (or a new
-one removed); after a restart attempt, service recovery is attempted too. Recovery
-is best effort and cannot guarantee the tunnel comes back if its old binary or
+privately. All `.conf` drop-ins in the service-specific directory are preserved
+and consolidated into the managed file; files outside that directory are left
+untouched and require manual review, since they may be vendor or shared settings.
+The task supports a single direct cloudflared `ExecStart` with `--no-autoupdate`;
+modified managed files, unsafe permissions and unsupported command syntax require
+manual review rather than guessing. The drop-in is root-owned mode 0600 because
+arguments may contain credentials. A system lock serializes setup/restart. On
+failure, the previous drop-ins are restored and the service recovery is attempted.
+Recovery is best effort and cannot guarantee the tunnel comes back if its old binary or
 configuration is broken. Non-root users authenticate with interactive sudo when
 needed; passwordless sudo needs no prompt. No credentials or unit contents are
 printed. Cleanup remains a separate, explicit operation.
@@ -827,17 +831,16 @@ startup service and stops the existing OpenChamber instance on that port first;
 instances on other ports are left alone. It briefly interrupts an existing server.
 Check the service with `openchamber startup status`.
 
-On Linux, use `mise run openchamber:restart` to restart the already installed
-`openchamber.service`, including from an OpenChamber terminal. It schedules the
-restart with the systemd user manager after five seconds and returns immediately;
-the connection will drop, so reconnect afterward. Success means the restart was
-scheduled, not that the server has started successfully. Check it with
+On Linux, rerun `mise run openchamber:setup` after updates, including from an
+OpenChamber terminal. If startup is already enabled, setup schedules the full
+disable/stop/enable update sequence through the systemd user manager after five
+seconds, then returns immediately so the terminal can disconnect safely. It
+uses the currently selected Mise CLI to regenerate the service, so the restarted
+server uses the newly installed Node and OpenChamber versions. Reconnect after
+the restart. First-time setup still runs directly. No separate restart task is
+needed. Check it with
 `systemctl --user status openchamber.service` and, if needed,
 `journalctl --user -u openchamber.service -n 100 --no-pager`.
-This requires a working systemd user manager and an existing startup service.
-Restart uses the installed service configuration; run `openchamber:setup` from
-an independent terminal when the service must be regenerated, such as after an
-upgrade. Do not run setup from the OpenChamber terminal it stops.
 
 ### OpenChamber preferences
 

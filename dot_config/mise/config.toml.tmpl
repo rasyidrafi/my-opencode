@@ -5,8 +5,9 @@
 {{- if $android -}}{{- $platform = "android" -}}{{- end -}}
 [settings]
 minimum_release_age = "0s"
+[settings.npm]
+shell_out = true
 {{ if $android }}# Use native npm: mise's built-in npm client cannot verify TLS on Android.
-npm.shell_out = true
 {{ end }}
 [plugins]
 # Override the embedded gcloud plugin missing lib/python.lua in mise 2026.10.21.

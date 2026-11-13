@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import stat
 import subprocess
 import sys
@@ -53,14 +54,45 @@ def parse_start(text):
     return match[1], match[2] or ''
 
 
-def render(fragment, binary):
+def managed_directives(text, fragment):
+    lines = text.splitlines()
+    if not lines or lines[0] != HEADER.rstrip('\n'):
+        raise RuntimeError('Managed drop-in marker is missing; manual review required.')
+    start = 2 if len(lines) >= 4 and lines[1] == '[Service]' else 1
+    reset = [i for i, line in enumerate(lines) if line == 'ExecStart=']
+    if len(reset) != 1 or reset[0] != len(lines) - 2 or not lines[-1].startswith('ExecStart='):
+        raise RuntimeError('Managed drop-in was modified; manual review required.')
+    old_binary, old_arguments = parse_start('[Service]\n' + lines[-1] + '\n')
+    if old_arguments != parse_start(fragment)[1]:
+        raise RuntimeError('Managed drop-in arguments differ from the original service; manual review required.')
+    return [line + '\n' for line in lines[start:reset[0]]]
+
+
+def render(fragment, binary, directives=()):
     if not re.fullmatch(r'/[^\s"\'\\%$]+', binary) or Path(binary).name != 'cloudflared':
         raise RuntimeError('Unsupported target executable path.')
     _, arguments = parse_start(fragment)
     # Prevent cloudflared self-update from changing a version-pinned installation.
     if not re.search(r'(^|\s)--no-autoupdate(?=\s|$)', arguments):
         raise RuntimeError('Existing service must specify --no-autoupdate; manual review required.')
-    return HEADER + '[Service]\nExecStart=\nExecStart=' + binary + arguments + '\n'
+    preserved = ''.join(directive + ('' if directive.endswith('\n') else '\n') for directive in directives)
+    last_section = 'Service'
+    if preserved:
+        seen = {'Service'}
+        kept = []
+        for line in preserved.splitlines(keepends=True):
+            match = re.fullmatch(r'\s*\[([^]]+)\]\s*\n?', line)
+            if match:
+                section = match[1]
+                last_section = section
+                if section in seen:
+                    continue
+                seen.add(section)
+            kept.append(line)
+        preserved = ''.join(kept)
+    if last_section != 'Service':
+        preserved += '[Service]\n'
+    return HEADER + '[Service]\n' + preserved + 'ExecStart=\nExecStart=' + binary + arguments + '\n'
 
 
 def safe_directory(path):
@@ -88,6 +120,61 @@ def write_override(content):
             os.unlink(name)
 
 
+def load_dropins(info, fragment):
+    paths = [Path(value) for value in info.get('DropInPaths', '').split()]
+    safe_directory(DIRECTORY)
+    local_paths = [path for path in paths if path.parent == DIRECTORY]
+    external_paths = [path for path in paths if path.parent != DIRECTORY]
+    actual = list(DIRECTORY.glob('*.conf')) if DIRECTORY.exists() else []
+    if len(local_paths) != len(set(local_paths)) or set(actual) != set(local_paths):
+        raise RuntimeError('Cloudflared drop-in inventory differs from systemd metadata; inspect masked, symlinked or unloaded files before retrying.')
+    for path in local_paths:
+        if path.is_symlink():
+            raise RuntimeError('Refusing symlinked Cloudflared service drop-in.')
+        metadata = path.stat()
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != OWNER or metadata.st_mode & 0o022:
+            raise RuntimeError('Cloudflared service drop-ins must be root-owned regular files not writable by others.')
+    DIRECTORY.mkdir(mode=0o755, exist_ok=True)
+    backup = Path(tempfile.mkdtemp(prefix='.my-opencode-cloudflared-', dir=DIRECTORY))
+    snapshots = []
+    directives = []
+    managed = False
+    try:
+        for index, path in enumerate(local_paths):
+            metadata = path.stat()
+            content = path.read_text()
+            if content.startswith(HEADER):
+                if managed:
+                    raise RuntimeError('Multiple managed Cloudflared drop-ins found; manual review required.')
+                directives.extend(managed_directives(content, fragment))
+                managed = True
+            elif path == OVERRIDE:
+                raise RuntimeError('Refusing to replace an unmanaged drop-in.')
+            else:
+                directives.append(content if content.endswith('\n') else content + '\n')
+            saved = backup / f'{index:04d}-{path.name}'
+            shutil.copy2(path, saved, follow_symlinks=False)
+            snapshots.append((saved, path))
+        if external_paths:
+            directives.append('# External drop-ins retained; consolidated from service-specific drop-ins only.\n')
+        return backup, snapshots, directives
+    except Exception:
+        for saved, original in snapshots:
+            if saved.exists():
+                os.replace(saved, original)
+        shutil.rmtree(backup, ignore_errors=True)
+        raise
+
+
+def restore_dropins(backup, snapshots):
+    if OVERRIDE.exists():
+        OVERRIDE.unlink()
+    for saved, original in snapshots:
+        if saved.exists():
+            os.replace(saved, original)
+    shutil.rmtree(backup, ignore_errors=True)
+
+
 def manage(request):
     operation, binary = request['operation'], request['binary']
     if operation not in ('setup', 'restart'):
@@ -100,41 +187,23 @@ def manage(request):
     fragment_meta = fragment_path.stat()
     if fragment_meta.st_uid != OWNER or fragment_meta.st_mode & 0o022:
         raise RuntimeError('Service fragment must be root-owned and not writable by others.')
-    if any(path != str(OVERRIDE) for path in info.get('DropInPaths', '').split()):
-        raise RuntimeError('Unrelated service drop-ins require manual review before integration.')
-    safe_directory(DIRECTORY)
-    previous = None
-    if OVERRIDE.is_symlink():
-        raise RuntimeError('Refusing symlinked drop-in.')
-    if OVERRIDE.exists():
-        meta = OVERRIDE.stat()
-        if not stat.S_ISREG(meta.st_mode) or meta.st_uid != OWNER or meta.st_mode & 0o077:
-            raise RuntimeError('Managed drop-in must be a private root-owned file.')
-        previous = OVERRIDE.read_text()
-        if not previous.startswith(HEADER):
-            raise RuntimeError('Refusing to replace an unmanaged drop-in.')
-    if operation == 'restart' and previous is None:
-        raise RuntimeError('Run mise run cloudflared:setup first.')
     fragment = fragment_path.read_text()
-    desired = render(fragment, binary)
-    if previous is not None:
-        # Our existing file must contain only the expected override structure.
-        lines = previous.splitlines()
-        if len(lines) != 4 or lines[1:3] != ['[Service]', 'ExecStart='] or not lines[3].startswith('ExecStart='):
-            raise RuntimeError('Managed drop-in was modified; manual review required.')
-        if previous != render(fragment, lines[3][len('ExecStart='):].split()[0]):
-            raise RuntimeError('Managed drop-in arguments differ from the original service; manual review required.')
+    backup, snapshots, directives = load_dropins(info, fragment)
+    desired = render(fragment, binary, directives)
     target = Path(binary)
     if not target.is_file() or str(target.resolve()) != binary or not os.access(target, os.X_OK):
+        restore_dropins(backup, snapshots)
         raise RuntimeError('Pinned executable is missing, symlinked or not executable.')
-    changed = previous != desired
     attempted_restart = False
     try:
-        if changed:
-            write_override(desired)
+        write_override(desired)
+        for _, path in snapshots:
+            if path != OVERRIDE:
+                path.unlink()
         systemctl('daemon-reload')
         running(state())
         if operation == 'setup':
+            shutil.rmtree(backup)
             print('Cloudflared Mise drop-in installed. Run cloudflared:restart to switch the running process.')
             return
         attempted_restart = True
@@ -146,14 +215,11 @@ def manage(request):
             raise RuntimeError('Restarted service is not using the pinned executable path.')
         if not os.path.samestat(os.stat(f'/proc/{pid}/exe'), target.stat()):
             raise RuntimeError('Restarted service executable identity differs from the pinned binary.')
+        shutil.rmtree(backup)
         print(f'cloudflared.service restarted using pinned executable: {binary} (PID {pid}).')
     except Exception:
         try:
-            if changed:
-                if previous is None:
-                    OVERRIDE.unlink()
-                else:
-                    write_override(previous)
+            restore_dropins(backup, snapshots)
             systemctl('daemon-reload')
             if attempted_restart:
                 systemctl('restart', UNIT)

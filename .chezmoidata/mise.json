@@ -201,7 +201,7 @@
     "tasks": [
       {
         "name": "cloudflared:restart",
-        "description": "Switch the running cloudflared service to the global Mise version and restart",
+        "description": "Consolidate service drop-ins and restart Cloudflared on the global Mise version",
         "script": "cloudflared/restart.mjs",
         "args": "",
         "platforms": [
@@ -438,14 +438,6 @@
           "linux",
           "windows"
         ],
-        "androidCleanEnv": false
-      },
-      {
-        "name": "openchamber:restart",
-        "description": "Schedule an independent restart of the OpenChamber user service on Linux",
-        "script": "services/restart-openchamber.mjs",
-        "args": "",
-        "platforms": ["linux"],
         "androidCleanEnv": false
       },
       {

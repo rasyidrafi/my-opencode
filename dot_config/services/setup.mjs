@@ -1,5 +1,7 @@
 import { requireTaskPlatform } from '../my-opencode/platform.mjs';
 import { spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -33,12 +35,38 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'OpenChamber startup task was registered but could not start.' }
 `;
 
-export function setup(app, { platform = process.platform, env = process.env, execute = spawnSync } = {}) {
+export function setup(app, { platform = process.platform, env = process.env, execute = spawnSync, deferred = false } = {}) {
   requireTaskPlatform(app + ':setup', ['linux', 'windows'], platform, env);
   const commands = app === 'codex' ? [['app-server', 'daemon', 'restart']]
     : app === 'openchamber' ? [['startup', 'disable'], ['stop', '--port', '3000'], ['startup', 'enable', '--port', '3000']]
       : null;
   if (!commands) throw new Error('Usage: services/setup.mjs codex|openchamber');
+  if (app === 'openchamber' && platform === 'linux' && !deferred) {
+    const status = execute('openchamber', ['startup', 'status', '--json'], { encoding: 'utf8', env });
+    if (status.error?.code === 'ENOENT') throw new Error('openchamber is not installed or not on PATH. Run mise install and mise reshim, then retry.');
+    if (status.error || status.status !== 0) throw new Error('openchamber startup status failed. Check the command output above.');
+    let integration;
+    try { integration = JSON.parse(status.stdout); } catch { throw new Error('Could not read OpenChamber startup status.'); }
+    if (integration.enabled) {
+      const runtime = env.XDG_RUNTIME_DIR && path.isAbsolute(env.XDG_RUNTIME_DIR) ? env.XDG_RUNTIME_DIR : os.tmpdir();
+      const directory = mkdtempSync(path.join(runtime, 'openchamber-setup-'));
+      const environmentFile = path.join(directory, 'environment.json');
+      writeFileSync(environmentFile, JSON.stringify(env), { mode: 0o600 });
+      const unit = `my-opencode-openchamber-setup-${process.pid}-${Date.now()}`;
+      const script = fileURLToPath(import.meta.url);
+      const result = execute('systemd-run', [
+        '--user', '--on-active=5s', '--timer-property=AccuracySec=1us', '--collect', `--unit=${unit}`,
+        process.execPath, script, 'openchamber', '--deferred', environmentFile,
+      ], { stdio: 'inherit', env });
+      if (result.error || result.status !== 0) {
+        rmSync(directory, { recursive: true, force: true });
+        throw new Error('Could not schedule OpenChamber setup/update. Check systemd user service availability and the output above.');
+      }
+      console.log(`OpenChamber setup/update scheduled independently as ${unit}.service; reconnect after it restarts.`);
+      console.log(`If it fails, inspect: journalctl --user -u ${unit}.service -n 100 --no-pager`);
+      return;
+    }
+  }
   if (platform === 'win32') {
     // PowerShell resolves npm .ps1/.cmd wrappers as well as native executables.
     const payload = Buffer.from(JSON.stringify({ app, commands }), 'utf8').toString('base64');
@@ -80,8 +108,17 @@ export function setup(app, { platform = process.platform, env = process.env, exe
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  try {
+  const main = () => {
+    if (process.argv[2] === 'openchamber' && process.argv[3] === '--deferred' && process.argv.length === 5) {
+      const file = process.argv[4];
+      let env;
+      try { env = JSON.parse(readFileSync(file, 'utf8')); }
+      finally { rmSync(path.dirname(file), { recursive: true, force: true }); }
+      if (!env || Array.isArray(env) || typeof env !== 'object') throw new Error('Invalid deferred OpenChamber environment.');
+      return setup('openchamber', { platform: 'linux', env, deferred: true, execute: (command, args, options = {}) => spawnSync(command, args, { ...options, env }) });
+    }
     if (process.argv.length !== 3) throw new Error('Usage: services/setup.mjs codex|openchamber');
     setup(process.argv[2]);
-  } catch (error) { console.error(error.message); process.exitCode = 1; }
+  };
+  try { main(); } catch (error) { console.error(error.message); process.exitCode = 1; }
 }
