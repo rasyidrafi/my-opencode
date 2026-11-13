@@ -1,10 +1,10 @@
 {
   "defaultModel": "rawroute/base-flash",
-  "agentControlToolEnabled": false,
+  "agentControlToolEnabled": true,
   "agentScheduleToolEnabled": false,
   "agentWebToolEnabled": false,
   "agentKnowledgeToolEnabled": false,
-  "agentRenderToolEnabled": false,
+  "agentRenderToolEnabled": true,
   "agentImageToolEnabled": false,
   "agentSecretToolEnabled": true,
   "agentWorkflowToolEnabled": false,

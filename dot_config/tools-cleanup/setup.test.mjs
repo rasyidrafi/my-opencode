@@ -14,19 +14,64 @@ test('numeric comparison is conservative and does not mistake 1.10 for 1.1', () 
   assert.equal(older('1.0', '1.0.0'), false);
   assert.equal(older('1.0-beta', '2.0'), false);
 });
-test('keep global pin, tracked project versions, newer versions, and removed tools', () => {
+test('keep global pins, tracked project versions, newer versions and candidates for removed tools', () => {
   const result = plan(
     { demo: [row('1'), row('2'), row('3'), row('4')], orphan: [row('1')] },
     { demo: [row('3')] },
     { demo: [row('2'), row('3')] },
     { demo: [row('1')] },
   );
-  assert.deepEqual(result.candidates.map(r => r.id), ['demo@1']);
+  assert.deepEqual(result.candidates.map(r => r.id), ['demo@1', 'orphan@1']);
+  assert.equal(result.candidates[1].orphaned, true);
+  assert.equal(result.candidates[1].prunable, false);
   assert.deepEqual(result.kept, ['demo@2']);
 });
 test('busy old versions remain candidates so skips can be reported', () => {
   const result = plan({ demo: [row('1'), row('2')] }, { demo: [row('2')] }, {}, {});
   assert.equal(result.candidates[0].prunable, false);
+});
+test('all versions of tools absent from every tracked config are cleanup candidates', () => {
+  const result = plan(
+    { current: [row('2')], retired: [row('1'), row('2')] },
+    { current: [row('2')] },
+    {},
+    {},
+  );
+  assert.deepEqual(result.candidates.map(r => [r.id, r.orphaned, r.prunable]), [
+    ['retired@1', true, false],
+    ['retired@2', true, false],
+  ]);
+});
+test('a tool referenced by any tracked config is not treated as orphaned', () => {
+  const result = plan(
+    { current: [row('2')], retired: [row('1')] },
+    { current: [row('2')], retired: [row('2')] },
+    { retired: [row('1')] },
+    { retired: [row('1')] },
+  );
+  assert.deepEqual(result.candidates, []);
+  assert.deepEqual(result.kept, ['retired@1']);
+});
+test('CLI previews and removes a config-orphaned tool even when Mise does not mark it prunable', () => {
+  for (const apply of [false, true]) {
+    const old = row('1', { install_path: '/tools/retired/1' });
+    const current = row('2', { install_path: '/tools/current/2' });
+    const inventory = { current: [current], retired: [old] };
+    const configured = { current: [current] };
+    const removals = [];
+    const execute = (command, args) => {
+      if (command === 'powershell.exe') return '[]';
+      assert.equal(command, 'mise');
+      if (args[0] === 'uninstall') { removals.push(args[1]); return ''; }
+      if (args.includes('--installed')) return JSON.stringify(inventory);
+      if (args.includes('--global')) return JSON.stringify(configured);
+      if (args.includes('--all-sources')) return JSON.stringify(configured);
+      if (args.includes('--prunable')) return JSON.stringify({ current: [] });
+      throw new Error(`Unexpected mise args: ${args.join(' ')}`);
+    };
+    main({ platform: 'win32', args: apply ? ['--apply'] : [], execute, canonical: value => value });
+    assert.deepEqual(removals, apply ? ['retired@1'] : []);
+  }
 });
 test('missing pins and malformed inventories fail closed', () => {
   assert.throws(() => plan({}, { demo: [row('2', { installed: false })] }, {}, {}));

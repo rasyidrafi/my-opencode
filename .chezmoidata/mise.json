@@ -7,7 +7,7 @@
           "linux",
           "windows"
         ],
-        "version": "1.5.3"
+        "version": "1.5.8"
       },
       {
         "package": "azure",
@@ -41,7 +41,7 @@
           "windows",
           "android"
         ],
-        "version": "2.74.0"
+        "version": "2.74.1"
       },
       {
         "package": "cloudflared",
@@ -49,7 +49,7 @@
           "linux",
           "windows"
         ],
-        "version": "2026.10.7"
+        "version": "2026.11.0"
       },
       {
         "package": "ffmpeg",
@@ -65,7 +65,7 @@
           "linux",
           "windows"
         ],
-        "version": "592.0.0"
+        "version": "593.0.0"
       },
       {
         "package": "gh",
@@ -77,13 +77,13 @@
         "android": {
           "template": "mise/termux-gh",
           "checksums": {
-            "386": "5bc1043fe1b5337cf148871afba20f8faf2b8fa444f2884bfc5ba397295d4bd4",
-            "arm64": "b94190b38c5c6aa4174d0ed252e9096b2b2f243c16491413b83cf3f769c71842",
-            "arm": "87c3230164d87455f3f072acd9deec79fa730a9519684af1a8196bc2eb4d0aea",
-            "amd64": "3b5739452119c2fefcbf00735a3be049786bfb1ad3ff11d385b0c8e1f42d26fa"
+            "386": "695d1ecc0b9bdf5452c821abf62d8b640d5cc58bdaa8b62e5b85b024fe91bcc2",
+            "arm64": "2f8d0b9d51ed73edbe2487063821bbd3cba36d79e6d5bfa4ada017f26519baef",
+            "arm": "13cc75c33fbb206242af313b0ed6b4bf94f9c1cc87aefa7439f25bb0aa5ea183",
+            "amd64": "0844cd4b57400d7f0afcf95175423e5c33e2c84a61cbb0beb487654b8387843b"
           }
         },
-        "version": "2.103.3"
+        "version": "2.104.0"
       },
       {
         "package": "kubectl",
@@ -108,14 +108,14 @@
           "windows",
           "android"
         ],
-        "version": "26.13.0",
+        "version": "26.13.1",
         "android": {
           "template": "mise/termux-node",
           "checksums": {
-            "arm64": "1169a96a37be93d7aa7dcd773334ea4c9c0d0bea9fd100925d29ed7e7cc81320",
-            "arm": "078060e04e5c565b74d6e48a6867c54358e33e52d9366b6ac7a079c46ac57062",
-            "amd64": "0b02337f554ea09d3119354da71d1ba21701120c4bf6e522b3785c2829381e25",
-            "386": "ec8d912a389fc21743a69101334c0d5f92f53d03eea3451eb318f97f94c60bed"
+            "arm64": "88351835fcfc5e51799891e42b93e90cf8c0e42793a825e13415e4ee372f3d47",
+            "arm": "33a5f2fba04d06aeb047dfac2627639cbc11a257e96a0466557a8ca43c32cce8",
+            "amd64": "cc85a7090a33defe8f96c6848da1cf66051143fe24d8ec67515d8e6e634d5e8b",
+            "386": "1fc546f9659543be9cf9cb8c4ae5c38a8f5d27c17c8348e90bde4311fdeaaa64"
           },
           "npm": {
             "version": "12.2.2",
@@ -129,7 +129,7 @@
           "linux",
           "windows"
         ],
-        "version": "2.2.6",
+        "version": "2.2.7",
         "options": "allow_builds = [\"@opencode/cli\"], allow_low_downloads = true"
       },
       {
@@ -138,7 +138,7 @@
           "linux",
           "windows"
         ],
-        "version": "0.13.7"
+        "version": "0.13.8"
       },
       {
         "package": "yarn",
@@ -154,7 +154,7 @@
           "linux",
           "windows"
         ],
-        "version": "1.0.160"
+        "version": "1.0.161"
       },
       {
         "package": "npm:@openai/codex",
@@ -163,12 +163,13 @@
           "windows",
           "android"
         ],
-        "version": "0.167.0",
+        "version": "0.168.0",
         "android": {
           "template": "mise/termux-codex",
+          "version": "0.167.2",
           "checksums": {
-            "arm64": "e1b5d01c147edc1d5cfe5ba5a2a54cd353f320829d49690eb407ae26ca107837",
-            "amd64": "9871daa20f47310d17763877b118cf9f00158e4c6f691b02c4ba17e788cce49f"
+            "arm64": "851d76462c8351ff63dcc50b42cc82ed98a387cf1a0f945c0aaed9b5e5b0904e",
+            "amd64": "784b67e0c194dc46864a8ee378a304d3ea160ac3dfdf4ebb39c9339504a5cd22"
           }
         }
       },
@@ -178,7 +179,7 @@
           "linux",
           "windows"
         ],
-        "version": "2.7.0"
+        "version": "2.7.1"
       },
       {
         "package": "npm:opensrc",
@@ -194,14 +195,7 @@
           "linux",
           "windows"
         ],
-        "version": "0.10.0"
-      },
-      {
-        "package": "npm:t3",
-        "platforms": [
-          "linux"
-        ],
-        "version": "0.1.7"
+        "version": "0.11.0"
       }
     ],
     "tasks": [
@@ -227,7 +221,7 @@
       },
       {
         "name": "tools:cleanup",
-        "description": "Preview or safely remove unused older mise tool versions (Linux and Windows)",
+        "description": "Preview or safely remove stale installs and unused older mise tool versions (Linux and Windows)",
         "script": "tools-cleanup/setup.mjs",
         "args": "",
         "platforms": [

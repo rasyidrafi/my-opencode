@@ -38,12 +38,13 @@ export function plan(installed, global, sources, prunable) {
   const candidates = [], kept = [];
   for (const row of all) {
     const id = `${row.tool}@${row.version}`;
-    if (!pins.some(p => p.tool === row.tool && older(row.version, p.version))) continue;
+    const orphaned = !protectedRows.some(p => p.tool === row.tool);
+    if (!orphaned && !pins.some(p => p.tool === row.tool && older(row.version, p.version))) continue;
     if (protectedRows.some(p => p.tool === row.tool && p.version === row.version)) {
       kept.push(id);
     } else {
       // Keep busy versions in the plan so the skip reason can be reported.
-      candidates.push({ ...row, id, prunable: allowed.has(id) });
+      candidates.push({ ...row, id, orphaned, prunable: allowed.has(id) });
     }
   }
   return { candidates, kept };
@@ -135,12 +136,12 @@ export function main({ platform = process.platform, args = process.argv.slice(2)
       else skip(`in use: ${hits.map(h => `PID ${h.pid} (${h.kind})`).join(', ')}`);
       continue;
     }
-    if (!row.prunable) { skip('Mise does not consider this version prunable'); continue; }
+    if (!row.prunable && !row.orphaned) { skip('Mise does not consider this version prunable'); continue; }
     if (!apply) { eligible++; console.log(`WOULD REMOVE ${row.id}`); continue; }
     // Earlier uninstalls change the inventory. Re-plan rather than compare the
     // entire original snapshot, and recheck use immediately before each removal.
     const fresh = snapshot().candidates.find(r => r.id === row.id && r.install_path === row.install_path);
-    if (!fresh?.prunable) { skip('no longer eligible under current configuration'); continue; }
+    if (!fresh || (!fresh.prunable && !fresh.orphaned)) { skip('no longer eligible under current configuration'); continue; }
     try {
       if (!samePath(realpathSync(row.install_path), row.install_path)) { skip('install path changed'); continue; }
     } catch { skip('install path cannot be verified'); continue; }

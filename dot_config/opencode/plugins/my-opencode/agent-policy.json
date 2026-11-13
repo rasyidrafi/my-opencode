@@ -54,6 +54,8 @@
         "glob": "deny",
         "grep": "deny",
         "subagent": "allow",
+        "openchamber": "allow",
+        "openchamber_render": "allow",
         "openchamber_secret": "allow"
       }
     },

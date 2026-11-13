@@ -21,28 +21,31 @@ for (const [platform, env] of [['android', {}], ['linux', { TERMUX_VERSION: '0.1
     const config = render(platform, env);
     assert.equal(tools(config).length, 5);
     assert.ok(config.includes('"http:codex" = '));
-    assert.deepEqual(tools(config).slice(0, 2), ['"npm:@bitwarden/cli" = "2026.10.1"', '"chezmoi" = "2.74.0"']);
+    assert.deepEqual(tools(config).slice(0, 2), ['"npm:@bitwarden/cli" = "2026.10.1"', '"chezmoi" = "2.74.1"']);
     assert.match(tools(config)[2], /^"http:gh" = /);
-    assert.ok(config.includes('gh_2.103.3_aarch64.deb'));
-    assert.ok(config.includes('checksum = "sha256:b94190b38c5c6aa4174d0ed252e9096b2b2f243c16491413b83cf3f769c71842"'));
+    const gh = catalog.tools.find(tool => tool.package === 'gh');
+    assert.ok(config.includes(`gh_${gh.version}_aarch64.deb`));
+    assert.ok(config.includes(`checksum = "sha256:${gh.android.checksums.arm64}"`));
     assert.ok(!config.includes('github:cli/cli'));
     assert.ok(config.includes('npm.shell_out = true'));
     assert.ok(config.includes('"http:node" = '));
+    assert.ok(config.includes('nodejs_26.13.1_aarch64.deb'));
+    assert.ok(config.includes('codex_0.167.2_aarch64.deb'));
     assert.ok(config.includes('# "vfox:gcloud" = '));
     assert.ok(config.includes('{{ env.USERPROFILE }}'));
     assert.ok(config.includes('{{ env.HOME }}'));
   });
 }
-test('Linux adds T3 CLI to the shared desktop tool defaults', { skip: !available }, () => {
+test('Linux and Windows use the shared desktop tool defaults', { skip: !available }, () => {
   const linux = render('linux');
   const windows = tools(render('windows'));
-  assert.deepEqual(tools(linux).filter(line => !line.startsWith('\"npm:t3\"')), windows);
-  assert.ok(tools(linux).includes('\"npm:t3\" = \"0.1.7\"'));
+  assert.deepEqual(tools(linux), windows);
+  assert.ok(!tools(linux).some(line => line.startsWith('\"npm:t3\"')));
   assert.ok(!windows.some(line => line.startsWith('\"npm:t3\"')));
   assert.ok(!tools(render('android')).some(line => line.startsWith('\"npm:t3\"')));
   assert.ok(tools(linux).includes('"npm:@bitwarden/cli" = "2026.10.1"'));
-  assert.ok(tools(linux).includes('"node" = "26.13.0"'));
-  assert.equal(tools(linux).length, 21);
+  assert.ok(tools(linux).includes('"node" = "26.13.1"'));
+  assert.equal(tools(linux).length, 20);
   assert.ok(!linux.includes('npm.shell_out'));
 });
 
@@ -97,6 +100,10 @@ for (const arch of ['arm64', 'amd64', 'arm', '386']) {
     const codex = catalog.tools.find(tool => tool.package === 'npm:@openai/codex');
     const checksum = codex.android.checksums[arch];
     assert.equal(result.stdout.includes('"http:codex" = '), Boolean(checksum));
-    if (checksum) assert.ok(result.stdout.includes('sha256:' + checksum));
+    if (checksum) {
+      const termuxArch = arch === 'arm64' ? 'aarch64' : 'x86_64';
+      assert.ok(result.stdout.includes(`codex_${codex.android.version}_${termuxArch}.deb`));
+      assert.ok(result.stdout.includes('sha256:' + checksum));
+    }
   });
 }

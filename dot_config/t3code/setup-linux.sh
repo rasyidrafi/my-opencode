@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 command -v mise >/dev/null 2>&1 || { echo 'mise is required. Run mise install first.' >&2; exit 1; }
-t3=$(mise -C "$HOME" which t3) || { echo 'T3 CLI is not installed with mise. Run mise install first.' >&2; exit 1; }
+t3=$(mise -C "$HOME" which t3) || { echo 'T3 CLI is not selected in Mise. Install/configure it separately, then retry.' >&2; exit 1; }
 # Preserve CLI help and subcommands without changing service configuration.
 if [ "$#" -gt 0 ]; then exec "$t3" connect "$@"; fi
 if "$t3" status --json 2>/dev/null | node -e 'let s="";process.stdin.on("data",x=>s+=x).on("end",()=>{try {let v=JSON.parse(s);process.exit(v.connect?.enabled && !v.connect?.revoked && v.service?.installed ? 0 : 1)}catch{process.exit(1)}})' && systemctl --user is-active --quiet t3code.service; then

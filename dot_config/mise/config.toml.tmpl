@@ -15,7 +15,11 @@ npm.shell_out = true
 [tools]
 {{ range .mise.tools -}}
 {{ if and $android (hasKey . "android") -}}
+{{ if hasKey .android "version" -}}
+{{ includeTemplate .android.template (dict "tool" .android "version" .android.version "arch" $.chezmoi.arch) }}
+{{ else -}}
 {{ includeTemplate .android.template (dict "tool" .android "version" .version "arch" $.chezmoi.arch) }}
+{{ end -}}
 {{ else -}}
 {{ if not (has $platform .platforms) }}# {{ end }}{{ .package | quote }} = {{ if hasKey . "options" }}{ version = {{ .version | quote }}, {{ .options }} }{{ else }}{{ .version | quote }}{{ end }}
 {{ end -}}

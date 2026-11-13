@@ -23,7 +23,8 @@ so Codex's private libc++ does not interfere with the native Termux runtime.
 Other tools and the gcloud plugin override remain commented out on Android.
 All platforms use the official `npm:@bitwarden/cli` package.
 
-Codex uses the Termux native build at the desktop catalog version. A normal
+Codex uses a separately pinned Termux native build (currently 0.167.2); Linux
+and Windows use the desktop npm version (currently 0.168.0). A normal
 `npm:@openai/codex` install on Android skips its Linux-only binary dependency.
 The old `@mmmbuto/codex-cli-termux` npm package is end-of-life; a third-party npm
 wrapper is not needed. Install with `mise install http:codex`, verify
@@ -68,8 +69,9 @@ GitHub CLI (`gh`). Mise installs `gh`; install Git with `pkg install git` before
 
 ## T3 Connect on Linux
 
-After `chezmoi apply` and `mise install`, run `mise run t3code:setup` to
-start `t3 connect` using the mise-managed T3 CLI. Follow its sign-in prompts;
+The T3 CLI is no longer configured by this repository. Select/install it
+separately in Mise, then run `mise run t3code:setup` to start `t3 connect`.
+Follow its sign-in prompts;
 over SSH, T3 can provide a URL and code for signing in on another device.
 The command configures T3 Connect and its background service to load generated
 secrets. It restarts the service each time, which interrupts running agent
@@ -274,10 +276,12 @@ mise run tools:cleanup -- --apply
 
 Preview is the default. Global configured versions must already be installed.
 The helper protects global selections (including resolved ranges such as Node 24)
-and versions required by any configuration Mise has tracked. Only numeric releases
-older than a globally selected, installed replacement are candidates. Newer,
-unconfigured tools, refs and prereleases are left alone. No config edits, upgrades,
-cache sweeps, service restarts or process termination are performed.
+and versions required by any configuration Mise has tracked. Numeric releases
+older than a globally selected, installed replacement are candidates; tools no
+longer referenced by any tracked configuration are also candidates in all
+installed versions. Unconfigured versions of tools that are still configured,
+refs and prereleases are otherwise left alone. No config edits, upgrades, cache
+sweeps, service restarts or process termination are performed.
 
 On Linux, before uninstalling anything, the task performs a read-only `/proc` scan
 using `sudo -n /usr/bin/python3` (root inspection is required even for preview).
@@ -300,8 +304,9 @@ Unresolved processes owned by the current account still block removal. Progress 
 each scan and candidate. Configuration and use are rechecked before removal.
 Windows scanning does not inspect arbitrary open files, process working directories or Linux guests;
 use Linux cleanup inside WSL for WSL installations.
-Busy old versions are skipped with tool/PID information only. Versions Mise does
-not consider prunable and unverifiable/symlinked install paths are skipped too.
+Busy versions are skipped with tool/PID information only. Versions Mise does
+not consider prunable are skipped unless the tool is absent from all tracked
+configuration; unverifiable/symlinked install paths are always skipped.
 Configurations and process use are checked again immediately before each explicit
 `mise uninstall tool@version`. If one uninstall fails, other eligible versions are
 still attempted. A summary reports removed, skipped and failed counts; uninstall
