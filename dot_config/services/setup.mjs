@@ -1,6 +1,6 @@
 import { requireTaskPlatform } from '../my-opencode/platform.mjs';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,14 +35,34 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'OpenChamber startup task was registered but could not start.' }
 `;
 
+// A running OpenChamber instance injects the OpenCode binary it manages into
+// this shell. Snapshotting that value would pin every future restart to the
+// version that happened to be running. Resolve the global Mise OpenCode
+// instead, matching what a first-time setup sees when no instance has
+// injected anything. Returns null when Mise does not manage exactly one
+// installed global OpenCode, leaving the caller's environment untouched.
+function globalOpencodeBinary(env, execute) {
+  const listing = execute('mise', ['ls', '--global', '--json'], { encoding: 'utf8', env });
+  if (listing.error || listing.status !== 0) return null;
+  let rows;
+  try { rows = JSON.parse(listing.stdout)?.opencode; } catch { return null; }
+  if (!Array.isArray(rows) || rows.length !== 1 || !rows[0].installed || !rows[0].install_path) return null;
+  try { return realpathSync(path.join(rows[0].install_path, 'node_modules', '.bin', 'opencode')); } catch { return null; }
+}
+
 export function setup(app, { platform = process.platform, env = process.env, execute = spawnSync, deferred = false } = {}) {
   requireTaskPlatform(app + ':setup', ['linux', 'windows'], platform, env);
   const commands = app === 'codex' ? [['app-server', 'daemon', 'restart']]
     : app === 'openchamber' ? [['startup', 'disable'], ['stop', '--port', '3000'], ['startup', 'enable', '--port', '3000']]
       : null;
   if (!commands) throw new Error('Usage: services/setup.mjs codex|openchamber');
+  const serviceEnv = { ...env };
+  if (app === 'openchamber' && platform === 'linux') {
+    const opencodeBinary = globalOpencodeBinary(serviceEnv, execute);
+    if (opencodeBinary) serviceEnv.OPENCODE_BINARY = opencodeBinary;
+  }
   if (app === 'openchamber' && platform === 'linux' && !deferred) {
-    const status = execute('openchamber', ['startup', 'status', '--json'], { encoding: 'utf8', env });
+    const status = execute('openchamber', ['startup', 'status', '--json'], { encoding: 'utf8', env: serviceEnv });
     if (status.error?.code === 'ENOENT') throw new Error('openchamber is not installed or not on PATH. Run mise install and mise reshim, then retry.');
     if (status.error || status.status !== 0) throw new Error('openchamber startup status failed. Check the command output above.');
     let integration;
@@ -51,13 +71,13 @@ export function setup(app, { platform = process.platform, env = process.env, exe
       const runtime = env.XDG_RUNTIME_DIR && path.isAbsolute(env.XDG_RUNTIME_DIR) ? env.XDG_RUNTIME_DIR : os.tmpdir();
       const directory = mkdtempSync(path.join(runtime, 'openchamber-setup-'));
       const environmentFile = path.join(directory, 'environment.json');
-      writeFileSync(environmentFile, JSON.stringify(env), { mode: 0o600 });
+      writeFileSync(environmentFile, JSON.stringify(serviceEnv), { mode: 0o600 });
       const unit = `my-opencode-openchamber-setup-${process.pid}-${Date.now()}`;
       const script = fileURLToPath(import.meta.url);
       const result = execute('systemd-run', [
         '--user', '--on-active=5s', '--timer-property=AccuracySec=1us', '--collect', `--unit=${unit}`,
         process.execPath, script, 'openchamber', '--deferred', environmentFile,
-      ], { stdio: 'inherit', env });
+      ], { stdio: 'inherit', env: serviceEnv });
       if (result.error || result.status !== 0) {
         rmSync(directory, { recursive: true, force: true });
         throw new Error('Could not schedule OpenChamber setup/update. Check systemd user service availability and the output above.');
@@ -100,7 +120,7 @@ export function setup(app, { platform = process.platform, env = process.env, exe
     if (result.error || result.status !== 0) throw new Error(`${app}:setup failed. Check the command output above.`);
   } else {
     for (const args of commands) {
-      const result = execute(app, args, { stdio: 'inherit' });
+      const result = execute(app, args, { stdio: 'inherit', env: serviceEnv });
       if (result.error?.code === 'ENOENT') throw new Error(`${app} is not installed or not on PATH. Run mise install and mise reshim, then retry.`);
       if (result.error || result.status !== 0) throw new Error(`${app}:setup failed. Check the command output above.`);
     }
@@ -115,7 +135,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       try { env = JSON.parse(readFileSync(file, 'utf8')); }
       finally { rmSync(path.dirname(file), { recursive: true, force: true }); }
       if (!env || Array.isArray(env) || typeof env !== 'object') throw new Error('Invalid deferred OpenChamber environment.');
-      return setup('openchamber', { platform: 'linux', env, deferred: true, execute: (command, args, options = {}) => spawnSync(command, args, { ...options, env }) });
+      return setup('openchamber', { platform: 'linux', env, deferred: true, execute: (command, args, options = {}) => spawnSync(command, args, { ...options, env: options.env || env }) });
     }
     if (process.argv.length !== 3) throw new Error('Usage: services/setup.mjs codex|openchamber');
     setup(process.argv[2]);
