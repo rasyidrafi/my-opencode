@@ -67,52 +67,6 @@ access. Run `mise run secrets:setup` interactively to log in and sync secrets.
 The manifest also configures GitHub authentication, which requires Git and
 GitHub CLI (`gh`). Mise installs `gh`; install Git with `pkg install git` before syncing.
 
-## T3 Connect on Linux
-
-The T3 CLI is no longer configured by this repository. Select/install it
-separately in Mise, then run `mise run t3code:setup` to start `t3 connect`.
-Follow its sign-in prompts;
-over SSH, T3 can provide a URL and code for signing in on another device.
-The command configures T3 Connect and its background service to load generated
-secrets. It restarts the service each time, which interrupts running agent
-sessions and loads the latest secrets. Use `t3 connect status` to check it.
-
-## T3 Code server on Android
-
-On ARM64 Termux, run `mise run t3code:setup` after `chezmoi apply` and installing
-mise Node. This builds T3 Code 0.1.7 from a pinned upstream commit using native
-Node, installs dependencies from a lockfile, and starts the server on
-`127.0.0.1:3773`. Install build prerequisites with `pkg install clang make python cloudflared`.
-No Debian environment or root access is required for the Android setup.
-
-For T3 Connect, run `t3 connect link --headless`, approve the printed login URL,
-and restart with `t3-server stop` then `t3-server start`. `t3 connect status`
-checks remote reachability. Sign into the same T3 account in the mobile app and
-choose this environment. The launcher uses native Termux `cloudflared`.
-Use `connect link` rather than bare `t3 connect`/`t3 up`, whose upstream service
-installer expects desktop operating systems.
-
-For local pairing on this device, run `t3-server pair` and enter its address and
-pairing code in the T3 mobile app. `t3-server status`, `t3-server logs`, `t3-server stop`, and
-`t3-server start` manage the background server. The commands are installed in
-`~/.local/bin`; open a new shell if that directory was not previously on PATH.
-To listen on your local network instead, stop the server and run
-`T3CODE_HOST=0.0.0.0 t3-server start`, then `t3-server pair --help` for pairing
-address options. Connect using this device's LAN or Tailscale IP, not `0.0.0.0`.
-
-This installs the server for the native mobile app; the browser UI is not bundled.
-Codex is discovered from the existing mise installation and keeps its current
-configuration and authentication. Server data lives in `~/.t3`, installation files
-in `~/.local/share/t3code/0.1.7`, and logs in `~/.local/state/t3code/server.log`.
-The native PTY addon is compiled locally. A compiler-runtime preload fixes the
-Android FFI build's missing `__clear_cache` symbol; a Node preload replaces
-Android-denied hard links with a copy followed by atomic, exclusive publication.
-
-Setup is safe to rerun and keeps the pinned version. Use this task to manage the
-native installation rather than `t3 update`, which downloads glibc executables.
-The server runs after the terminal closes, but Android can still stop Termux;
-startup also requests a Termux wake lock when available. Reboot startup is not installed.
-
 ## Multi-platform tools and tasks
 
 Edit `.chezmoidata/mise.json` to update tool versions, default installation

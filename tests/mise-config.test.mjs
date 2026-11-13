@@ -55,14 +55,11 @@ for (const platform of ['linux', 'windows', 'android']) {
     const config = render(platform);
     const names = [...config.matchAll(/\[tasks\."([^"]+)"\]/g)].map(match => match[1]);
     assert.deepEqual(names, catalog.tasks.filter(task => task.platforms.includes(platform)).map(task => task.name));
-    assert.equal(names.length, { linux: 25, windows: 15, android: 11 }[platform]);
+    assert.equal(names.length, { linux: 24, windows: 15, android: 10 }[platform]);
     assert.equal(names.includes('mpv:setup'), platform === 'linux');
     assert.equal(names.includes('muse:setup'), platform !== 'android');
     assert.equal(names.includes('cua:startup'), platform === 'linux');
     assert.equal(names.includes('crd:setup'), platform === 'linux');
-    assert.equal(names.includes('t3code:setup'), platform !== 'windows');
-    if (platform === 'linux') assert.ok(config.includes('/.config/t3code/setup-linux.sh'));
-    if (platform === 'android') assert.ok(config.includes('/.config/t3code/setup.sh'));
     assert.equal(names.includes('codex:setup'), platform !== 'android');
     assert.equal(names.includes('openchamber:setup'), platform !== 'android');
     assert.equal(names.includes('openchamber:restart'), false);
