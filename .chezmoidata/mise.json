@@ -7,7 +7,7 @@
           "linux",
           "windows"
         ],
-        "version": "1.5.8"
+        "version": "1.5.9"
       },
       {
         "package": "azure",
@@ -129,7 +129,7 @@
           "linux",
           "windows"
         ],
-        "version": "2.2.7",
+        "version": "2.3.0",
         "options": "allow_builds = [\"@opencode/cli\"], allow_low_downloads = true"
       },
       {
@@ -163,7 +163,7 @@
           "windows",
           "android"
         ],
-        "version": "0.168.0",
+        "version": "0.169.0",
         "android": {
           "template": "mise/termux-codex",
           "version": "0.167.2",
@@ -179,7 +179,7 @@
           "linux",
           "windows"
         ],
-        "version": "2.7.1"
+        "version": "2.7.2"
       },
       {
         "package": "npm:opensrc",
