@@ -47,7 +47,16 @@ function globalOpencodeBinary(env, execute) {
   let rows;
   try { rows = JSON.parse(listing.stdout)?.opencode; } catch { return null; }
   if (!Array.isArray(rows) || rows.length !== 1 || !rows[0].installed || !rows[0].install_path) return null;
-  try { return realpathSync(path.join(rows[0].install_path, 'node_modules', '.bin', 'opencode')); } catch { return null; }
+  // Mise's npm backend has used two install layouts: current installs link
+  // <install>/bin/opencode, older ones only expose node_modules/.bin/opencode.
+  const candidates = [
+    path.join(rows[0].install_path, 'bin', 'opencode'),
+    path.join(rows[0].install_path, 'node_modules', '.bin', 'opencode'),
+  ];
+  for (const candidate of candidates) {
+    try { return realpathSync(candidate); } catch {}
+  }
+  return null;
 }
 
 export function setup(app, { platform = process.platform, env = process.env, execute = spawnSync, deferred = false } = {}) {

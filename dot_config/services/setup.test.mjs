@@ -72,6 +72,23 @@ test('Linux first-time OpenChamber setup resolves global OpenCode and runs the e
   assert.equal(calls.at(-1).options.env.PATH, '/usr/bin');
 });
 
+test('Linux OpenChamber setup resolves the current Mise npm bin layout', t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-opencode-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const installPath = path.join(dir, '2.3.0');
+  const binary = path.join(installPath, 'bin', 'opencode');
+  fs.mkdirSync(path.dirname(binary), { recursive: true });
+  fs.writeFileSync(binary, '#!/bin/sh\n');
+  const calls = [];
+  setup('openchamber', { platform: 'linux', env: { PATH: '/usr/bin' }, execute: (command, args, options) => {
+    calls.push({ command, args, options });
+    if (command === 'mise') return { status: 0, stdout: JSON.stringify({ opencode: [{ version: '2.3.0', installed: true, install_path: installPath }] }) };
+    if (args[0] === 'startup') return { status: 0, stdout: JSON.stringify({ enabled: false }) };
+    return { status: 0 };
+  } });
+  assert.equal(calls.at(-1).options.env.OPENCODE_BINARY, fs.realpathSync(binary));
+});
+
 test('Linux OpenChamber setup leaves the environment alone without a global OpenCode', () => {
   const calls = [];
   const env = { PATH: '/usr/bin', OPENCODE_BINARY: '/custom/opencode' };
