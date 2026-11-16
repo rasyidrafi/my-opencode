@@ -11,6 +11,7 @@ const repository = fileURLToPath(new URL('../', import.meta.url));
 const located = spawnSync('mise', ['which', 'chezmoi'], { encoding: 'utf8' });
 const chezmoi = process.env.CHEZMOI_TEST_BINARY || (located.status === 0 ? located.stdout.trim() : 'chezmoi');
 const agents = ['build', 'plan', 'general', 'explore', 'reviewer'];
+const managedAntigravity = home => ({ package: path.join(home, 'projects', 'opencode-antigrvity') });
 
 function fixture(t) {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'opencode-config-test-'));
@@ -49,7 +50,7 @@ function fixture(t) {
     assert.ok(frontmatter, 'valid Markdown frontmatter');
     return text.slice(frontmatter[0].length).trimEnd();
   };
-  return { apply, applyAll, put, read, agent, agentBody, directory };
+  return { apply, applyAll, put, read, agent, agentBody, directory, home };
 }
 
 // Mirrors .chezmoitemplates/opencode-agent.tmpl: omit system/permissionOverrides,
@@ -67,7 +68,7 @@ function expectedAgentFrontmatter(name) {
 }
 
 test('applying retires explicit local plugin paths without changing other plugins', t => {
-  const { apply, put, read, directory } = fixture(t);
+  const { apply, put, read, directory, home } = fixture(t);
   const others = ['another-plugin', { package: 'custom-plugin', options: { keep: true } }];
   put('opencode.json', JSON.stringify({ plugins: [
     others[0],
@@ -76,12 +77,12 @@ test('applying retires explicit local plugin paths without changing other plugin
     others[1],
   ] }));
   const first = apply();
-  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, '@rasyid_rafi/opencode-muse@0.1.4']);
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, managedAntigravity(home), '@rasyid_rafi/opencode-muse@0.1.4']);
   assert.deepEqual(apply(), first);
 });
 
 test('applying retires stale local versions of managed plugins', t => {
-  const { apply, put, read } = fixture(t);
+  const { apply, put, read, home } = fixture(t);
   put('opencode.json', JSON.stringify({ plugins: [
     '@rasyid_rafi/opencode-muse',
     '@rasyid_rafi/opencode-muse@0.1.2',
@@ -92,45 +93,62 @@ test('applying retires stale local versions of managed plugins', t => {
   assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [
     'another-plugin',
     { package: 'custom-plugin', options: { keep: true } },
+    managedAntigravity(home),
     '@rasyid_rafi/opencode-muse@0.1.4',
   ]);
   assert.deepEqual(apply(), first);
 });
 
 test('applying retires a local checkout of a managed plugin without changing other plugins', t => {
-  const { apply, put, read, directory } = fixture(t);
-  const home = path.dirname(path.dirname(directory));
+  const { apply, put, read, home } = fixture(t);
   const checkout = path.join(home, 'projects', 'opencode-muse');
   fs.mkdirSync(checkout, { recursive: true });
   fs.writeFileSync(path.join(checkout, 'package.json'), JSON.stringify({ name: '@rasyid_rafi/opencode-muse', version: '0.1.4' }));
   const others = ['another-plugin', { package: 'custom-plugin', options: { keep: true } }];
   put('opencode.json', JSON.stringify({ plugins: [checkout, ...others] }));
   const first = apply();
-  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, '@rasyid_rafi/opencode-muse@0.1.4']);
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, managedAntigravity(home), '@rasyid_rafi/opencode-muse@0.1.4']);
   assert.deepEqual(apply(), first);
 });
 
 test('applying retires a missing local checkout of a managed plugin by directory name', t => {
-  const { apply, put, read, directory } = fixture(t);
-  const home = path.dirname(path.dirname(directory));
+  const { apply, put, read, home } = fixture(t);
   const checkout = path.join(home, 'projects', 'opencode-muse');
   const others = ['another-plugin'];
   put('opencode.json', JSON.stringify({ plugins: [checkout, ...others] }));
   const first = apply();
-  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, '@rasyid_rafi/opencode-muse@0.1.4']);
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, managedAntigravity(home), '@rasyid_rafi/opencode-muse@0.1.4']);
   assert.deepEqual(apply(), first);
 });
 
 test('applying keeps a local checkout that is not a managed package', t => {
-  const { apply, put, read, directory } = fixture(t);
-  const home = path.dirname(path.dirname(directory));
+  const { apply, put, read, home } = fixture(t);
   const checkout = path.join(home, 'projects', 'other-plugin');
   fs.mkdirSync(checkout, { recursive: true });
   fs.writeFileSync(path.join(checkout, 'package.json'), JSON.stringify({ name: '@someone/other-plugin', version: '1.0.0' }));
   const others = ['another-plugin'];
   put('opencode.json', JSON.stringify({ plugins: [checkout, ...others] }));
   const first = apply();
-  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [checkout, ...others, '@rasyid_rafi/opencode-muse@0.1.4']);
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [checkout, ...others, managedAntigravity(home), '@rasyid_rafi/opencode-muse@0.1.4']);
+  assert.deepEqual(apply(), first);
+});
+
+test('applying retires object plugin entries for managed packages and managed local paths', t => {
+  const { apply, put, read, home } = fixture(t);
+  const muse = path.join(home, 'projects', 'opencode-muse');
+  fs.mkdirSync(muse, { recursive: true });
+  fs.writeFileSync(path.join(muse, 'package.json'), JSON.stringify({ name: '@rasyid_rafi/opencode-muse', version: '0.1.4' }));
+  put('opencode.json', JSON.stringify({ plugins: [
+    { package: muse },
+    managedAntigravity(home),
+    'another-plugin',
+  ] }));
+  const first = apply();
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [
+    'another-plugin',
+    managedAntigravity(home),
+    '@rasyid_rafi/opencode-muse@0.1.4',
+  ]);
   assert.deepEqual(apply(), first);
 });
 
@@ -167,11 +185,11 @@ test('chezmoi apply removes the stale renamed plugin file but preserves unrelate
 });
 
 test('fresh installs generate agent policy without OpenAI provider overrides', t => {
-  const { apply, read, agent } = fixture(t);
+  const { apply, read, agent, home } = fixture(t);
   const first = apply();
   assert.deepEqual(apply(), first);
   const config = JSON.parse(read('opencode.json'));
-  assert.deepEqual(config.plugins, ['@rasyid_rafi/opencode-muse@0.1.4']);
+  assert.deepEqual(config.plugins, [managedAntigravity(home), '@rasyid_rafi/opencode-muse@0.1.4']);
   for (const name of ['build', 'general', 'explore', 'reviewer']) {
     assert.deepEqual(agent(name), expectedAgentFrontmatter(name));
   }
