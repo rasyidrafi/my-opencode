@@ -138,10 +138,10 @@ with `sourceDir` recorded by `.chezmoi.toml.tmpl`. Re-run that form after moving
 the checkout; bare `chezmoi init` without a source generates no config.
 
 Apply this checkout on Linux or Windows with `chezmoi apply --source /path/to/this/checkout`.
-The obsolete plugin cleanup uses `/bin/sh` on Linux and PowerShell on Windows;
-chezmoi skips the empty script for the other platform. Template files use LF
-line endings through `.gitattributes`, including on Windows, so generated agent
-files and repeated SSH config merges stay consistent across platforms.
+Targets retired from the source are removed on apply by listing them in
+`.chezmoiremove`. Template files use LF line endings through `.gitattributes`,
+including on Windows, so generated agent files and repeated SSH config merges
+stay consistent across platforms.
 
 ## Restart the Cloudflare tunnel
 
