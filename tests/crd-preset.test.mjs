@@ -290,6 +290,11 @@ printf '%s' "$value" > "$HOME/shortcut"
   assert.equal(run().status, 0);
   assert.equal(fs.statSync(autostart).mtimeMs, before);
   assert.equal(fs.readFileSync(autostart, 'utf8'), fs.readFileSync(new URL('crd-panel-workarea.desktop', source), 'utf8'));
+  // Escaping \" and \$ inside the Exec argument is invalid for systemd's
+  // xdg-autostart generator, which then drops the whole file.
+  const autostartEntry = fs.readFileSync(autostart, 'utf8');
+  assert.doesNotMatch(autostartEntry, /\\["$]/);
+  assert.match(autostartEntry, /^Exec=sh -c "exec \/usr\/bin\/python3 \$HOME\/\.config\/chrome-remote-desktop\/panel-workarea\.py"$/m);
   assert.ok(!fs.existsSync(path.join(root, '.config/xfce4/xfconf')));
   assert.match(fs.readFileSync(path.join(root, '.config/xfce4/terminal/terminalrc'), 'utf8'), /FontName=Ubuntu Mono 10/);
   // A minimal machine missing the explicit font installs it once, even when
