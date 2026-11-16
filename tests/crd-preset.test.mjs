@@ -7,7 +7,6 @@ import { test } from 'node:test';
 
 const source = new URL('../dot_config/chrome-remote-desktop/', import.meta.url);
 function titlebuttonFixtures(config) {
-  fs.writeFileSync(path.join(config, 'install-docklike-fork.sh'), '#!/bin/sh\nexit 0\n');
   for (const file of ['setup-titlebuttons.py', 'pwa-titlebuttons.css', 'setup-terminal-font.py', 'setup-terminal-helper.py', 'setup-whisker-shortcut.py']) {
     fs.copyFileSync(new URL(file, source), path.join(config, file));
   }
@@ -211,8 +210,7 @@ test('seeds an existing XFCE profile once, backs it up, and preserves later edit
   assert.equal(fs.readFileSync(path.join(root, '.local/state/crd-mint/xfce4-before-mint/existing-setting'), 'utf8'), 'keep me');
   const panel = path.join(xfce, 'xfconf/xfce-perchannel-xml/xfce4-panel.xml');
   assert.match(fs.readFileSync(panel, 'utf8'), /Mint|whiskermenu/);
-  assert.match(fs.readFileSync(panel, 'utf8'), /name="plugin-6" type="string" value="docklike"/);
-  assert.match(fs.readFileSync(path.join(xfce, 'panel/docklike-6.rc'), 'utf8'), /pinned=xfce4-web-browser;xfce4-terminal;thunar;/);
+  assert.match(fs.readFileSync(panel, 'utf8'), /name="plugin-6" type="string" value="tasklist"/);
   const desktop = fs.readFileSync(path.join(xfce, 'xfconf/xfce-perchannel-xml/xfce4-desktop.xml'), 'utf8');
   assert.ok(desktop.includes('crd &amp; preset-'));
   assert.ok(!desktop.includes('MINT_WALLPAPER_PATH'));

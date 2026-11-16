@@ -87,9 +87,8 @@ configure_archive_support() {
 # Apply host defaults even when the remote desktop service is already active.
 configure_timezone
 configure_archive_support
-sh "$HOME/.config/chrome-remote-desktop/install-docklike-fork.sh"
-# Retire only our previous temporary helper after the fork is installed. Its
-# old source remains available for comparison; do not remove user autostarts.
+# Retire only our previous temporary helper. Its old source remains available
+# for comparison; do not remove user autostarts.
 old_helper="$HOME/.config/chrome-remote-desktop/crd-pwa-window-class.desktop"
 old_autostart="$HOME/.config/autostart/crd-pwa-window-class.desktop"
 if [ -f "$old_helper" ] && cmp -s "$old_helper" "$old_autostart"; then
