@@ -245,19 +245,20 @@ test('RawRoute includes managed models with configured names and limits, without
   const { apply, read } = fixture(t);
   apply();
   const models = JSON.parse(read('opencode.json')).providers.rawroute.models;
-  assert.deepEqual(Object.keys(models).sort(), ['base-flash', 'gpt-base', 'gpt-core', 'gpt-peak']);
-  for (const [id, name, context, output] of [
-    ['base-flash', 'Base Flash', 1000000, 256000],
-    ['gpt-base', 'GPT Base', 1000000, 128000],
-    ['gpt-core', 'GPT Core', 640000, 128000],
-    ['gpt-peak', 'GPT Peak', 400000, 128000],
+  assert.deepEqual(Object.keys(models).sort(), ['base-dawn', 'base-flash', 'gpt-base', 'gpt-core', 'gpt-peak']);
+  for (const [id, name, context, output, input] of [
+    ['base-flash', 'Base Flash', 1000000, 256000, ['text', 'image']],
+    ['base-dawn', 'Base Dawn', 512000, 65536, ['text']],
+    ['gpt-base', 'GPT Base', 1000000, 128000, ['text', 'image']],
+    ['gpt-core', 'GPT Core', 640000, 128000, ['text', 'image']],
+    ['gpt-peak', 'GPT Peak', 400000, 128000, ['text', 'image']],
   ]) {
     assert.equal(models[id].name, name);
     assert.deepEqual(models[id].limit, { context, output });
     assert.ok(!Object.hasOwn(models[id].limit, 'input'));
     assert.deepEqual(models[id].capabilities, {
       tools: true,
-      input: ['text', 'image'],
+      input,
       output: ['text'],
       temperature: true,
       reasoning: { supported: true },
