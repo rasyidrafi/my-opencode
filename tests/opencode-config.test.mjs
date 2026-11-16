@@ -5,7 +5,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
-import { agentDescriptions, agentPolicies, agentSystemPrompts } from '../dot_config/opencode/plugins/my-opencode/agents.js';
+import agentPolicyData from '../dot_config/opencode/plugins/my-opencode/agent-policy.json' with { type: 'json' };
 
 const repository = fileURLToPath(new URL('../', import.meta.url));
 const located = spawnSync('mise', ['which', 'chezmoi'], { encoding: 'utf8' });
@@ -52,14 +52,18 @@ function fixture(t) {
   return { apply, applyAll, put, read, agent, agentBody, directory };
 }
 
+// Mirrors .chezmoitemplates/opencode-agent.tmpl: omit system/permissionOverrides,
+// then append the computed permission rules when overrides exist.
 function expectedAgentFrontmatter(name) {
-  const expected = structuredClone(agentPolicies[name]);
-  delete expected.system;
-  if (expected.model) {
-    const { providerID, id, variant } = expected.model;
-    expected.model = `${providerID}/${id}${variant ? `#${variant}` : ''}`;
+  const agent = agentPolicyData.agents[name];
+  const { system, permissionOverrides, ...frontmatter } = agent;
+  if (permissionOverrides) {
+    const effects = { ...agentPolicyData.commonPermissions, ...permissionOverrides };
+    frontmatter.permissions = agentPolicyData.permissionOrder
+      .filter(action => Object.hasOwn(effects, action))
+      .map(action => ({ action, resource: '*', effect: effects[action] }));
   }
-  return expected;
+  return frontmatter;
 }
 
 test('applying retires explicit local plugin paths without changing other plugins', t => {
@@ -173,18 +177,20 @@ test('fresh installs generate agent policy without OpenAI provider overrides', t
   }
   assert.deepEqual(agent('plan'), { disabled: true });
   assert.deepEqual(config.agents, { title: { model: 'rawroute/gpt-base' } });
+  assert.equal(config.default_agent, 'build');
   assert.ok(!Object.hasOwn(config, 'provider'));
   assert.ok(!Object.hasOwn(config.providers, 'openai'));
 });
 
-test('generated agent files expose the plugin policy to the UI', t => {
+test('generated agent files expose the repo policy to the UI', t => {
   const { apply, agent, agentBody } = fixture(t);
   apply();
   for (const name of ['build', 'general', 'explore', 'reviewer']) {
-    assert.deepEqual(agent(name), expectedAgentFrontmatter(name));
-    assert.deepEqual(agent(name).permissions, agentPolicies[name].permissions);
-    assert.equal(agent(name).description, agentDescriptions[name]);
-    assert.equal(agentBody(name), agentSystemPrompts[name] ?? '');
+    const expected = expectedAgentFrontmatter(name);
+    assert.deepEqual(agent(name), expected);
+    assert.deepEqual(agent(name).permissions, expected.permissions);
+    assert.equal(agent(name).description, agentPolicyData.agents[name].description);
+    assert.equal(agentBody(name), agentPolicyData.agents[name].system ?? '');
   }
   assert.deepEqual(agent('plan'), { disabled: true });
 });
@@ -197,6 +203,16 @@ test('plan agent remains disabled and its stub rejects local policy overrides', 
   const first = apply();
   assert.equal(agent('plan').disabled, true);
   assert.ok(!Object.hasOwn(agent('plan'), 'model'));
+  assert.deepEqual(apply(), first);
+});
+
+test('applying overwrites a local default agent with the managed primary agent', t => {
+  const { apply, put, read } = fixture(t);
+  put('opencode.json', JSON.stringify({ default_agent: 'general', keepLocal: true }));
+  const first = apply();
+  const config = JSON.parse(read('opencode.json'));
+  assert.equal(config.default_agent, 'build');
+  assert.equal(config.keepLocal, true);
   assert.deepEqual(apply(), first);
 });
 
@@ -293,19 +309,19 @@ test('applying migrates retired RawRoute OAI selections without changing unrelat
   assert.deepEqual(apply(), first);
 });
 
-test('applying replaces local agent edits with the canonical plugin policy', t => {
+test('applying replaces local agent edits with the canonical repo policy', t => {
   const { apply, put, agent, agentBody } = fixture(t);
   for (const name of agents) put(`agents/${name}.md`, `---\r\nmodel: 'custom/${name}#high' # local selection\r\npermissions: []\r\n---\r\nOld instructions\r\n`);
   const first = apply();
   for (const name of agents) {
     assert.deepEqual(agent(name), name === 'plan' ? { disabled: true } : expectedAgentFrontmatter(name));
-    assert.equal(agentBody(name), agentSystemPrompts[name] ?? '');
+    assert.equal(agentBody(name), agentPolicyData.agents[name].system ?? '');
   }
   assert.deepEqual(apply(), first);
   put('agents/general.md', '---\nmodel: custom/another-model#low\npermissions: []\n---\nLocal prompt');
   apply();
   assert.deepEqual(agent('general'), expectedAgentFrontmatter('general'));
-  assert.equal(agentBody('general'), agentSystemPrompts.general);
+  assert.equal(agentBody('general'), agentPolicyData.agents.general.system);
 });
 
 test('OpenCode retires OpenAI overrides in both shapes while preserving unrelated settings', t => {

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import plugin, { setupToolTransform } from '../dot_config/opencode/plugins/my-opencode/index.js';
 
-test('my-opencode plugin configures agents and tools without transforming models', async () => {
+test('my-opencode plugin only removes a tool and never transforms agents or models', async () => {
   let agents = 0;
   let tools = 0;
   await plugin.setup({
@@ -11,7 +11,7 @@ test('my-opencode plugin configures agents and tools without transforming models
     model: { transform: async () => assert.fail('must not restrict the model catalog') },
   });
   assert.equal(plugin.id, 'local.my-opencode');
-  assert.equal(agents, 1);
+  assert.equal(agents, 0, 'plugin must not transform agents');
   assert.equal(tools, 1);
 });
 

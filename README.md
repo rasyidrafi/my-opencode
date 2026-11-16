@@ -185,20 +185,20 @@ Test without restarting anything: `node --test dot_config/cloudflared/restart.te
 ## OpenCode plugin
 
 The managed OpenCode V2 plugin `local.my-opencode` lives at
-`dot_config/opencode/plugins/my-opencode/`. It leaves provider model catalogs unchanged and owns the
-runtime policies for `build`, `general`, `explore`, and `reviewer`:
-repo-specific prompts and descriptions, permissions, model overrides, agent
-modes, and the Build default. It also removes OpenCode's built-in
-`opencode_worktree_remove` tool from the registry for every agent, independently
-of the `edit` permission; other edit tools remain available according to their
-normal permissions. `agent-policy.json` in the plugin directory is the single
-source for agent policies and the title model. The plugin applies them at
-runtime, while `chezmoi apply` generates the full user agent files from that
-same data, so the OpenCode settings UI shows the active models, prompts, and
-permissions. Local edits to generated agent files are replaced on the next
-apply. Plan remains disabled by its `disabled: true` file setting; the plugin
-does not change its permissions or model. The plugin transforms already-loaded
-agents, so agent files are still needed. To change policy, edit
+`dot_config/opencode/plugins/my-opencode/`. Its only runtime effect is removing
+OpenCode's built-in `opencode_worktree_remove` tool from the registry for every
+agent, independently of the `edit` permission; other edit tools remain
+available according to their normal permissions. It leaves provider model
+catalogs unchanged and performs no agent transformation.
+
+`chezmoi apply` owns all agent configuration through native OpenCode settings:
+it generates the full user agent files from `agent-policy.json` in the plugin
+directory (mode, description, system prompt, permissions and model), and writes
+the title model plus `default_agent: build` into `opencode.json`. The plugin
+therefore does not re-enforce prompts, permissions, modes or models at runtime,
+so manual changes to agent files take effect immediately and survive until the
+next `chezmoi apply` regenerates them. Plan remains disabled by its
+`disabled: true` file setting. To change policy, edit
 `dot_config/opencode/plugins/my-opencode/agent-policy.json`. Apply removes the
 old `openai-allowlist` entrypoint from the local plugin directory so it cannot
 be auto-discovered alongside the new plugin; unrelated files in that old
@@ -222,7 +222,7 @@ and checks in a task-specific Markdown file and still gives each delegate a
 bounded brief. Skills are discoverable guidance, not automatically loaded or a
 guarantee of compliance; agent permissions still apply.
 
-Test: `node --test tests/my-opencode-plugin.test.mjs tests/opencode-agent-plugin.test.mjs tests/opencode-config.test.mjs`.
+Test: `node --test tests/my-opencode-plugin.test.mjs tests/opencode-config.test.mjs`.
 
 ## Tool version cleanup
 
@@ -859,12 +859,13 @@ reference, model limits, or model allowlist is installed. Apply removes existing
 `openai` overrides from both `provider` and `providers` to retire the old settings.
 Rawroute switches use the same merge.
 Per-agent files are generated from `agent-policy.json` on every apply, including
-their frontmatter and system prompts. The plugin enforces the same data at
-runtime. The title model in `opencode.json` is generated from that file too for
-OpenChamber compatibility. Title uses `rawroute/gpt-base`. Explore defaults to
-`rawroute/base-flash`, General to `rawroute/gpt-base`, Reviewer to
-`rawroute/gpt-peak`; Build and Plan inherit the session model.
-Build is explicitly selected as the default, and Plan remains disabled.
+their frontmatter and system prompts, and the plugin does not re-enforce any of
+it at runtime: manual changes survive until the next apply regenerates the
+files. The title model and `default_agent` in `opencode.json` are generated
+from that file too, the former for OpenChamber compatibility. Title uses
+`rawroute/gpt-base`. Explore defaults to `rawroute/base-flash`, General to
+`rawroute/gpt-base`, Reviewer to `rawroute/gpt-peak`; Build and Plan inherit the
+session model. Build is the default primary agent, and Plan remains disabled.
 
 The retired RawRoute models `step-5-preview`, `atria-dawn`, and
 `deepseek-v4.1-flash-1017` are removed from existing configs on apply.
