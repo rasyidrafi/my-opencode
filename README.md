@@ -1,5 +1,18 @@
 # Dotfiles
 
+## OpenCode media reader
+
+The local `my-opencode` plugin registers `read_media` with a static, path-only
+interface for PNG, JPEG, GIF, WebP, and PDF attachments (maximum 20 MiB).
+Managed agents allow `read_media` and deny the built-in `read`; use shell for
+text files and directory listings. The tool checks file signatures and its own
+`read_media` permission, plus `external_directory` for paths outside the project.
+It returns native media content; model compatibility remains handled by OpenCode.
+Remote workspace IDs are rejected because this plugin reads the server's local
+filesystem. Apply with `chezmoi apply` to activate the plugin and agent policy.
+
+Verify with `node --test tests/read-media.test.mjs tests/my-opencode-plugin.test.mjs tests/opencode-config.test.mjs`.
+
 ## Android / Termux tools
 
 On Android (including Termux), `chezmoi apply` enables chezmoi, Bitwarden CLI,

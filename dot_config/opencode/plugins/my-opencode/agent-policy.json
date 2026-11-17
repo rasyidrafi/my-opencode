@@ -18,6 +18,7 @@
     "edit",
     "patch",
     "read",
+    "read_media",
     "glob",
     "grep",
     "webfetch",
@@ -50,7 +51,8 @@
       "permissionOverrides": {
         "edit": "allow",
         "patch": "allow",
-        "read": "allow",
+        "read": "deny",
+        "read_media": "allow",
         "glob": "deny",
         "grep": "deny",
         "subagent": "allow",
@@ -67,7 +69,8 @@
       "permissionOverrides": {
         "edit": "allow",
         "patch": "allow",
-        "read": "allow",
+        "read": "deny",
+        "read_media": "allow",
         "glob": "deny",
         "grep": "deny",
         "subagent": "deny",
@@ -81,7 +84,8 @@
       "model": "rawroute/base-flash",
       "permissionOverrides": {
         "edit": "deny",
-        "read": "allow",
+        "read": "deny",
+        "read_media": "allow",
         "glob": "deny",
         "grep": "deny",
         "patch": "deny",
@@ -96,7 +100,8 @@
       "model": "rawroute/gpt-peak",
       "permissionOverrides": {
         "edit": "deny",
-        "read": "allow",
+        "read": "deny",
+        "read_media": "allow",
         "glob": "deny",
         "grep": "deny",
         "patch": "deny",

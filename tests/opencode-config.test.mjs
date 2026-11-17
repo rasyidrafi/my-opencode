@@ -213,12 +213,15 @@ test('generated agent files expose the repo policy to the UI', t => {
   assert.deepEqual(agent('plan'), { disabled: true });
 });
 
-test('managed agents allow the read tool', t => {
+test('managed agents deny read and allow the independent read_media tool', t => {
   const { apply, agent } = fixture(t);
   apply();
   for (const name of ['build', 'general', 'explore', 'reviewer']) {
     assert.deepEqual(agent(name).permissions.filter(rule => rule.action === 'read'), [
-      { action: 'read', resource: '*', effect: 'allow' },
+      { action: 'read', resource: '*', effect: 'deny' },
+    ]);
+    assert.deepEqual(agent(name).permissions.filter(rule => rule.action === 'read_media'), [
+      { action: 'read_media', resource: '*', effect: 'allow' },
     ]);
   }
 });
