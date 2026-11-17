@@ -213,6 +213,26 @@ test('generated agent files expose the repo policy to the UI', t => {
   assert.deepEqual(agent('plan'), { disabled: true });
 });
 
+test('managed agents allow the read tool', t => {
+  const { apply, agent } = fixture(t);
+  apply();
+  for (const name of ['build', 'general', 'explore', 'reviewer']) {
+    assert.deepEqual(agent(name).permissions.filter(rule => rule.action === 'read'), [
+      { action: 'read', resource: '*', effect: 'allow' },
+    ]);
+  }
+});
+
+test('managed agents deny the OpenChamber agent control tool', t => {
+  const { apply, agent } = fixture(t);
+  apply();
+  for (const name of ['build', 'general', 'explore', 'reviewer']) {
+    assert.deepEqual(agent(name).permissions.filter(rule => rule.action === 'openchamber'), [
+      { action: 'openchamber', resource: '*', effect: 'deny' },
+    ]);
+  }
+});
+
 test('plan agent remains disabled and its stub rejects local policy overrides', t => {
   const { apply, put, agent } = fixture(t);
   apply();

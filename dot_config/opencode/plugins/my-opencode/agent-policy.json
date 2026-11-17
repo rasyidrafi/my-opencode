@@ -50,11 +50,11 @@
       "permissionOverrides": {
         "edit": "allow",
         "patch": "allow",
-        "read": "deny",
+        "read": "allow",
         "glob": "deny",
         "grep": "deny",
         "subagent": "allow",
-        "openchamber": "allow",
+        "openchamber": "deny",
         "openchamber_render": "allow",
         "openchamber_secret": "allow"
       }
@@ -67,7 +67,7 @@
       "permissionOverrides": {
         "edit": "allow",
         "patch": "allow",
-        "read": "deny",
+        "read": "allow",
         "glob": "deny",
         "grep": "deny",
         "subagent": "deny",
@@ -81,7 +81,7 @@
       "model": "rawroute/base-flash",
       "permissionOverrides": {
         "edit": "deny",
-        "read": "deny",
+        "read": "allow",
         "glob": "deny",
         "grep": "deny",
         "patch": "deny",
@@ -96,7 +96,7 @@
       "model": "rawroute/gpt-peak",
       "permissionOverrides": {
         "edit": "deny",
-        "read": "deny",
+        "read": "allow",
         "glob": "deny",
         "grep": "deny",
         "patch": "deny",

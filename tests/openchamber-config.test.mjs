@@ -27,8 +27,8 @@ test('OpenChamber no longer manages a redundant model denylist', () => {
   assert.ok(!Object.hasOwn(settings, 'hiddenModels'));
 });
 
-test('OpenChamber control, secret, and render tools are enabled while the workflow tool is disabled', () => {
-  assert.equal(settings.agentControlToolEnabled, true);
+test('OpenChamber control and workflow tools are disabled while secret and render tools are enabled', () => {
+  assert.equal(settings.agentControlToolEnabled, false);
   assert.equal(settings.agentSecretToolEnabled, true);
   assert.equal(settings.agentRenderToolEnabled, true);
   assert.equal(settings.agentWorkflowToolEnabled, false);
