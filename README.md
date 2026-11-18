@@ -808,7 +808,7 @@ Chezmoi merges the approved OpenChamber preferences into
 `~/.config/openchamber/settings.json`. Edit the allowlists in
 `.chezmoitemplates/openchamber/`: `preferences.json` owns the model
 default and selected UI/notification preferences,
-including the explicitly pinned `showReasoningTraces: true`; `settings.json`
+including `showReasoningTraces: true` and `savePastedImagesAsFiles: true`; `settings.json`
 enables the agent secret tool, disables the other seven managed agent tools
 (including image generation and workflow), and owns the default permission mode.
 The secret tool is allowed only for Build and denied for General, Explore,

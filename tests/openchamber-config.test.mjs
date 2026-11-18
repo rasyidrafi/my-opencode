@@ -27,6 +27,10 @@ test('OpenChamber no longer manages a redundant model denylist', () => {
   assert.ok(!Object.hasOwn(settings, 'hiddenModels'));
 });
 
+test('OpenChamber saves pasted images as files', () => {
+  assert.equal(preferences.savePastedImagesAsFiles, true);
+});
+
 test('OpenChamber control and workflow tools are disabled while secret and render tools are enabled', () => {
   assert.equal(settings.agentControlToolEnabled, false);
   assert.equal(settings.agentSecretToolEnabled, true);

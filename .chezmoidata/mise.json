@@ -7,7 +7,7 @@
           "linux",
           "windows"
         ],
-        "version": "1.5.9"
+        "version": "1.5.11"
       },
       {
         "package": "azure",
@@ -15,7 +15,7 @@
           "linux",
           "windows"
         ],
-        "version": "2.92.0"
+        "version": "2.93.0"
       },
       {
         "package": "npm:@bitwarden/cli",
@@ -49,7 +49,7 @@
           "linux",
           "windows"
         ],
-        "version": "2026.11.0"
+        "version": "2026.11.1"
       },
       {
         "package": "ffmpeg",
@@ -65,7 +65,7 @@
           "linux",
           "windows"
         ],
-        "version": "593.0.0"
+        "version": "594.0.0"
       },
       {
         "package": "gh",
@@ -77,13 +77,13 @@
         "android": {
           "template": "mise/termux-gh",
           "checksums": {
-            "386": "695d1ecc0b9bdf5452c821abf62d8b640d5cc58bdaa8b62e5b85b024fe91bcc2",
-            "arm64": "2f8d0b9d51ed73edbe2487063821bbd3cba36d79e6d5bfa4ada017f26519baef",
-            "arm": "13cc75c33fbb206242af313b0ed6b4bf94f9c1cc87aefa7439f25bb0aa5ea183",
-            "amd64": "0844cd4b57400d7f0afcf95175423e5c33e2c84a61cbb0beb487654b8387843b"
+            "386": "658a95c8fad418c3127447d7a41bfed10580ec3b4a9aac6ad950f9f1145fdfc5",
+            "arm64": "73a364d6afeb91f0a51fc0507c29f161dee7fff0fc060383f7d556216ce31eb7",
+            "arm": "c9c614bc00ea2d2b9eda440d3b94f78536f3b1eb31d6d3aa1955b2f705479aa9",
+            "amd64": "521e8949289b00159a310ffa9fb54afa4de47a4dbca6abd6494c47105c732154"
           }
         },
-        "version": "2.104.0"
+        "version": "2.105.0"
       },
       {
         "package": "kubectl",
@@ -129,7 +129,7 @@
           "linux",
           "windows"
         ],
-        "version": "2.3.0",
+        "version": "2.3.2",
         "options": "allow_builds = [\"@opencode/cli\"], allow_low_downloads = true"
       },
       {
@@ -138,7 +138,7 @@
           "linux",
           "windows"
         ],
-        "version": "0.13.8"
+        "version": "0.13.9"
       },
       {
         "package": "yarn",
@@ -154,7 +154,7 @@
           "linux",
           "windows"
         ],
-        "version": "1.0.161"
+        "version": "1.0.162"
       },
       {
         "package": "npm:@openai/codex",
@@ -163,7 +163,7 @@
           "windows",
           "android"
         ],
-        "version": "0.169.0",
+        "version": "0.170.0",
         "android": {
           "template": "mise/termux-codex",
           "version": "0.167.2",
@@ -195,7 +195,7 @@
           "linux",
           "windows"
         ],
-        "version": "0.11.0"
+        "version": "0.12.0"
       }
     ],
     "tasks": [

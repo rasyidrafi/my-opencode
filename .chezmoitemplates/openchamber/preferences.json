@@ -4,6 +4,7 @@
   "showReasoningTraces": true,
   "reportUsage": false,
   "largeTextPasteBehavior": "inline",
+  "savePastedImagesAsFiles": true,
   "sessionSuggestionEnabled": false,
   "sessionRecapEnabled": false,
   "draftStartersVisible": false,
