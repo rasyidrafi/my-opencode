@@ -268,10 +268,11 @@ test('RawRoute includes managed models with configured names and limits, without
   const { apply, read } = fixture(t);
   apply();
   const models = JSON.parse(read('opencode.json')).providers.rawroute.models;
-  assert.deepEqual(Object.keys(models).sort(), ['base-dawn', 'base-flash', 'gpt-base', 'gpt-core', 'gpt-peak']);
+  assert.deepEqual(Object.keys(models).sort(), ['base-cat', 'base-dawn', 'base-flash', 'gpt-base', 'gpt-core', 'gpt-peak']);
   for (const [id, name, context, output, input] of [
-    ['base-flash', 'Base Flash', 1000000, 256000, ['text', 'image']],
+    ['base-flash', 'Base Flash', 1000000, 131072, ['text', 'image']],
     ['base-dawn', 'Base Dawn', 512000, 65536, ['text']],
+    ['base-cat', 'Base Cat', 1048576, 262144, ['text', 'image']],
     ['gpt-base', 'GPT Base', 1000000, 128000, ['text', 'image']],
     ['gpt-core', 'GPT Core', 640000, 128000, ['text', 'image']],
     ['gpt-peak', 'GPT Peak', 400000, 128000, ['text', 'image']],

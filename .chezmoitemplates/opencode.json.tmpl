@@ -34,7 +34,7 @@
           },
           "limit": {
             "context": 1000000,
-            "output": 256000
+            "output": 131072
           }
         },
         "base-dawn": {
@@ -51,6 +51,22 @@
           "limit": {
             "context": 512000,
             "output": 65536
+          }
+        },
+        "base-cat": {
+          "name": "Base Cat",
+          "capabilities": {
+            "tools": true,
+            "input": ["text", "image"],
+            "output": ["text"],
+            "temperature": true,
+            "reasoning": {
+              "supported": true
+            }
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 262144
           }
         },
         "gpt-base": {
