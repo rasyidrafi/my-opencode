@@ -19,7 +19,7 @@ async function fixture(t, config, behavior = {}) {
   const calls = { create: [], prompt: [], wait: [], context: [], interrupt: [] };
   let next = 0;
   const ctx = {
-    model: { list: async () => behavior.knownModels ?? knownModels },
+    model: { list: async () => behavior.modelList ?? { location: {}, data: behavior.knownModels ?? knownModels } },
     session: {
       create: async input => {
         calls.create.push(input);
@@ -163,6 +163,12 @@ test('unavailable worker models fail fast with aliases only, before any session 
     assert.ok(!error.message.includes('rawroute'));
     return true;
   });
+  assert.equal(f.calls.create.length, 0);
+});
+
+test('a malformed model catalog response fails cleanly without creating sessions', async t => {
+  const f = await fixture(t, twoWorkers, { modelList: { location: {}, data: null } });
+  await assert.rejects(f.run(), /fusion: unable to inspect configured worker models/);
   assert.equal(f.calls.create.length, 0);
 });
 

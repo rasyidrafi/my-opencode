@@ -92,10 +92,12 @@ export function buildWorkerPrompt(prompt) {
 async function validateModels(ctx, workers) {
   let available;
   try {
-    available = await ctx.model.list();
+    // The plugin host wraps domain list results as { location, data }.
+    available = (await ctx.model.list()).data;
   } catch {
     throw new Error('fusion: unable to inspect configured worker models');
   }
+  if (!Array.isArray(available)) throw new Error('fusion: unable to inspect configured worker models');
   const known = new Set(available.map(model => `${model.providerID}/${model.modelID ?? model.id}`));
   const unavailable = workers.filter(worker => !known.has(worker.model));
   if (unavailable.length > 0) {

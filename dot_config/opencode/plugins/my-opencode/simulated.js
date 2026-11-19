@@ -1,4 +1,5 @@
 import { runFusion } from './fusion.js';
+import { sanitizeErrorMessage } from './sanitize.js';
 
 export const PROVIDER_ID = 'simulated';
 export const MODEL_ID = 'multi_reviewer';
@@ -82,7 +83,7 @@ class SimulatedMultiReviewer {
       );
       return textStream(result.text);
     } catch (error) {
-      return errorStream(error);
+      return errorStream(new Error(sanitizeErrorMessage(error)));
     }
   }
 }

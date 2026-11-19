@@ -24,10 +24,13 @@ async function fixture(t, config = { workers: ['rawroute/gpt-peak', 'rawroute/ba
   let next = 0;
   const ctx = {
     model: {
-      list: async () => [
-        { providerID: 'rawroute', modelID: 'gpt-peak' },
-        { providerID: 'rawroute', modelID: 'base-cat' },
-      ],
+      list: async () => ({
+        location: {},
+        data: [
+          { providerID: 'rawroute', modelID: 'gpt-peak' },
+          { providerID: 'rawroute', modelID: 'base-cat' },
+        ],
+      }),
     },
     provider: {
       transform: async callback => {
