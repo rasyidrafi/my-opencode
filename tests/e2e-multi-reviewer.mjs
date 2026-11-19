@@ -19,6 +19,11 @@ const freePort = () => new Promise((resolve, reject) => {
 });
 const PORT = Number(process.env.E2E_PORT || await freePort());
 const BASE = `http://127.0.0.1:${PORT}`;
+// serve mode honors a non-empty env password; without one it generates a
+// random secret. A fixed loopback-only test credential keeps the harness
+// deterministic and keeps the password out of the server log.
+const E2E_PASSWORD = 'e2e-isolated-loopback';
+const AUTH = 'Basic ' + Buffer.from(`opencode:${E2E_PASSWORD}`).toString('base64');
 const REVIEW =
   'Review the file dot_config/opencode/plugins/my-opencode/sanitize.js in /home/bull/projects/my-opencode ' +
   'for correctness bugs. Read it with shell (cat). Keep the review under 120 words.';
@@ -32,7 +37,7 @@ const logFile = path.join(os.tmpdir(), `fusion-e2e-server-${runStart}.log`);
 const logFd = fs.openSync(logFile, 'a');
 const env = { ...process.env };
 delete env.OPENCODE_SERVER_PASSWORD;
-delete env.OPENCODE_PASSWORD;
+env.OPENCODE_PASSWORD = E2E_PASSWORD;
 // Isolated storage/database (same config): the database path follows the data
 // directory, not the port, and an inherited absolute OPENCODE_DB would override
 // it, so pin the database inside the temporary data dir explicitly.
@@ -47,12 +52,12 @@ const cleanup = async () => {
   // Fail closed: never send HTTP cleanup to a server we did not provably start.
   if (isolated) {
     for (const id of created) {
-      await fetch(`${BASE}/api/session/${id}`, { method: 'DELETE' }).catch(() => {});
+      await fetch(`${BASE}/api/session/${id}`, { method: 'DELETE', headers: { authorization: AUTH } }).catch(() => {});
     }
     const sessions = await api('GET', '/api/session?limit=500').catch(() => ({ data: [] }));
     for (const s of unwrap(sessions)) {
       if ((s.title || '').startsWith('fusion:') && s.time?.created >= runStart) {
-        await fetch(`${BASE}/api/session/${s.id}`, { method: 'DELETE' }).catch(() => {});
+        await fetch(`${BASE}/api/session/${s.id}`, { method: 'DELETE', headers: { authorization: AUTH } }).catch(() => {});
       }
     }
   }
@@ -63,7 +68,7 @@ const unwrap = j => j?.data ?? j;
 async function api(method, p, body) {
   const res = await fetch(BASE + p, {
     method,
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', authorization: AUTH },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`${method} ${p} -> ${res.status} ${(await res.text()).slice(0, 200)}`);
