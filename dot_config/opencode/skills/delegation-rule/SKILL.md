@@ -16,7 +16,7 @@ Handle simple, self-contained work directly when context is sufficient; a subage
 | Desired outcome | Route |
 | --- | --- |
 | Repository facts, code locations, or flow traces | Direct discovery by default; `explore` when justified below |
-| Independent review of code or plans, risks, or design | `reviewer` |
+| Independent review of code or plans, risks, or design | `reviewer` by default; `multi_reviewer` (raw multi-model panel, caller synthesizes) only on explicit user request |
 | Delegated implementation | `general`, followed by `reviewer` when independent review is warranted |
 | Delegated implementation with missing context | Discovery → `general`, then review when warranted |
 
@@ -52,7 +52,7 @@ Pass relevant findings to the next session: Explore returns file/line evidence a
 
 ## Review loop
 
-When review is warranted, use a Reviewer separate from the implementer. Reuse sessions for fixes and re-review; use new sessions for a new slice. Reuse Explore for same-scope follow-up and forward findings invalidated by changes. Continuations need changed state and unresolved findings, not repeated onboarding. If a session is unavailable, replace it with a self-contained handoff.
+When review is warranted, use a Reviewer separate from the implementer. Reuse sessions for fixes and re-review; use new sessions for a new slice. Reuse Explore for same-scope follow-up and forward findings invalidated by changes. Continuations need changed state and unresolved findings, not repeated onboarding. If a session is unavailable or continuation keeps failing, replace it with a new self-contained session carrying the prior run: assignment, returned findings or verdict, fixes since with evidence, current diff/state, and the same criteria.
 
 Reviewer checks the current diff, prior findings and direct regressions against the same criteria. Ask it to flag unnecessary complexity without rejecting required boundary handling or equating a shorter diff with correctness. The parent checks evidence and scope; recommendations alone do not require changes.
 
