@@ -263,7 +263,12 @@ discard the others; aborting the call interrupts every live worker session.
 Worker models are validated against the configured catalog before any session
 is created. Fusion is internal plugin code, not a registered tool: no agent can
 call it directly and no permission action exists for it. The `multi_reviewer`
-agent itself denies every tool.
+agent itself denies every tool. Its system prompt is a guard for the
+off-nominal case where a real model ends up in the session (a manual model
+switch, an agent-file edit, or an explicit `subagent` model override): it
+forbids roleplaying the panel or fabricating worker reviews and tells the model
+to direct the user back to `simulated/multi_reviewer`. In the normal simulated
+flow no model ever reads it.
 
 Configure the panel in `dot_config/opencode/plugins/my-opencode/fusion.json`
 (applied next to the plugin). The `workers` array determines the worker count;

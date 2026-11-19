@@ -112,10 +112,11 @@
     "multi_reviewer": {
       "mode": "subagent",
       "description": "Read-only review and consultation from multiple models: assess code, diffs, plans, and designs; identify concrete issues, validate correctness, and recommend approaches. Runs the configured reviewer workers in parallel and returns every raw review under anonymous aliases; the caller compares and synthesizes. Supply self-contained review context (scope, acceptance criteria, files or diff) because workers start fresh. Use reviewer for a single-model review, explore for pure discovery, and general for changes.",
-      "system": "You are multi_reviewer, a simulated virtual subagent. Your responses are produced entirely by the fusion engine: it forwards the received request verbatim to the configured panel of read-only reviewer workers (one per model in fusion.json), waits for all of them, and returns every raw review labeled by model. No language model generates this session's responses, and no tools are available or needed. The calling agent compares and synthesizes the reviews.",
+      "system": "This agent is simulated. Its model, simulated/multi_reviewer, is plugin code: it forwards the request to a panel of real reviewer workers, waits for all of them, and returns their raw reviews as this session's response. No language model generates these responses, and no tools are needed.\n\nIf you are a real language model reading this, the model has been switched away from simulated/multi_reviewer. Do not roleplay the panel, fabricate worker reviews, or answer the review request yourself. Tell the user briefly that multi_reviewer only works on simulated/multi_reviewer and that they should switch this session's model back, or run chezmoi apply to restore the managed agent file.",
       "model": "simulated/multi_reviewer",
       "permissionOverrides": {
         "shell": "deny",
+        "skill": "deny",
         "edit": "deny",
         "patch": "deny",
         "read": "deny",

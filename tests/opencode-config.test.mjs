@@ -232,7 +232,7 @@ test('multi_reviewer is a simulated subagent without tool access', t => {
   const frontmatter = agent('multi_reviewer');
   assert.equal(frontmatter.mode, 'subagent');
   assert.equal(frontmatter.model, 'simulated/multi_reviewer');
-  for (const action of ['shell', 'edit', 'patch', 'read', 'read_media', 'glob', 'grep', 'subagent', 'openchamber_secret']) {
+  for (const action of ['shell', 'skill', 'edit', 'patch', 'read', 'read_media', 'glob', 'grep', 'subagent', 'openchamber_secret']) {
     assert.deepEqual(frontmatter.permissions.filter(rule => rule.action === action), [
       { action, resource: '*', effect: 'deny' },
     ]);
