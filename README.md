@@ -269,7 +269,7 @@ Configure the panel in `dot_config/opencode/plugins/my-opencode/fusion.json`
 (applied next to the plugin). The `workers` array determines the worker count;
 each item is `{ "model": "provider/model", "variant": "optional", "id": "optional" }`
 or a bare model string. Ids default to `worker-N` and must be unique. The
-default panel crosses model families (`rawroute/gpt-peak` + `rawroute/base-cat`)
+default panel crosses model families (`rawroute/gpt-peak` + `rawroute/base-flash`)
 because the `gpt-*` gateway aliases can resolve to the same backend. The config
 is read per call, so edits apply without a server restart; `chezmoi apply`
 deploys them. Set `"debug": true` to add an alias-to-session-ID mapping to the
