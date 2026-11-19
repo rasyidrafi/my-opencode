@@ -1,8 +1,9 @@
-import { runFusion } from './fusion.js';
+import { runFusion, PROVIDER_ID } from './fusion.js';
 import { sanitizeErrorMessage } from './sanitize.js';
 
-export const PROVIDER_ID = 'simulated';
+export { PROVIDER_ID };
 export const MODEL_ID = 'multi_reviewer';
+const AGENT_ID = 'multi_reviewer';
 const KIND_HEADER = 'x-simulated-kind';
 const SESSION_HEADER = 'x-simulated-session';
 
@@ -20,19 +21,6 @@ function textStream(text) {
         controller.enqueue({ type: 'text-delta', id: 'panel', delta: text });
         controller.enqueue({ type: 'text-end', id: 'panel' });
         controller.enqueue({ type: 'finish', finishReason: { unified: 'stop', raw: 'stop' }, usage: ZERO_USAGE });
-        controller.close();
-      },
-    }),
-  };
-}
-
-function errorStream(error) {
-  return {
-    stream: new ReadableStream({
-      start(controller) {
-        controller.enqueue({ type: 'stream-start', warnings: [] });
-        controller.enqueue({ type: 'error', error });
-        controller.enqueue({ type: 'finish', finishReason: { unified: 'error', raw: 'error' }, usage: ZERO_USAGE });
         controller.close();
       },
     }),
@@ -72,19 +60,68 @@ class SimulatedMultiReviewer {
     if (kind === 'title') return textStream('multi_reviewer panel');
     if (kind !== 'primary') return textStream('Simulated multi_reviewer session: the review panel is the last assistant text.');
     const sessionID = headers[SESSION_HEADER];
-    if (!sessionID) return errorStream(new Error('simulated/multi_reviewer request is missing the session header'));
     const prompt = latestUserText(options.prompt ?? []);
-    if (!prompt.trim()) return errorStream(new Error('simulated/multi_reviewer received an empty prompt'));
-    try {
-      const result = await runFusion(
-        this.ctx,
-        { sessionID, prompt, signal: options.abortSignal ?? new AbortController().signal },
-        this.configURL,
-      );
-      return textStream(result.text);
-    } catch (error) {
-      return errorStream(new Error(sanitizeErrorMessage(error)));
-    }
+
+    // OpenCode 2.3.2 passes no abortSignal and interrupts by cancelling the
+    // ReadableStream; own the abort lifecycle and stop writing once cancelled.
+    const abort = new AbortController();
+    const onOuterAbort = () => abort.abort();
+    options.abortSignal?.addEventListener('abort', onOuterAbort, { once: true });
+    // An already-aborted signal never replays its event.
+    if (options.abortSignal?.aborted) abort.abort();
+    let closed = false;
+    let controller;
+    const stream = new ReadableStream({
+      start(value) { controller = value; },
+      cancel() { closed = true; abort.abort(); },
+    });
+    const enqueue = part => {
+      if (closed) return;
+      try { controller.enqueue(part); } catch { closed = true; }
+    };
+    enqueue({ type: 'stream-start', warnings: [] });
+    let counter = 0;
+    const activity = text => {
+      const id = `fusion-activity-${counter++}`;
+      enqueue({ type: 'reasoning-start', id });
+      enqueue({ type: 'reasoning-delta', id, delta: text });
+      enqueue({ type: 'reasoning-end', id });
+    };
+    void (async () => {
+      try {
+        if (!sessionID) throw new Error('simulated/multi_reviewer request is missing the session header');
+        if (!prompt.trim()) throw new Error('simulated/multi_reviewer received an empty prompt');
+        const result = await runFusion(this.ctx, {
+          sessionID,
+          prompt,
+          signal: abort.signal,
+          onProgress: event => {
+            if (event.type === 'panel-start') activity(`Fusion panel: ${event.workerCount} reviewer workers.`);
+            else if (event.type === 'worker-start') activity(`Invoking ${event.alias}…`);
+            else if (event.type === 'worker-end') activity(event.ok ? `${event.alias} finished.` : `${event.alias} failed: ${event.error}`);
+          },
+        }, this.configURL);
+        enqueue({ type: 'text-start', id: 'panel' });
+        enqueue({ type: 'text-delta', id: 'panel', delta: result.text });
+        enqueue({ type: 'text-end', id: 'panel' });
+        enqueue({
+          type: 'finish',
+          finishReason: { unified: 'stop', raw: 'stop' },
+          usage: ZERO_USAGE,
+          providerMetadata: { [PROVIDER_ID]: result.metadata },
+        });
+      } catch (error) {
+        enqueue({ type: 'error', error: new Error(sanitizeErrorMessage(error)) });
+        enqueue({ type: 'finish', finishReason: { unified: 'error', raw: 'error' }, usage: ZERO_USAGE });
+      } finally {
+        options.abortSignal?.removeEventListener('abort', onOuterAbort);
+        if (!closed) {
+          closed = true;
+          try { controller.close(); } catch { /* consumer already cancelled */ }
+        }
+      }
+    })();
+    return { stream };
   }
 }
 
@@ -130,4 +167,27 @@ export async function registerSimulated(ctx, configURL) {
   await ctx.session.hook('retry', event => {
     event.decision = { retry: false };
   }, { providerID: PROVIDER_ID });
+
+  // Untitled top-level multi_reviewer sessions schedule automatic title
+  // generation with the configured title agent model (a real provider). The
+  // hook is unscoped and keys off the owning session's agent so the canned
+  // title intercepts that request before any model call.
+  await ctx.session.hook('title', async event => {
+    try {
+      const session = await ctx.session.get({ sessionID: event.sessionID });
+      if (session?.agent === AGENT_ID) event.result = 'multi_reviewer panel';
+    } catch { /* missing session: leave title generation alone */ }
+  });
+
+  // Compaction validates summary headings and may select the compaction
+  // agent's real model; the session-level result hook is consumed upstream
+  // before any model call, so multi_reviewer never reaches a provider.
+  await ctx.session.hook('compaction', async event => {
+    try {
+      const session = await ctx.session.get({ sessionID: event.sessionID });
+      if (session?.agent === AGENT_ID) {
+        event.result = { summary: 'Simulated multi_reviewer session: the review panel is the last assistant text.' };
+      }
+    } catch { /* missing session: leave compaction alone */ }
+  });
 }

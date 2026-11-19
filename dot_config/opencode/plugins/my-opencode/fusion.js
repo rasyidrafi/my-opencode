@@ -5,7 +5,12 @@ import { redactIdentity, sanitizeErrorMessage } from './sanitize.js';
 
 const CONFIG_URL = new URL('./fusion.json', import.meta.url);
 const MODEL_REF = /^[^/\s]+\/[^\s]+$/;
-const WORKER_ID = /^[A-Za-z0-9_-]{1,32}$/;
+// Minimum 4 chars so redactIdentity can mask the id without shredding text.
+const WORKER_ID = /^[A-Za-z0-9_-]{4,32}$/;
+
+// Shared with simulated.js: workers must never use the simulated provider,
+// which would recursively launch panels.
+export const PROVIDER_ID = 'simulated';
 
 const SYNTHESIS_HINT =
   'Independent raw reviews follow, one per configured worker, in alias order. ' +
@@ -18,7 +23,9 @@ export async function loadWorkers(configURL = CONFIG_URL) {
   try {
     raw = JSON.parse(await readFile(configURL, 'utf8'));
   } catch (error) {
-    throw new Error(`fusion: cannot read worker config ${fileURLToPath(configURL)}: ${error.message}`);
+    // Never echo parser diagnostics: they can quote configured model identities.
+    const reason = error instanceof SyntaxError ? 'invalid JSON' : (error.code ?? 'unreadable');
+    throw new Error(`fusion: cannot read worker config ${fileURLToPath(configURL)}: ${reason}`);
   }
   if (!Array.isArray(raw?.workers) || raw.workers.length === 0) {
     throw new Error('fusion: worker config must define a non-empty "workers" array');
@@ -90,6 +97,10 @@ export function buildWorkerPrompt(prompt) {
 }
 
 async function validateModels(ctx, workers) {
+  const recursive = workers.filter(worker => worker.providerID === PROVIDER_ID);
+  if (recursive.length > 0) {
+    throw new Error(`fusion: ${recursive.map(worker => worker.alias).join(', ')} cannot use the simulated provider as a worker`);
+  }
   let available;
   try {
     // The plugin host wraps domain list results as { location, data }.
@@ -106,22 +117,24 @@ async function validateModels(ctx, workers) {
   }
 }
 
-// Mirrors OpenCode's subagent report: the last assistant message's text parts.
-function lastAssistantText(messages) {
+// Mirrors OpenCode's subagent report: the last assistant message. An errored
+// terminal message is a worker failure even when partial text already streamed.
+function lastAssistant(messages) {
   for (let index = messages.length - 1; index >= 0; index--) {
-    const message = messages[index];
-    if (message?.type !== 'assistant') continue;
-    return (message.content ?? [])
-      .filter(part => part.type === 'text' && typeof part.text === 'string' && part.text.length > 0)
-      .map(part => part.text)
-      .join('\n\n');
+    if (messages[index]?.type === 'assistant') return messages[index];
   }
-  return '';
+  return undefined;
 }
 
-async function callWorker(ctx, worker, prompt, { signal }) {
+function assistantText(message) {
+  return (message?.content ?? [])
+    .filter(part => part.type === 'text' && typeof part.text === 'string' && part.text.length > 0)
+    .map(part => part.text)
+    .join('\n\n');
+}
+
+async function callWorker(ctx, worker, prompt, { signal, identities }) {
   const startedAt = Date.now();
-  const identity = [worker.model, worker.modelID, worker.id];
   if (signal.aborted) return { ...worker, ok: false, error: 'aborted', elapsedMs: 0 };
   let sessionID;
   const onAbort = () => { ctx.session.interrupt({ sessionID }).catch(() => {}); };
@@ -139,18 +152,28 @@ async function callWorker(ctx, worker, prompt, { signal }) {
     });
     sessionID = session.id;
     signal.addEventListener('abort', onAbort, { once: true });
-    if (signal.aborted) onAbort();
+    // Abort may have landed while create was pending; the session is still idle
+    // and interrupting it is a no-op, so never prompt it.
+    if (signal.aborted) throw new Error('aborted');
     await ctx.session.prompt({ sessionID, text: buildWorkerPrompt(prompt) });
+    // Abort during admission: the first interrupt may have hit an idle session,
+    // so interrupt again now that the prompt has settled.
+    if (signal.aborted) {
+      onAbort();
+      throw new Error('aborted');
+    }
     await ctx.session.wait({ sessionID });
     if (signal.aborted) throw new Error('aborted');
-    const output = lastAssistantText(await ctx.session.context({ sessionID }));
+    const assistant = lastAssistant(await ctx.session.context({ sessionID }));
+    if (assistant?.error) throw new Error(assistant.error.message ?? assistant.error.type ?? 'worker failed');
+    const output = assistantText(assistant);
     if (!output) throw new Error('worker returned no text response');
-    return { ...worker, ok: true, output: redactIdentity(output, identity), sessionID, elapsedMs: Date.now() - startedAt };
+    return { ...worker, ok: true, output: redactIdentity(output, identities), sessionID, elapsedMs: Date.now() - startedAt };
   } catch (error) {
     return {
       ...worker,
       ok: false,
-      error: signal.aborted ? 'aborted' : sanitizeErrorMessage(error, identity),
+      error: signal.aborted ? 'aborted' : sanitizeErrorMessage(error, identities),
       sessionID,
       elapsedMs: Date.now() - startedAt,
     };
@@ -174,11 +197,22 @@ function formatPanel(results) {
 
 // Internal engine behind the simulated/multi_reviewer model; not a registered
 // tool, so no agent can call it directly and no permission action is needed.
-export async function runFusion(ctx, { sessionID, prompt, signal }, configURL = CONFIG_URL) {
+// onProgress receives panel-start/worker-start/worker-end events for the
+// simulated model to stream as reasoning activity.
+export async function runFusion(ctx, { sessionID, prompt, signal, onProgress }, configURL = CONFIG_URL) {
   const { workers: configured, debug } = await loadWorkers(configURL);
   const workers = bindAliases(configured);
   await validateModels(ctx, workers);
-  const settled = await Promise.allSettled(workers.map(worker => callWorker(ctx, worker, prompt, { signal })));
+  onProgress?.({ type: 'panel-start', workerCount: workers.length });
+  // Scrub every worker payload against the whole panel's identities: a worker
+  // reviewing fusion.json or a diff can quote another worker's model.
+  const identities = workers.flatMap(worker => [worker.model, worker.modelID, worker.providerID, worker.id]);
+  const settled = await Promise.allSettled(workers.map(async worker => {
+    onProgress?.({ type: 'worker-start', alias: worker.alias });
+    const result = await callWorker(ctx, worker, prompt, { signal, identities });
+    onProgress?.({ type: 'worker-end', alias: worker.alias, ok: result.ok, ...(result.error ? { error: result.error } : {}) });
+    return result;
+  }));
   const results = settled.map((entry, index) =>
     entry.status === 'fulfilled'
       ? entry.value

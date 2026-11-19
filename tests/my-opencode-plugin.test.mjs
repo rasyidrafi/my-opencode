@@ -21,7 +21,7 @@ test('my-opencode plugin registers tools and the simulated provider, never trans
   assert.equal(tools, 1);
   assert.deepEqual(providers.map(definition => definition.info.id), ['simulated']);
   assert.deepEqual(aisdkHooks, [{ name: 'sdk', options: { providerID: 'simulated' } }]);
-  assert.deepEqual(sessionHooks.map(entry => entry.name).sort(), ['model.request', 'retry']);
+  assert.deepEqual(sessionHooks.map(entry => entry.name).sort(), ['compaction', 'model.request', 'retry', 'title']);
 });
 
 test('my-opencode plugin removes worktree removal and adds read_media without changing other tools', async () => {
