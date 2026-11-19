@@ -19,6 +19,7 @@ async function fixture(t, config, behavior = {}) {
   const calls = { create: [], prompt: [], wait: [], context: [], interrupt: [] };
   let next = 0;
   const ctx = {
+    location: { directory: '/tmp/fusion-project' },
     model: { list: async () => behavior.modelList ?? { location: {}, data: behavior.knownModels ?? knownModels } },
     session: {
       create: async input => {
@@ -100,7 +101,12 @@ test('runFusion fans out reviewer sessions and dumps masked reviews under anonym
   const f = await fixture(t, twoWorkers);
   const result = await f.run('Review the diff.');
   assert.deepEqual(f.calls.create.map(call => call.agent), ['reviewer', 'reviewer']);
-  assert.deepEqual(f.calls.create.map(call => call.parentID), ['ses_parent', 'ses_parent']);
+  // Top-level workers: a parentID would make V2 deliver completion notifications
+  // to the simulated session and wake it into an endless fusion loop.
+  for (const call of f.calls.create) {
+    assert.ok(!Object.hasOwn(call, 'parentID'), 'workers must not be children of the calling session');
+    assert.deepEqual(call.location, { directory: '/tmp/fusion-project' });
+  }
   assert.deepEqual(f.calls.create.map(call => call.title).sort(), ['fusion: Worker A', 'fusion: Worker B']);
   assert.deepEqual(f.calls.create.map(call => call.model).sort((a, b) => a.id.localeCompare(b.id)), [
     { providerID: 'rawroute', id: 'base-cat', variant: 'high' },

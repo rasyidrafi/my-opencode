@@ -119,7 +119,7 @@ function lastAssistantText(messages) {
   return '';
 }
 
-async function callWorker(ctx, worker, prompt, { sessionID: parentID, signal }) {
+async function callWorker(ctx, worker, prompt, { signal }) {
   const startedAt = Date.now();
   const identity = [worker.model, worker.modelID, worker.id];
   if (signal.aborted) return { ...worker, ok: false, error: 'aborted', elapsedMs: 0 };
@@ -128,11 +128,14 @@ async function callWorker(ctx, worker, prompt, { sessionID: parentID, signal }) 
   try {
     // The reviewer agent supplies the read-only policy and system prompt; the
     // explicit model wins over the agent's configured model, per worker.
+    // Workers are top-level, never children of the calling session: V2 delivers
+    // child completion notifications to the parent, which would wake the
+    // simulated session into an endless fusion loop.
     const session = await ctx.session.create({
-      parentID,
       title: `fusion: ${worker.alias}`,
       agent: 'reviewer',
       model: { providerID: worker.providerID, id: worker.modelID, ...(worker.variant ? { variant: worker.variant } : {}) },
+      location: { directory: ctx.location.directory },
     });
     sessionID = session.id;
     signal.addEventListener('abort', onAbort, { once: true });
@@ -175,7 +178,7 @@ export async function runFusion(ctx, { sessionID, prompt, signal }, configURL = 
   const { workers: configured, debug } = await loadWorkers(configURL);
   const workers = bindAliases(configured);
   await validateModels(ctx, workers);
-  const settled = await Promise.allSettled(workers.map(worker => callWorker(ctx, worker, prompt, { sessionID, signal })));
+  const settled = await Promise.allSettled(workers.map(worker => callWorker(ctx, worker, prompt, { signal })));
   const results = settled.map((entry, index) =>
     entry.status === 'fulfilled'
       ? entry.value

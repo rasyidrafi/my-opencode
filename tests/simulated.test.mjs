@@ -23,6 +23,7 @@ async function fixture(t, config = { workers: ['rawroute/gpt-peak', 'rawroute/ba
   const sessionCalls = { create: [], prompt: [], interrupt: [] };
   let next = 0;
   const ctx = {
+    location: { directory: '/tmp/simulated-project' },
     model: {
       list: async () => ({
         location: {},
