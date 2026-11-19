@@ -1,0 +1,6 @@
+{
+  "workers": [
+    { "model": "rawroute/gpt-peak" },
+    { "model": "rawroute/base-cat" }
+  ]
+}

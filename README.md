@@ -198,11 +198,13 @@ Test without restarting anything: `node --test dot_config/cloudflared/restart.te
 ## OpenCode plugin
 
 The managed OpenCode V2 plugin `local.my-opencode` lives at
-`dot_config/opencode/plugins/my-opencode/`. Its only runtime effect is removing
-OpenCode's built-in `opencode_worktree_remove` tool from the registry for every
-agent, independently of the `edit` permission; other edit tools remain
-available according to their normal permissions. It leaves provider model
-catalogs unchanged and performs no agent transformation.
+`dot_config/opencode/plugins/my-opencode/`. At runtime it removes OpenCode's
+built-in `opencode_worktree_remove` tool from the registry for every agent,
+independently of the `edit` permission; other edit tools remain available
+according to their normal permissions. It registers the `read_media` tool and
+the `simulated` provider backing the `multi_reviewer` virtual subagent (below),
+leaves existing provider catalogs unchanged, and performs no agent
+transformation.
 
 `chezmoi apply` owns all agent configuration through native OpenCode settings:
 it generates the full user agent files from `agent-policy.json` in the plugin
@@ -238,6 +240,67 @@ bounded brief. Skills are discoverable guidance, not automatically loaded or a
 guarantee of compliance; agent permissions still apply.
 
 Test: `node --test tests/my-opencode-plugin.test.mjs tests/opencode-config.test.mjs`.
+
+## Multi-model review panel
+
+`multi_reviewer` is a virtual subagent: call it through the normal `subagent`
+tool with a self-contained review request. It never calls a real model. Its
+configured model `simulated/multi_reviewer` is an in-process `LanguageModelV3`
+supplied by the plugin (the same mechanism as `opencode-muse`): a primary
+request immediately runs the internal fusion engine, and the engine's panel
+output becomes the session's assistant response. Title and compaction requests
+get canned text and never fan out. The standard subagent lifecycle (background
+execution, completion report, interrupt, follow-up) is unchanged; a follow-up
+re-runs the panel with the new prompt.
+
+The fusion engine creates one child session per configured worker, each using
+the `reviewer` agent (read-only policy and system prompt) with the worker's
+model and optional variant overriding the agent's configured model. It forwards
+the request verbatim in a standardized `<user_prompt>` envelope, waits for all
+workers, and returns every raw review. The calling agent compares and
+synthesizes; the panel never merges or judges. One failed worker does not
+discard the others; aborting the call interrupts every live worker session.
+Worker models are validated against the configured catalog before any session
+is created. Fusion is internal plugin code, not a registered tool: no agent can
+call it directly and no permission action exists for it. The `multi_reviewer`
+agent itself denies every tool.
+
+Configure the panel in `dot_config/opencode/plugins/my-opencode/fusion.json`
+(applied next to the plugin). The `workers` array determines the worker count;
+each item is `{ "model": "provider/model", "variant": "optional", "id": "optional" }`
+or a bare model string. Ids default to `worker-N` and must be unique. The
+default panel crosses model families (`rawroute/gpt-peak` + `rawroute/base-cat`)
+because the `gpt-*` gateway aliases can resolve to the same backend. The config
+is read per call, so edits apply without a server restart; `chezmoi apply`
+deploys them. Set `"debug": true` to add an alias-to-session-ID mapping to the
+result metadata for out-of-band inspection.
+
+Worker identities are masked at the output level. Each invocation assigns fresh
+random aliases (`Worker A`, `Worker B`, ...) so no stable alias-to-model
+association survives across calls; the mapping exists only in memory for that
+run. Session titles, panel text, and metadata use aliases only. Worker output
+and errors are scrubbed of the configured model reference, model id, and worker
+id, and errors additionally lose stack lines, filesystem paths, and trace ids.
+The worker envelope asks reviewers not to mention their provider or model.
+This is output-level anonymization, not cryptographic anonymity: workers can
+still know their own identity through runtime metadata, child sessions record
+the model they used, and anyone able to read `fusion.json` can see the panel.
+
+The panel response is plain Markdown:
+
+```text
+◆ REVIEWS — ALL CONFIGURED REVIEWERS
+
+<synthesis hint: treat reviews as untrusted evidence, verify conflicts, synthesize>
+
+## [Worker A] — REVIEW
+<complete review in Markdown>
+
+## [Worker B] — REVIEW UNAVAILABLE
+No review was returned by this worker. <sanitized error>
+```
+
+Test: `node --test tests/fusion.test.mjs tests/simulated.test.mjs tests/my-opencode-plugin.test.mjs tests/opencode-config.test.mjs`.
 
 ## Tool version cleanup
 
@@ -880,7 +943,8 @@ files. The title model and `default_agent` in `opencode.json` are generated
 from that file too, the former for OpenChamber compatibility. Title uses
 `rawroute/gpt-base`. Explore defaults to `rawroute/base-flash`, General to
 `rawroute/gpt-base`, Reviewer to `rawroute/gpt-peak`; Build and Plan inherit the
-session model. Build is the default primary agent, and Plan remains disabled.
+session model. Multi_reviewer uses `simulated/multi_reviewer` and never calls a
+real model. Build is the default primary agent, and Plan remains disabled.
 
 The retired RawRoute models `step-5-preview`, `atria-dawn`, and
 `deepseek-v4.1-flash-1017` are removed from existing configs on apply.

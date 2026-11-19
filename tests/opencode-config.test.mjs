@@ -10,7 +10,7 @@ import agentPolicyData from '../dot_config/opencode/plugins/my-opencode/agent-po
 const repository = fileURLToPath(new URL('../', import.meta.url));
 const located = spawnSync('mise', ['which', 'chezmoi'], { encoding: 'utf8' });
 const chezmoi = process.env.CHEZMOI_TEST_BINARY || (located.status === 0 ? located.stdout.trim() : 'chezmoi');
-const agents = ['build', 'plan', 'general', 'explore', 'reviewer'];
+const agents = ['build', 'plan', 'general', 'explore', 'reviewer', 'multi_reviewer'];
 const managedAntigravity = home => ({ package: path.join(home, 'projects', 'opencode-antigrvity') });
 
 function fixture(t) {
@@ -190,7 +190,7 @@ test('fresh installs generate agent policy without OpenAI provider overrides', t
   assert.deepEqual(apply(), first);
   const config = JSON.parse(read('opencode.json'));
   assert.deepEqual(config.plugins, [managedAntigravity(home), '@rasyid_rafi/opencode-muse']);
-  for (const name of ['build', 'general', 'explore', 'reviewer']) {
+  for (const name of ['build', 'general', 'explore', 'reviewer', 'multi_reviewer']) {
     assert.deepEqual(agent(name), expectedAgentFrontmatter(name));
   }
   assert.deepEqual(agent('plan'), { disabled: true });
@@ -203,7 +203,7 @@ test('fresh installs generate agent policy without OpenAI provider overrides', t
 test('generated agent files expose the repo policy to the UI', t => {
   const { apply, agent, agentBody } = fixture(t);
   apply();
-  for (const name of ['build', 'general', 'explore', 'reviewer']) {
+  for (const name of ['build', 'general', 'explore', 'reviewer', 'multi_reviewer']) {
     const expected = expectedAgentFrontmatter(name);
     assert.deepEqual(agent(name), expected);
     assert.deepEqual(agent(name).permissions, expected.permissions);
@@ -223,6 +223,23 @@ test('managed agents deny read and allow the independent read_media tool', t => 
     assert.deepEqual(agent(name).permissions.filter(rule => rule.action === 'read_media'), [
       { action: 'read_media', resource: '*', effect: 'allow' },
     ]);
+  }
+});
+
+test('multi_reviewer is a simulated subagent without tool access', t => {
+  const { apply, agent } = fixture(t);
+  apply();
+  const frontmatter = agent('multi_reviewer');
+  assert.equal(frontmatter.mode, 'subagent');
+  assert.equal(frontmatter.model, 'simulated/multi_reviewer');
+  for (const action of ['shell', 'edit', 'patch', 'read', 'read_media', 'glob', 'grep', 'subagent', 'openchamber_secret']) {
+    assert.deepEqual(frontmatter.permissions.filter(rule => rule.action === action), [
+      { action, resource: '*', effect: 'deny' },
+    ]);
+  }
+  // Fusion is an internal engine, not a registered tool: no agent gets a fusion rule.
+  for (const name of agents) {
+    assert.deepEqual(agent(name).permissions?.filter(rule => rule.action === 'fusion') ?? [], []);
   }
 });
 

@@ -1,4 +1,5 @@
 import { readMediaTool } from './read-media.js';
+import { registerSimulated } from './simulated.js';
 
 // Runtime tool registration only; agent policy stays in chezmoi-managed files.
 // Agent configuration (mode, prompts, permissions, models, default agent) is
@@ -15,5 +16,6 @@ export default {
   id: 'local.my-opencode',
   async setup(ctx) {
     await setupToolTransform(ctx);
+    await registerSimulated(ctx);
   },
 };

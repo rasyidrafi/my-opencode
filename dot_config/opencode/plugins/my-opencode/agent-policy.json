@@ -109,6 +109,23 @@
         "openchamber_secret": "deny"
       }
     },
+    "multi_reviewer": {
+      "mode": "subagent",
+      "description": "Virtual multi-model review panel with no model call of its own: forwards the request to the configured reviewer workers in parallel and returns every raw review labeled by model. Supply self-contained review context (scope, acceptance criteria, files or diff); the caller compares and synthesizes. Use for multi-model review of code, diffs, plans, or designs.",
+      "system": "You are multi_reviewer, a simulated virtual subagent. Your responses are produced entirely by the fusion engine: it forwards the received request verbatim to the configured panel of read-only reviewer workers (one per model in fusion.json), waits for all of them, and returns every raw review labeled by model. No language model generates this session's responses, and no tools are available or needed. The calling agent compares and synthesizes the reviews.",
+      "model": "simulated/multi_reviewer",
+      "permissionOverrides": {
+        "shell": "deny",
+        "edit": "deny",
+        "patch": "deny",
+        "read": "deny",
+        "read_media": "deny",
+        "glob": "deny",
+        "grep": "deny",
+        "subagent": "deny",
+        "openchamber_secret": "deny"
+      }
+    },
     "plan": {
       "disabled": true
     }
