@@ -206,6 +206,14 @@ the `simulated` provider backing the `multi_reviewer` virtual subagent (below),
 leaves existing provider catalogs unchanged, and performs no agent
 transformation.
 
+Plugin code changes require an OpenCode server restart to take effect.
+OpenCode 2.3.2 re-evaluates a local plugin's entrypoint when watched files
+change, but transitive ESM imports stay cached in the Bun runtime, so edits to
+imported modules (such as `fusion.js`) can remain stale across reloads until
+the server restarts. Use `mise run openchamber:setup` for the graceful restart
+path. Configuration the plugin reads at runtime (`fusion.json`) and
+chezmoi-managed agent files do not need a restart.
+
 `chezmoi apply` owns all agent configuration through native OpenCode settings:
 it generates the full user agent files from `agent-policy.json` in the plugin
 directory (mode, description, system prompt, permissions and model), and writes
