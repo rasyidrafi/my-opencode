@@ -816,7 +816,7 @@ and Reviewer. Secrets stay out of chat, but saved values are
 readable by agent commands on the OpenChamber host and expire after 24 hours.
 The PWA app name (`pwaAppName`) is unmanaged and can differ on each machine;
 existing local names are preserved and fresh installs use the app default.
-The default model is `rawroute/base-flash` with no variant. Apply removes the retired `hiddenModels` list, explicit `defaultAgent`, and any stale `defaultVariant` from
+The default model is `rawroute/gpt-core` with no variant. Apply removes the retired `hiddenModels` list, explicit `defaultAgent`, and any stale `defaultVariant` from
 both files.
 **The managed permission mode is `auto` (Accept everything).**
 

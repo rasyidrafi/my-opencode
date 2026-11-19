@@ -1,5 +1,5 @@
 {
-  "defaultModel": "rawroute/base-flash",
+  "defaultModel": "rawroute/gpt-core",
   "sessionTabsEnabled": true,
   "showReasoningTraces": true,
   "reportUsage": false,

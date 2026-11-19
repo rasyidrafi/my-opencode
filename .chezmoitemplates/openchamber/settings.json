@@ -1,5 +1,5 @@
 {
-  "defaultModel": "rawroute/base-flash",
+  "defaultModel": "rawroute/gpt-core",
   "agentControlToolEnabled": false,
   "agentScheduleToolEnabled": false,
   "agentWebToolEnabled": false,
