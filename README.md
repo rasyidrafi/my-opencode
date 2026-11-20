@@ -967,8 +967,8 @@ their frontmatter and system prompts, and the plugin does not re-enforce any of
 it at runtime: manual changes survive until the next apply regenerates the
 files. The title model and `default_agent` in `opencode.json` are generated
 from that file too, the former for OpenChamber compatibility. Title uses
-`rawroute/gpt-base`. Explore defaults to `rawroute/base-flash`, General to
-`rawroute/gpt-base`, Reviewer to `rawroute/gpt-peak`; Build and Plan inherit the
+`rawroute/gpt-base`. Explore and General default to `rawroute/gpt-core`,
+Reviewer to `rawroute/gpt-peak`; Build and Plan inherit the
 session model. Multi_reviewer uses `simulated/multi_reviewer` and never calls a
 real model. Build is the default primary agent, and Plan remains disabled.
 
