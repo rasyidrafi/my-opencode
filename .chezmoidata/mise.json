@@ -7,7 +7,7 @@
           "linux",
           "windows"
         ],
-        "version": "1.5.11"
+        "version": "1.5.13"
       },
       {
         "package": "azure",
@@ -24,7 +24,7 @@
           "windows",
           "android"
         ],
-        "version": "2026.10.1"
+        "version": "2026.11.0"
       },
       {
         "package": "bun",
@@ -32,7 +32,7 @@
           "linux",
           "windows"
         ],
-        "version": "1.4.4"
+        "version": "1.4.5"
       },
       {
         "package": "chezmoi",
@@ -163,7 +163,7 @@
           "windows",
           "android"
         ],
-        "version": "0.170.0",
+        "version": "0.171.0",
         "android": {
           "template": "mise/termux-codex",
           "version": "0.167.2",
@@ -179,7 +179,7 @@
           "linux",
           "windows"
         ],
-        "version": "2.7.2"
+        "version": "2.7.3"
       },
       {
         "package": "npm:opensrc",
