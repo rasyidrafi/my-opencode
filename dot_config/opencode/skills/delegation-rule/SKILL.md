@@ -11,7 +11,7 @@ Apply this skill within the user's instructions and permissions. The sections be
 
 ## Routing
 
-Handle simple, self-contained work directly when context is sufficient; a subagent or reviewer is not mandatory. Delegate or review when complexity, risk, independent assessment, or the user's request justifies it:
+Handle simple work directly. Delegate only when the user or an applicable instruction explicitly calls for it. Once authorized, use complexity, risk, and the need for independent assessment to choose a route:
 
 | Desired outcome | Route |
 | --- | --- |
