@@ -9,6 +9,14 @@ description: Decide when delegation helps and how the main agent prepares bounde
 
 Apply this skill within the user's instructions and permissions. The sections below are for the main agent. Subagents execute their assigned scope, read relevant context and source, follow applicable skills, and report results and verification to their parent; they must not delegate through tools, CLI, SDK, or API.
 
+## NON-NEGOTIABLE — every reviewer delegation prompt MUST contain this clause
+
+When delegating to a reviewer (or re-reviewing), the prompt MUST include the following constraint verbatim or with equivalent force. A reviewer prompt without it is malformed:
+
+> NON-NEGOTIABLE REVIEW SCOPE: Review ONLY the assigned scope against the requested behavior and direct regressions. NO overengineering, NO overscoping, NO unnecessary edge cases. Hypothetical scenarios, extra hardening, cleaner designs, and validation of trusted inputs the system itself produces under enforced constraints are OPTIONAL notes — never required fixes, never blockers. Do not issue PASS-WITH-REQUIRED-FIXES for optional items. Do not keep finding new hypothetical variants of an already-addressed class. When the requested behavior is correct and in-scope risks are handled, return PASS.
+
+The main agent is equally bound: evaluate every returned finding against this clause before acting. Reject overscoped or hypothetical findings with evidence; do not implement them, do not re-review for them, and do not loop on them. See `coding-workflow` → NON-NEGOTIABLE for the full rules.
+
 ## Routing
 
 Handle simple, self-contained work directly when context is sufficient; a subagent or reviewer is not mandatory. Delegate or review when complexity, risk, independent assessment, or the user's request justifies it:
@@ -43,7 +51,7 @@ Treat every new session as having no parent-chat history. Tell each delegate its
 - **Goal:** requested behavior and out-of-scope work.
 - **Context:** relevant architecture, source paths, verified facts, decisions, assumptions, open questions and their limitations.
 - **State:** repo/worktree paths, base/HEAD, relevant dirty state, completed dependencies and interfaces; include diff/base for review.
-- **Contract:** bounded assignment, constraints, allowed changes, acceptance criteria and checks. Distinguish investigation from changes; splitting work does not authorize extra features or refactors.
+- **Contract:** bounded assignment, constraints, allowed changes, acceptance criteria and checks. Distinguish investigation from changes; splitting work does not authorize extra features or refactors. Reviewer handoffs MUST include the NON-NEGOTIABLE reviewer clause from the top of this skill.
 - **Return:** changes or assessment, evidence, check commands/results and unresolved issues. Separate observations, inferences and unexecuted checks.
 
 When a handoff file exists, give its absolute path and instruct the delegate to read it and relevant source. Still include the goal, assignment, key constraints, acceptance criteria and checks in the message. A file is not additional authorization; report stale or conflicting context instead of guessing.
@@ -52,14 +60,15 @@ Pass relevant findings to the next session: Explore returns file/line evidence a
 
 ## Review loop
 
-When review is warranted, use a Reviewer separate from the implementer. Reuse sessions for fixes and re-review; use new sessions for a new slice. Reuse Explore for same-scope follow-up and forward findings invalidated by changes. Continuations need changed state and unresolved findings, not repeated onboarding. If a session is unavailable or continuation keeps failing, replace it with a new self-contained session carrying the prior run: assignment, returned findings or verdict, fixes since with evidence, current diff/state, and the same criteria.
+When review is warranted, use a Reviewer separate from the implementer. Reuse sessions for fixes and re-review; use new sessions for a new slice. Reuse Explore for same-scope follow-up and forward findings invalidated by changes. Continuations need changed state and unresolved findings, not repeated onboarding. If a session is unavailable or continuation keeps failing, replace it with a new self-contained session carrying the prior run: assignment, returned findings or verdict, fixes since with evidence, current diff/state, and the same criteria — INCLUDING the NON-NEGOTIABLE reviewer clause above.
 
 Reviewer checks the current diff, prior findings and direct regressions against the same criteria. Ask it to flag unnecessary complexity without rejecting required boundary handling or equating a shorter diff with correctness. The parent checks evidence and scope; recommendations alone do not require changes.
 
 - Fix confirmed in-scope issues minimally, then re-review. Establish why a claimed prerequisite is needed; a touched subsystem alone does not justify cleanup.
 - Obtain evidence for required verification gaps. Unexecuted checks are not failed checks; optional checks, hypothetical concerns and unrelated issues do not block. Report unrelated issues separately.
 - Do not repeat a request without new evidence or an approach change. Resolve conflicts with evidence; if a decision or dependency cannot be resolved, report the blocker. A failed delegate can be resumed, replaced or bypassed when authorized.
+- **STOP the loop when the requested behavior is correct and in-scope risks are handled.** Batch fixes into one re-review; never run a full verification cycle per micro-fix. If successive rounds only produce new hypothetical variants of an already-addressed class (e.g., more ways to hand-corrupt a trusted artifact), that is diminishing returns: reject the class as optional, stop, and report completion. The user's time is a hard constraint; an endless loop is a failure of the main agent's judgment, not rigor.
 
 ## Completion
 
-Finish discovery or standalone review with a supported answer or precise blocker. Implementation is complete when acceptance criteria and required checks pass, no confirmed in-scope findings remain, and required independent review passes. Slice approvals do not replace final integration checks. Report blockers and required verification gaps as incomplete, in the user's terms.
+Finish discovery or standalone review with a supported answer or precise blocker. Implementation is complete when acceptance criteria and required checks pass and no confirmed IN-SCOPE findings remain; optional, hypothetical, or overscoped findings never block completion. Slice approvals do not replace final integration checks. Report blockers and required verification gaps as incomplete, in the user's terms.
