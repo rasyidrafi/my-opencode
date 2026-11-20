@@ -290,7 +290,7 @@ Configure the panel in `dot_config/opencode/plugins/my-opencode/fusion.json`
 each item is `{ "model": "provider/model", "variant": "optional", "id": "optional" }`
 or a bare model string. Ids default to `worker-N`, must be unique, and are
 4-32 characters of `[A-Za-z0-9_-]` so they can be masked safely. The
-default panel crosses model families (`rawroute/gpt-peak` + `rawroute/base-flash`)
+default panel crosses model families (`rawroute/gpt-peak` + `rawroute/base-alpha`)
 because the `gpt-*` gateway aliases can resolve to the same backend. The config
 is read per call, so edits apply without a server restart; `chezmoi apply`
 deploys them. Set `"debug": true` to add an alias-to-session-ID mapping to the
@@ -979,12 +979,9 @@ RawRoute also exposes three stable GPT gateway aliases: `gpt-base` (GPT Base,
 1,000,000 context), `gpt-core` (GPT Core, 640,000 context), and `gpt-peak`
 (GPT Peak, 400,000 context). Each has a 128,000-token output limit. The backend
 can change which OpenAI model each alias resolves to without changing the
-OpenCode model IDs. RawRoute also exposes `base-flash` (Base Flash) with a
-1,000,000-token context and a 131,072-token output limit; its other capabilities
-match the GPT aliases. `base-dawn` (Base Dawn) is a text-only variant of Base
-Flash with a 512,000-token context and a 65,536-token output limit. `base-cat`
-(Base Cat) matches Base Flash's capabilities with a 1,048,576-token context and
-a 262,144-token output limit.
+OpenCode model IDs. RawRoute also exposes `base-alpha` (Base Alpha), `base-beta`
+(Base Beta), and `base-charlie` (Base Charlie), each with a 1,000,000-token
+context, a 128,000-token output limit, and text, image, and PDF input.
 
 Verify with `node --test tests/opencode-config.test.mjs dot_config/rawroute/setup.test.mjs`.
 

@@ -13,7 +13,7 @@ async function collect(stream) {
   return parts;
 }
 
-async function fixture(t, config = { workers: ['rawroute/gpt-peak', 'rawroute/base-cat'] }, behavior = {}) {
+async function fixture(t, config = { workers: ['rawroute/gpt-peak', 'rawroute/base-alpha'] }, behavior = {}) {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'simulated-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const configURL = pathToFileURL(path.join(directory, 'fusion.json'));
@@ -29,7 +29,7 @@ async function fixture(t, config = { workers: ['rawroute/gpt-peak', 'rawroute/ba
         location: {},
         data: [
           { providerID: 'rawroute', modelID: 'gpt-peak' },
-          { providerID: 'rawroute', modelID: 'base-cat' },
+          { providerID: 'rawroute', modelID: 'base-alpha' },
         ],
       }),
     },
@@ -144,7 +144,7 @@ test('primary requests stream reasoning progress then the masked panel as assist
   assert.ok(text.includes('## [Worker B] — REVIEW'));
   assert.ok(text.includes('review by ses_w1'));
   assert.ok(text.includes('review by ses_w2'));
-  for (const secret of ['rawroute', 'gpt-peak', 'base-cat']) {
+  for (const secret of ['rawroute', 'gpt-peak', 'base-alpha']) {
     assert.ok(!text.includes(secret), `simulated response must not reveal ${secret}`);
     assert.ok(!reasoning.includes(secret), `reasoning progress must not reveal ${secret}`);
   }

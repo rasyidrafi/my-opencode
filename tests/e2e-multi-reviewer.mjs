@@ -99,7 +99,7 @@ const check = (name, fn) => {
   catch (error) { failures++; console.log(`  FAIL - ${name}: ${error.message}`); }
 };
 const assertMasked = (text) => {
-  for (const secret of ['rawroute', 'gpt-peak', 'base-flash', 'worker-1', 'worker-2']) {
+  for (const secret of ['rawroute', 'gpt-peak', 'base-alpha', 'worker-1', 'worker-2']) {
     assert.ok(!text.includes(secret), `panel reveals ${secret}`);
   }
 };
@@ -166,7 +166,7 @@ try {
   console.log('TEST B: regular review loop via subagent tool from a build parent');
   const b = await newSession({
     agent: 'build', title: 'E2E B parent', location: { directory: REPO },
-    model: { providerID: 'rawroute', id: 'base-flash' },
+    model: { providerID: 'rawroute', id: 'base-alpha' },
   });
   await api('POST', `/api/session/${b}/prompt`, {
     text: 'Call the subagent tool exactly once with agent "multi_reviewer", description "E2E panel review", ' +

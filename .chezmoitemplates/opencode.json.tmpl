@@ -21,11 +21,11 @@
         "baseURL": "{{ if $rawrouteLocal }}https://rawroute.qilin-elver.ts.net/v1{{ else }}https://rawroute.qzz.io/v1{{ end }}"
       },
       "models": {
-        "base-flash": {
-          "name": "Base Flash",
+        "base-alpha": {
+          "name": "Base Alpha",
           "capabilities": {
             "tools": true,
-            "input": ["text", "image"],
+            "input": ["text", "image", "pdf"],
             "output": ["text"],
             "temperature": true,
             "reasoning": {
@@ -34,14 +34,14 @@
           },
           "limit": {
             "context": 1000000,
-            "output": 131072
+            "output": 128000
           }
         },
-        "base-dawn": {
-          "name": "Base Dawn",
+        "base-beta": {
+          "name": "Base Beta",
           "capabilities": {
             "tools": true,
-            "input": ["text"],
+            "input": ["text", "image", "pdf"],
             "output": ["text"],
             "temperature": true,
             "reasoning": {
@@ -49,15 +49,15 @@
             }
           },
           "limit": {
-            "context": 512000,
-            "output": 65536
+            "context": 1000000,
+            "output": 128000
           }
         },
-        "base-cat": {
-          "name": "Base Cat",
+        "base-charlie": {
+          "name": "Base Charlie",
           "capabilities": {
             "tools": true,
-            "input": ["text", "image"],
+            "input": ["text", "image", "pdf"],
             "output": ["text"],
             "temperature": true,
             "reasoning": {
@@ -65,8 +65,8 @@
             }
           },
           "limit": {
-            "context": 1048576,
-            "output": 262144
+            "context": 1000000,
+            "output": 128000
           }
         },
         "gpt-base": {

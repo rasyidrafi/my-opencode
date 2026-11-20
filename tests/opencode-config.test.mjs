@@ -285,11 +285,11 @@ test('RawRoute includes managed models with configured names and limits, without
   const { apply, read } = fixture(t);
   apply();
   const models = JSON.parse(read('opencode.json')).providers.rawroute.models;
-  assert.deepEqual(Object.keys(models).sort(), ['base-cat', 'base-dawn', 'base-flash', 'gpt-base', 'gpt-core', 'gpt-peak']);
+  assert.deepEqual(Object.keys(models).sort(), ['base-alpha', 'base-beta', 'base-charlie', 'gpt-base', 'gpt-core', 'gpt-peak']);
   for (const [id, name, context, output, input] of [
-    ['base-flash', 'Base Flash', 1000000, 131072, ['text', 'image']],
-    ['base-dawn', 'Base Dawn', 512000, 65536, ['text']],
-    ['base-cat', 'Base Cat', 1048576, 262144, ['text', 'image']],
+    ['base-alpha', 'Base Alpha', 1000000, 128000, ['text', 'image', 'pdf']],
+    ['base-beta', 'Base Beta', 1000000, 128000, ['text', 'image', 'pdf']],
+    ['base-charlie', 'Base Charlie', 1000000, 128000, ['text', 'image', 'pdf']],
     ['gpt-base', 'GPT Base', 1000000, 128000, ['text', 'image']],
     ['gpt-core', 'GPT Core', 640000, 128000, ['text', 'image']],
     ['gpt-peak', 'GPT Peak', 400000, 128000, ['text', 'image']],
@@ -319,6 +319,9 @@ test('applying removes retired RawRoute and OAI alias models without removing ot
       'oai-peak': { name: 'Retired OAI Peak', limit: { context: 400000, output: 128000 } },
       spark: { name: 'Retired model' },
       cipher: { name: 'Retired model' },
+      'base-dawn': { name: 'Retired Base Dawn', limit: { context: 512000, output: 65536 } },
+      'base-flash': { name: 'Retired Base Flash', limit: { context: 1000000, output: 131072 } },
+      'base-cat': { name: 'Retired Base Cat', limit: { context: 1048576, output: 262144 } },
       personal: { name: 'Keep local model', limit: { context: 200000, input: 150000, output: 16000 } },
     } } },
   }));
@@ -332,6 +335,9 @@ test('applying removes retired RawRoute and OAI alias models without removing ot
   assert.ok(!Object.hasOwn(models, 'oai-peak'));
   assert.ok(!Object.hasOwn(models, 'spark'));
   assert.ok(!Object.hasOwn(models, 'cipher'));
+  assert.ok(!Object.hasOwn(models, 'base-dawn'));
+  assert.ok(!Object.hasOwn(models, 'base-flash'));
+  assert.ok(!Object.hasOwn(models, 'base-cat'));
   assert.deepEqual(models.personal, { name: 'Keep local model', limit: { context: 200000, output: 16000 } });
   for (const model of Object.values(models)) {
     assert.ok(!Object.hasOwn(model.limit ?? {}, 'input'));

@@ -8,7 +8,7 @@ import { loadWorkers, bindAliases, buildWorkerPrompt, runFusion } from '../dot_c
 
 const knownModels = [
   { providerID: 'rawroute', modelID: 'gpt-peak' },
-  { providerID: 'rawroute', modelID: 'base-cat' },
+  { providerID: 'rawroute', modelID: 'base-alpha' },
 ];
 
 async function fixture(t, config, behavior = {}) {
@@ -54,15 +54,15 @@ async function fixture(t, config, behavior = {}) {
   return { ctx, calls, configURL, directory, run };
 }
 
-const twoWorkers = { workers: [{ model: 'rawroute/gpt-peak' }, { model: 'rawroute/base-cat', variant: 'high' }] };
+const twoWorkers = { workers: [{ model: 'rawroute/gpt-peak' }, { model: 'rawroute/base-alpha', variant: 'high' }] };
 
 test('loadWorkers accepts objects and string shorthand, normalizing ids, model refs, and variants', async t => {
-  const f = await fixture(t, { workers: ['rawroute/gpt-peak', { id: 'cat-worker', model: ' rawroute/base-cat ', variant: ' high ' }] });
+  const f = await fixture(t, { workers: ['rawroute/gpt-peak', { id: 'cat-worker', model: ' rawroute/base-alpha ', variant: ' high ' }] });
   assert.deepEqual(await loadWorkers(f.configURL), {
     debug: false,
     workers: [
       { id: 'worker-1', providerID: 'rawroute', modelID: 'gpt-peak', variant: undefined, model: 'rawroute/gpt-peak' },
-      { id: 'cat-worker', providerID: 'rawroute', modelID: 'base-cat', variant: 'high', model: 'rawroute/base-cat' },
+      { id: 'cat-worker', providerID: 'rawroute', modelID: 'base-alpha', variant: 'high', model: 'rawroute/base-alpha' },
     ],
   });
 });
@@ -76,7 +76,7 @@ test('loadWorkers rejects missing files, empty panels, malformed workers, and ba
     { workers: [{ model: 'rawroute/gpt-peak', variant: '  ' }] },
     { workers: [{ model: 'rawroute/gpt-peak', id: 'bad id!' }] },
     { workers: [{ model: 'rawroute/gpt-peak', id: 'ab' }] },
-    { workers: [{ model: 'rawroute/gpt-peak', id: 'same' }, { model: 'rawroute/base-cat', id: 'same' }] },
+    { workers: [{ model: 'rawroute/gpt-peak', id: 'same' }, { model: 'rawroute/base-alpha', id: 'same' }] },
     { workers: [42] },
     { workers: [{}] },
     { workers: ['rawroute/gpt-peak'], debug: 'yes' },
@@ -111,7 +111,7 @@ test('runFusion fans out reviewer sessions and dumps masked reviews under anonym
   }
   assert.deepEqual(f.calls.create.map(call => call.title).sort(), ['fusion: Worker A', 'fusion: Worker B']);
   assert.deepEqual(f.calls.create.map(call => call.model).sort((a, b) => a.id.localeCompare(b.id)), [
-    { providerID: 'rawroute', id: 'base-cat', variant: 'high' },
+    { providerID: 'rawroute', id: 'base-alpha', variant: 'high' },
     { providerID: 'rawroute', id: 'gpt-peak' },
   ]);
   for (const call of f.calls.prompt) assert.equal(call.text, buildWorkerPrompt('Review the diff.'));
@@ -124,7 +124,7 @@ test('runFusion fans out reviewer sessions and dumps masked reviews under anonym
   assert.ok(result.text.includes('review by ses_w1'));
   assert.ok(result.text.includes('review by ses_w2'));
   assert.ok(result.text.includes('synthesize the final review'));
-  for (const secret of ['rawroute', 'gpt-peak', 'base-cat', 'worker-1', 'worker-2']) {
+  for (const secret of ['rawroute', 'gpt-peak', 'base-alpha', 'worker-1', 'worker-2']) {
     assert.ok(!result.text.includes(secret), `panel text must not reveal ${secret}`);
   }
   assert.equal(result.metadata.workerCount, 2);
@@ -168,28 +168,28 @@ test('worker output and errors are scrubbed of configured identities and runtime
 
 test('worker payloads are scrubbed against the whole panel identity set', async t => {
   const f = await fixture(t, twoWorkers, {
-    messages: input => [{ type: 'assistant', content: [{ type: 'text', text: `Quoting fusion.json: ${input.sessionID} sees rawroute/base-cat and gpt-peak in the config.` }] }],
+    messages: input => [{ type: 'assistant', content: [{ type: 'text', text: `Quoting fusion.json: ${input.sessionID} sees rawroute/base-alpha and gpt-peak in the config.` }] }],
   });
   const result = await f.run();
-  assert.ok(!result.text.includes('base-cat'));
+  assert.ok(!result.text.includes('base-alpha'));
   assert.ok(!result.text.includes('gpt-peak'));
   assert.ok(!result.text.includes('rawroute'));
   assert.ok(result.text.includes('***'));
 
   const failing = await fixture(t, twoWorkers, {
     onPrompt: input => {
-      if (input.sessionID === 'ses_w1') throw new Error('base-cat quota exceeded');
+      if (input.sessionID === 'ses_w1') throw new Error('base-alpha quota exceeded');
     },
   });
   const failed = await failing.run();
-  assert.ok(!failed.text.includes('base-cat'));
-  assert.ok(!JSON.stringify(failed.metadata).includes('base-cat'));
+  assert.ok(!failed.text.includes('base-alpha'));
+  assert.ok(!JSON.stringify(failed.metadata).includes('base-alpha'));
 });
 
 test('an errored terminal assistant message is a worker failure despite partial text', async t => {
   const f = await fixture(t, twoWorkers, {
     messages: input => input.sessionID === 'ses_w2'
-      ? [{ type: 'assistant', content: [{ type: 'text', text: 'partial review prefix' }], error: { type: 'AI_Error', message: 'provider rawroute/base-cat exploded' } }]
+      ? [{ type: 'assistant', content: [{ type: 'text', text: 'partial review prefix' }], error: { type: 'AI_Error', message: 'provider rawroute/base-alpha exploded' } }]
       : [{ type: 'assistant', content: [{ type: 'text', text: 'complete review' }] }],
   });
   const result = await f.run();
@@ -197,9 +197,9 @@ test('an errored terminal assistant message is a worker failure despite partial 
   assert.equal((result.text.match(/— REVIEW UNAVAILABLE/g) ?? []).length, 1);
   assert.ok(result.text.includes('complete review'));
   assert.ok(!result.text.includes('partial review prefix'));
-  assert.ok(!result.text.includes('base-cat'));
+  assert.ok(!result.text.includes('base-alpha'));
   assert.ok(!result.text.includes('rawroute'));
-  assert.ok(!JSON.stringify(result.metadata).includes('base-cat'));
+  assert.ok(!JSON.stringify(result.metadata).includes('base-alpha'));
   assert.equal(result.metadata.successfulWorkers, 1);
   assert.equal(result.metadata.partial, true);
 });
@@ -353,7 +353,7 @@ test('unavailable worker models fail fast with aliases only, before any session 
   const f = await fixture(t, twoWorkers, { knownModels: [{ providerID: 'rawroute', modelID: 'gpt-peak' }] });
   await assert.rejects(f.run(), error => {
     assert.match(error.message, /fusion: Worker [A-Z]+ unavailable in the current OpenCode configuration/);
-    assert.ok(!error.message.includes('base-cat'));
+    assert.ok(!error.message.includes('base-alpha'));
     assert.ok(!error.message.includes('rawroute'));
     return true;
   });

@@ -1,6 +1,6 @@
 {
   "workers": [
     { "model": "rawroute/gpt-peak" },
-    { "model": "rawroute/base-flash" }
+    { "model": "rawroute/base-alpha" }
   ]
 }
