@@ -1,5 +1,10 @@
 #!/bin/sh
 set -eu
+dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+case "${TERMUX_VERSION:-}:${PREFIX:-}:$(uname -o 2>/dev/null)" in
+  ?*:*:*|*:/data/data/com.termux/*:*|*:*:Android)
+    exec sh "$dir/termux.sh" selkies ;;
+esac
 
 . /etc/os-release
 case "$ID:$VERSION_ID" in
@@ -9,18 +14,43 @@ case "$ID:$VERSION_ID" in
 esac
 arch=$(dpkg --print-architecture)
 case "$arch" in amd64|arm64) ;; *) echo "Unsupported architecture: $arch" >&2; exit 1 ;; esac
-systemctl --user show-environment >/dev/null
-
-dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+guest=false
+case "${1:-}" in
+  '') systemctl --user show-environment >/dev/null ;;
+  packages)
+    [ "${container:-}" = proot-distro ] && [ "$(id -u)" -eq 0 ] || exit 1
+    install -d -m 1777 /tmp/.X11-unix
+    guest=true ;;
+  *) exit 1 ;;
+esac
 if ! command -v selkies >/dev/null; then
   version=2.2.1
   pkg="selkies-$version-$distro-$arch.deb"
-  tmp=$(mktemp -d)
-  trap 'rm -f "$tmp/$pkg"; rmdir "$tmp"' EXIT
-  curl -fLsS "https://github.com/selkies-project/selkies/releases/download/$version/$pkg" -o "$tmp/$pkg"
-  (cd "$tmp" && sha256sum --check --ignore-missing "$dir/SHA256SUMS")
-  sudo apt-get install -y --no-install-recommends "$tmp/$pkg"
+  if [ "$guest" = true ]; then
+    tmp=/var/cache/selkies-desktop
+    mkdir -p "$tmp"
+  else
+    tmp=$(mktemp -d)
+    trap 'rm -f "$tmp/$pkg"; rmdir "$tmp"' EXIT
+  fi
+  verify_package() {
+    awk -v pkg="$pkg" '$2 == pkg { print }' "$dir/SHA256SUMS" |
+      (cd "$tmp" && sha256sum --check --strict -)
+  }
+  if ! verify_package >/dev/null 2>&1; then
+    rm -f "$tmp/$pkg"
+    curl -fLsS --retry 3 "https://github.com/selkies-project/selkies/releases/download/$version/$pkg" -o "$tmp/$pkg"
+    verify_package
+  fi
+  if [ "$guest" = true ]; then
+    apt-get update
+    apt-get install -y --no-install-recommends "$tmp/$pkg"
+  else
+    sudo apt-get install -y --no-install-recommends "$tmp/$pkg"
+  fi
 fi
+
+[ "$guest" = false ] || exit 0
 
 if [ ! -f "$HOME/.local/state/crd-mint/preset-v1-complete" ] && systemctl --user is-active --quiet selkies-desktop.service; then
   echo 'Save your work, stop the existing desktop with systemctl --user stop selkies-desktop.service, then rerun setup to initialize the XFCE preset.' >&2

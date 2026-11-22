@@ -26,10 +26,22 @@ if [ "$(uname -s)" != Linux ] || ! command -v apt-get >/dev/null 2>&1; then
   echo 'Selkies XFCE setup requires Debian/Ubuntu.' >&2
   exit 1
 fi
-if [ "$(id -u)" -eq 0 ]; then
-  echo 'Run this task as the desktop user, not root.' >&2
-  exit 1
-fi
+phase=${1:-desktop}
+case "$phase:${container:-}:$(id -u)" in
+  desktop:*:0|packages:proot-distro:[1-9]*|profile:proot-distro:0)
+    echo "Unexpected user for XFCE setup phase: $phase" >&2; exit 1 ;;
+  desktop:*:*|packages:proot-distro:0|profile:proot-distro:*) ;;
+  *) echo "Unsupported XFCE setup phase: $phase" >&2; exit 1 ;;
+esac
+
+as_root() {
+  if [ "$phase" = packages ]; then
+    "$@"
+    return
+  fi
+  authenticate_sudo
+  sudo "$@"
+}
 
 authenticate_sudo() {
   if ! sudo -n /usr/bin/true >/dev/null 2>&1; then
@@ -40,6 +52,11 @@ authenticate_sudo() {
 
 configure_timezone() {
   timezone='Asia/Jakarta'
+  if [ "$phase" = packages ]; then
+    ln -snf "/usr/share/zoneinfo/$timezone" /etc/localtime
+    printf "%s\n" "$timezone" > /etc/timezone
+    return
+  fi
   if [ "$(timedatectl show -p Timezone --value)" = "$timezone" ]; then
     echo "System timezone is already $timezone."
     return
@@ -53,7 +70,7 @@ configure_timezone() {
   echo "System timezone configured: $timezone (WIB, UTC+7)."
 }
 
-configure_terminal_font() {
+install_terminal_fonts() {
   font_missing=''
   for package in fonts-liberation fonts-dejavu-core fonts-dejavu-mono fonts-noto-core fonts-noto-cjk fonts-noto-color-emoji; do
     if [ "$(dpkg-query -W -f='${db:Status-Status}' "$package" 2>/dev/null || :)" != installed ]; then
@@ -61,11 +78,9 @@ configure_terminal_font() {
     fi
   done
   if [ -n "$font_missing" ]; then
-    authenticate_sudo
-    sudo apt-get update
-    sudo apt-get install -y --no-install-recommends --no-upgrade $font_missing
+    as_root apt-get update
+    as_root apt-get install -y --no-install-recommends --no-upgrade $font_missing
   fi
-  /usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-terminal-font.py"
 }
 
 configure_archive_support() {
@@ -76,16 +91,36 @@ configure_archive_support() {
     fi
   done
   if [ -n "$archive_missing" ]; then
-    authenticate_sudo
-    sudo apt-get update
-    sudo apt-get install -y --no-install-recommends --no-upgrade $archive_missing
+    as_root apt-get update
+    as_root apt-get install -y --no-install-recommends --no-upgrade $archive_missing
     echo 'Thunar archive support installed. Reopen Thunar to load Extract Here and Extract To for .7z files.'
   fi
 }
 
-# Apply host defaults even when the remote desktop service is already active.
-configure_timezone
-configure_archive_support
+install_desktop_packages() {
+  missing=''
+  for package in xfce4 dbus-x11 xfce4-whiskermenu-plugin mint-y-icons bibata-cursor-theme xfce4-terminal xfce4-notifyd xfce4-screenshooter desktop-base python3 x11-utils pipewire wireplumber libasound2-plugins pulseaudio-utils; do
+    if [ "$(dpkg-query -W -f='${db:Status-Status}' "$package" 2>/dev/null || :)" != installed ]; then
+      missing="$missing $package"
+    fi
+  done
+  if [ -n "$missing" ]; then
+    echo "Installing missing desktop packages:$missing"
+    as_root apt-get update
+    as_root apt-get install -y --no-install-recommends --no-upgrade $missing
+  fi
+}
+
+if [ "$phase" != profile ]; then
+  configure_timezone
+  configure_archive_support
+fi
+if [ "$phase" = packages ]; then
+  install_desktop_packages
+  install_terminal_fonts
+  exit 0
+fi
+
 # Retire only our previous temporary helper. Its old source remains available
 # for comparison; do not remove user autostarts.
 old_helper="$HOME/.config/chrome-remote-desktop/crd-pwa-window-class.desktop"
@@ -102,17 +137,8 @@ if command -v pgrep >/dev/null 2>&1; then
   done
 fi
 
-missing=''
-for package in xfce4 dbus-x11 xfce4-whiskermenu-plugin mint-y-icons bibata-cursor-theme xfce4-terminal xfce4-notifyd xfce4-screenshooter desktop-base python3 x11-utils pipewire wireplumber libasound2-plugins pulseaudio-utils; do
-  if [ "$(dpkg-query -W -f='${db:Status-Status}' "$package" 2>/dev/null || :)" != installed ]; then
-    missing="$missing $package"
-  fi
-done
-if [ -n "$missing" ]; then
-  echo "Installing missing packages (sudo required):$missing"
-  authenticate_sudo
-  sudo apt-get update
-  sudo apt-get install -y --no-install-recommends --no-upgrade $missing
+if [ "$phase" = desktop ]; then
+  install_desktop_packages
 fi
 
 # Enable on every run, independently of the one-time Mint profile marker.
@@ -128,4 +154,7 @@ if [ ! -f "$HOME/.local/state/crd-mint/preset-v1-complete" ]; then
 else
   echo 'Mint XFCE preset was already initialized; keeping current settings.'
 fi
-configure_terminal_font
+if [ "$phase" = desktop ]; then
+  install_terminal_fonts
+fi
+/usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-terminal-font.py"

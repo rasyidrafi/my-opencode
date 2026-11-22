@@ -6,8 +6,8 @@ wallpaper="$HOME/.local/share/backgrounds/crd-mint/sele_ring.jpg"
 themes="$HOME/.local/share/themes"
 if [ ! -f "$themes/Mint-Y-Dark-Aqua/gtk-3.0/gtk.css" ] || [ ! -f "$themes/Mint-Y-Dark-Aqua/xfwm4/themerc" ] || [ ! -f "$themes/Mint-Y-Aqua/gtk-3.0/gtk.css" ] || [ ! -f "$themes/Mint-Y-Aqua/xfwm4/themerc" ]; then
   curl -fsSL https://github.com/linuxmint/mint-themes/releases/download/master.lmde7/packages.tar.gz -o "$tmpdir/themes.tar.gz"
-  printf '%s  %s\n' 84ab8925d64af713cee577a069b187bd9ccb6bd8fbd0be7e098a2de96bbcedfb "$tmpdir/themes.tar.gz" | sha256sum -c -
-  tar xOf "$tmpdir/themes.tar.gz" packages/mint-themes_2.4.3_all.deb > "$tmpdir/themes.deb"
+  printf '%s  %s\n' ea929837418679bea34ee4253f12ea0c6c97b50d757fa20e57e62be91b3da70a "$tmpdir/themes.tar.gz" | sha256sum -c -
+  tar xOf "$tmpdir/themes.tar.gz" packages/mint-themes_2.4.5_all.deb > "$tmpdir/themes.deb"
   mkdir -p "$tmpdir/extracted" "$themes"
   dpkg-deb --fsys-tarfile "$tmpdir/themes.deb" | tar xf - -C "$tmpdir/extracted" ./usr/share/themes/Mint-Y-Dark-Aqua ./usr/share/themes/Mint-Y-Aqua
   for theme in Mint-Y-Dark-Aqua Mint-Y-Aqua; do

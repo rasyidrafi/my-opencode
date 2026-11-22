@@ -443,7 +443,7 @@
         "description": "Set up a browser-accessible XFCE desktop on port 8443",
         "script": "selkies/setup.sh",
         "args": "",
-        "platforms": ["linux"],
+        "platforms": ["linux", "android"],
         "androidCleanEnv": false,
         "runner": "sh"
       },
@@ -489,6 +489,15 @@
           "linux"
         ],
         "androidCleanEnv": false
+      },
+      {
+        "name": "termux:xfce:setup",
+        "description": "Install Debian and the shared XFCE desktop preset inside Termux",
+        "script": "selkies/termux.sh",
+        "args": " xfce",
+        "platforms": ["android"],
+        "androidCleanEnv": false,
+        "runner": "sh"
       },
       {
         "name": "termux:node:setup",

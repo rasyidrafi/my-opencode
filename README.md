@@ -94,11 +94,12 @@ checksums per architecture; other platforms retain the default backend. Node
 Android metadata also pins npm. After changing only the npm version/checksum,
 run `mise install --force http:node` to rebuild the installation.
 
-Tasks are rendered only on their declared platforms: Linux has 19, Windows 14,
-and Android 11. Android includes secrets, GitHub, shell, skills, and provider
-configuration tasks, plus the explicit native Node migration task. Cloudflared integration, Docker setup/forwarding, and Azure
-mount-cache setup are Linux-only. Cleanup, browser setup, Tailscale setup, and
-Codex/OpenChamber startup are available on Linux/Windows only. Android/Termux
+Tasks are rendered only on their declared platforms. Android includes secrets,
+GitHub, shell, skills, and provider configuration tasks, plus native Node
+migration, Debian XFCE provisioning, and Selkies. Cloudflared integration,
+Docker setup/forwarding, and Azure mount-cache setup are Linux-only. Cleanup,
+browser setup, Tailscale setup, and Codex/OpenChamber startup are available
+on Linux/Windows only. Android/Termux
 Codex runs directly; its build disables automatic daemon startup. Installing a CLI
 manually on Android does not enable unsupported desktop startup tasks.
 
@@ -808,6 +809,23 @@ the same URL locally. Selkies listens only on IPv4 loopback and explicitly
 disables authentication: any local user can control the desktop. Setup restarts
 a running session only when the installed service definition changes.
 For logs: `journalctl --user -u selkies-desktop.service`.
+
+On Android/Termux (ARM64 or x86-64), run these after applying chezmoi:
+
+```sh
+mise run termux:xfce:setup
+mise run selkies:setup
+```
+
+The first task creates a Debian 13 PRoot container named `my-opencode-xfce`
+and applies the same XFCE preset as Linux, including the Mint theme, wallpaper,
+fonts, panel, and shortcuts. Set `CRD_MINT_THEME=light` on the first run to use
+the light preset. The second task installs Selkies and starts a detached
+session at **http://127.0.0.1:8443** on the phone. Both tasks run without Android
+root. Android can stop the Termux process in the background. Rerun
+`mise run selkies:setup` to start it again. Use `proot-distro ps` to find the
+session PID and `proot-distro kill PID` to stop it. The guest log is at
+`/home/desktop/.local/state/selkies-desktop/session.log`.
 
 `mise run crd:setup` is deprecated and always fails. Use `mise run selkies:setup`.
 To retire an installed CRD host, use `mise run crd:uninstall` from Selkies or SSH,
