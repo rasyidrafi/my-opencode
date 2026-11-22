@@ -51,6 +51,16 @@ test('Linux and Windows use the shared desktop tool defaults', { skip: !availabl
 });
 
 const catalog = JSON.parse(fs.readFileSync(new URL('../.chezmoidata/mise.json', import.meta.url))).mise;
+test('Termux GitHub CLI version and package checksums stay in sync', () => {
+  const gh = catalog.tools.find(tool => tool.package === 'gh');
+  assert.equal(gh.android.version ?? gh.version, '2.105.0');
+  assert.deepEqual(gh.android.checksums, {
+    '386': '658a95c8fad418c3127447d7a41bfed10580ec3b4a9aac6ad950f9f1145fdfc5',
+    arm64: '73a364d6afeb91f0a51fc0507c29f161dee7fff0fc060383f7d556216ce31eb7',
+    arm: 'c9c614bc00ea2d2b9eda440d3b94f78536f3b1eb31d6d3aa1955b2f705479aa9',
+    amd64: '521e8949289b00159a310ffa9fb54afa4de47a4dbca6abd6494c47105c732154',
+  });
+});
 for (const platform of ['linux', 'windows', 'android']) {
   test(platform + ' exposes exactly its supported tasks', { skip: !available }, () => {
     const config = render(platform);
@@ -75,7 +85,7 @@ for (const [arch, termuxArch] of Object.entries({ arm64: 'aarch64', arm: 'arm', 
     });
     assert.equal(result.status, 0, result.stderr);
     const gh = catalog.tools.find(tool => tool.package === 'gh');
-    assert.ok(result.stdout.includes(`gh_${gh.version}_${termuxArch}.deb`));
+    assert.ok(result.stdout.includes(`gh_${gh.android.version ?? gh.version}_${termuxArch}.deb`));
     assert.ok(result.stdout.includes(`sha256:${gh.android.checksums[arch]}`));
   });
 }

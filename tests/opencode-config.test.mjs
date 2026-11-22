@@ -10,7 +10,7 @@ import agentPolicyData from '../dot_config/opencode/plugins/my-opencode/agent-po
 const repository = fileURLToPath(new URL('../', import.meta.url));
 const located = spawnSync('mise', ['which', 'chezmoi'], { encoding: 'utf8' });
 const chezmoi = process.env.CHEZMOI_TEST_BINARY || (located.status === 0 ? located.stdout.trim() : 'chezmoi');
-const agents = ['build', 'plan', 'general', 'explore', 'reviewer'];
+const agents = ['build', 'plan', 'general', 'explore', 'reviewer', 'multi_reviewer'];
 const managedAntigravity = home => ({ package: path.join(home, 'projects', 'opencode-antigrvity') });
 
 function fixture(t) {
@@ -190,7 +190,7 @@ test('fresh installs generate agent policy without OpenAI provider overrides', t
   assert.deepEqual(apply(), first);
   const config = JSON.parse(read('opencode.json'));
   assert.deepEqual(config.plugins, [managedAntigravity(home), '@rasyid_rafi/opencode-muse']);
-  for (const name of ['build', 'general', 'explore', 'reviewer']) {
+  for (const name of ['build', 'general', 'explore', 'reviewer', 'multi_reviewer']) {
     assert.deepEqual(agent(name), expectedAgentFrontmatter(name));
   }
   assert.deepEqual(agent('plan'), { disabled: true });
@@ -203,7 +203,7 @@ test('fresh installs generate agent policy without OpenAI provider overrides', t
 test('generated agent files expose the repo policy to the UI', t => {
   const { apply, agent, agentBody } = fixture(t);
   apply();
-  for (const name of ['build', 'general', 'explore', 'reviewer']) {
+  for (const name of ['build', 'general', 'explore', 'reviewer', 'multi_reviewer']) {
     const expected = expectedAgentFrontmatter(name);
     assert.deepEqual(agent(name), expected);
     assert.deepEqual(agent(name).permissions, expected.permissions);
@@ -211,6 +211,46 @@ test('generated agent files expose the repo policy to the UI', t => {
     assert.equal(agentBody(name), agentPolicyData.agents[name].system ?? '');
   }
   assert.deepEqual(agent('plan'), { disabled: true });
+});
+
+test('managed agents deny read and allow the independent read_media tool', t => {
+  const { apply, agent } = fixture(t);
+  apply();
+  for (const name of ['build', 'general', 'explore', 'reviewer']) {
+    assert.deepEqual(agent(name).permissions.filter(rule => rule.action === 'read'), [
+      { action: 'read', resource: '*', effect: 'deny' },
+    ]);
+    assert.deepEqual(agent(name).permissions.filter(rule => rule.action === 'read_media'), [
+      { action: 'read_media', resource: '*', effect: 'allow' },
+    ]);
+  }
+});
+
+test('multi_reviewer is a simulated subagent without tool access', t => {
+  const { apply, agent } = fixture(t);
+  apply();
+  const frontmatter = agent('multi_reviewer');
+  assert.equal(frontmatter.mode, 'subagent');
+  assert.equal(frontmatter.model, 'simulated/multi_reviewer');
+  for (const action of ['shell', 'skill', 'edit', 'patch', 'read', 'read_media', 'glob', 'grep', 'subagent', 'openchamber_secret']) {
+    assert.deepEqual(frontmatter.permissions.filter(rule => rule.action === action), [
+      { action, resource: '*', effect: 'deny' },
+    ]);
+  }
+  // Fusion is an internal engine, not a registered tool: no agent gets a fusion rule.
+  for (const name of agents) {
+    assert.deepEqual(agent(name).permissions?.filter(rule => rule.action === 'fusion') ?? [], []);
+  }
+});
+
+test('managed agents deny the OpenChamber agent control tool', t => {
+  const { apply, agent } = fixture(t);
+  apply();
+  for (const name of ['build', 'general', 'explore', 'reviewer']) {
+    assert.deepEqual(agent(name).permissions.filter(rule => rule.action === 'openchamber'), [
+      { action: 'openchamber', resource: '*', effect: 'deny' },
+    ]);
+  }
 });
 
 test('plan agent remains disabled and its stub rejects local policy overrides', t => {
@@ -245,10 +285,11 @@ test('RawRoute includes managed models with configured names and limits, without
   const { apply, read } = fixture(t);
   apply();
   const models = JSON.parse(read('opencode.json')).providers.rawroute.models;
-  assert.deepEqual(Object.keys(models).sort(), ['base-dawn', 'base-flash', 'gpt-base', 'gpt-core', 'gpt-peak']);
+  assert.deepEqual(Object.keys(models).sort(), ['base-alpha', 'base-beta', 'base-charlie', 'gpt-base', 'gpt-core', 'gpt-peak']);
   for (const [id, name, context, output, input] of [
-    ['base-flash', 'Base Flash', 1000000, 256000, ['text', 'image']],
-    ['base-dawn', 'Base Dawn', 512000, 65536, ['text']],
+    ['base-alpha', 'Base Alpha', 1000000, 128000, ['text', 'image', 'pdf']],
+    ['base-beta', 'Base Beta', 1000000, 128000, ['text', 'image', 'pdf']],
+    ['base-charlie', 'Base Charlie', 1000000, 128000, ['text', 'image', 'pdf']],
     ['gpt-base', 'GPT Base', 1000000, 128000, ['text', 'image']],
     ['gpt-core', 'GPT Core', 640000, 128000, ['text', 'image']],
     ['gpt-peak', 'GPT Peak', 400000, 128000, ['text', 'image']],
@@ -278,6 +319,9 @@ test('applying removes retired RawRoute and OAI alias models without removing ot
       'oai-peak': { name: 'Retired OAI Peak', limit: { context: 400000, output: 128000 } },
       spark: { name: 'Retired model' },
       cipher: { name: 'Retired model' },
+      'base-dawn': { name: 'Retired Base Dawn', limit: { context: 512000, output: 65536 } },
+      'base-flash': { name: 'Retired Base Flash', limit: { context: 1000000, output: 131072 } },
+      'base-cat': { name: 'Retired Base Cat', limit: { context: 1048576, output: 262144 } },
       personal: { name: 'Keep local model', limit: { context: 200000, input: 150000, output: 16000 } },
     } } },
   }));
@@ -291,6 +335,9 @@ test('applying removes retired RawRoute and OAI alias models without removing ot
   assert.ok(!Object.hasOwn(models, 'oai-peak'));
   assert.ok(!Object.hasOwn(models, 'spark'));
   assert.ok(!Object.hasOwn(models, 'cipher'));
+  assert.ok(!Object.hasOwn(models, 'base-dawn'));
+  assert.ok(!Object.hasOwn(models, 'base-flash'));
+  assert.ok(!Object.hasOwn(models, 'base-cat'));
   assert.deepEqual(models.personal, { name: 'Keep local model', limit: { context: 200000, output: 16000 } });
   for (const model of Object.values(models)) {
     assert.ok(!Object.hasOwn(model.limit ?? {}, 'input'));

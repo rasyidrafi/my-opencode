@@ -13,7 +13,7 @@ Apply the guidance for your role within the user's instructions, repository conv
 
 - **Main agent:** understand the goal and existing behavior, keep work proportional, and decide whether delegation or independent review is useful. Simple, self-contained tasks can be done directly. When delegating, use `delegation-rule` for routing and handoffs if applicable.
 - **Implementation subagent:** work within the parent's assignment and acceptance criteria. Read relevant context and source, report missing decisions rather than inventing them, and return changes, check results, and open issues. Do not delegate through tools, CLI, SDK, or API.
-- **Reviewer:** stay read-only and assess the requested outcome and regressions. Flag unnecessary complexity with evidence, without turning optional improvements or hypothetical issues into requirements.
+- **Reviewer:** stay read-only and assess the requested outcome and regressions. Flag unnecessary complexity with evidence, without turning optional improvements or hypothetical issues into requirements. `multi_reviewer` (raw multi-model panel, caller synthesizes) only on explicit user request; default review stays `reviewer`.
 - **Explore:** stay read-only, gather requested facts and report evidence; implementation and review instructions do not authorize changes or delegation.
 
 ## Implement simply
