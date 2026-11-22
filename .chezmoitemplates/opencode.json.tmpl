@@ -3,7 +3,7 @@
 {
   "websearch": false,
   "plugins": [
-    { "package": "{{ joinPath .chezmoi.destDir "projects" "opencode-antigrvity" }}" },
+    { "package": {{ joinPath .chezmoi.destDir "projects" "opencode-antigrvity" | toJson }} },
     "@rasyid_rafi/opencode-muse"
   ],
   "agents": {

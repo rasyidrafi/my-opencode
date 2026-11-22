@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 
@@ -8,7 +9,7 @@ const available = spawnSync(binary, ['--version']).status === 0;
 const template = fs.readFileSync(new URL('../dot_config/mise/config.toml.tmpl', import.meta.url), 'utf8');
 function render(platform, extraEnv = {}) {
   const env = { ...process.env, TERMUX_VERSION: '', PREFIX: '', ...extraEnv };
-  const result = spawnSync(binary, ['execute-template', '--source', new URL('..', import.meta.url).pathname, '--override-data', JSON.stringify({ chezmoi: { os: platform, arch: 'arm64' } })], { env, input: template, encoding: 'utf8' });
+  const result = spawnSync(binary, ['execute-template', '--source', fileURLToPath(new URL('..', import.meta.url)), '--override-data', JSON.stringify({ chezmoi: { os: platform, arch: 'arm64' } })], { env, input: template, encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   return result.stdout;
 }
@@ -21,7 +22,7 @@ for (const [platform, env] of [['android', {}], ['linux', { TERMUX_VERSION: '0.1
     const config = render(platform, env);
     assert.equal(tools(config).length, 5);
     assert.ok(config.includes('"http:codex" = '));
-    assert.deepEqual(tools(config).slice(0, 2), ['"npm:@bitwarden/cli" = "2026.10.1"', '"chezmoi" = "2.74.1"']);
+    assert.deepEqual(tools(config).slice(0, 2), ['"npm:@bitwarden/cli" = "2026.11.0"', '"chezmoi" = "2.74.1"']);
     assert.match(tools(config)[2], /^"http:gh" = /);
     const gh = catalog.tools.find(tool => tool.package === 'gh');
     assert.ok(config.includes(`gh_${gh.version}_aarch64.deb`));
@@ -43,7 +44,7 @@ test('Linux and Windows use the shared desktop tool defaults', { skip: !availabl
   assert.ok(!tools(linux).some(line => line.startsWith('\"npm:t3\"')));
   assert.ok(!windows.some(line => line.startsWith('\"npm:t3\"')));
   assert.ok(!tools(render('android')).some(line => line.startsWith('\"npm:t3\"')));
-  assert.ok(tools(linux).includes('"npm:@bitwarden/cli" = "2026.10.1"'));
+  assert.ok(tools(linux).includes('"npm:@bitwarden/cli" = "2026.11.0"'));
   assert.ok(tools(linux).includes('"node" = "26.13.1"'));
   assert.equal(tools(linux).length, 20);
   assert.ok(linux.includes('[settings.npm]\nshell_out = true'));
@@ -65,7 +66,7 @@ for (const platform of ['linux', 'windows', 'android']) {
     const config = render(platform);
     const names = [...config.matchAll(/\[tasks\."([^"]+)"\]/g)].map(match => match[1]);
     assert.deepEqual(names, catalog.tasks.filter(task => task.platforms.includes(platform)).map(task => task.name));
-    assert.equal(names.length, { linux: 26, windows: 15, android: 10 }[platform]);
+    assert.equal(names.length, { linux: 27, windows: 16, android: 10 }[platform]);
     assert.equal(names.includes('crd:uninstall'), platform === 'linux');
     assert.equal(names.includes('selkies:setup'), platform === 'linux');
     assert.equal(names.includes('mpv:setup'), platform === 'linux');
@@ -73,6 +74,7 @@ for (const platform of ['linux', 'windows', 'android']) {
     assert.equal(names.includes('cua:startup'), platform === 'linux');
     assert.equal(names.includes('crd:setup'), platform === 'linux');
     assert.equal(names.includes('codex:setup'), platform !== 'android');
+    assert.equal(names.includes('playwriter:setup'), platform !== 'android');
     assert.equal(names.includes('openchamber:setup'), platform !== 'android');
     assert.equal(names.includes('openchamber:restart'), false);
   });
@@ -80,7 +82,7 @@ for (const platform of ['linux', 'windows', 'android']) {
 
 for (const [arch, termuxArch] of Object.entries({ arm64: 'aarch64', arm: 'arm', amd64: 'x86_64', '386': 'i686' })) {
   test('Termux GitHub CLI retains verified metadata for ' + arch, { skip: !available }, () => {
-    const result = spawnSync(binary, ['execute-template', '--source', new URL('..', import.meta.url).pathname, '--override-data', JSON.stringify({ chezmoi: { os: 'android', arch } })], {
+    const result = spawnSync(binary, ['execute-template', '--source', fileURLToPath(new URL('..', import.meta.url)), '--override-data', JSON.stringify({ chezmoi: { os: 'android', arch } })], {
       input: template, encoding: 'utf8',
     });
     assert.equal(result.status, 0, result.stderr);
@@ -92,7 +94,7 @@ for (const [arch, termuxArch] of Object.entries({ arm64: 'aarch64', arm: 'arm', 
 
 for (const [arch, termuxArch] of Object.entries({ arm64: 'aarch64', arm: 'arm', amd64: 'x86_64', '386': 'i686' })) {
   test('Termux Node and bundled npm retain verified metadata for ' + arch, { skip: !available }, () => {
-    const result = spawnSync(binary, ['execute-template', '--source', new URL('..', import.meta.url).pathname, '--override-data', JSON.stringify({ chezmoi: { os: 'android', arch } })], { input: template, encoding: 'utf8' });
+    const result = spawnSync(binary, ['execute-template', '--source', fileURLToPath(new URL('..', import.meta.url)), '--override-data', JSON.stringify({ chezmoi: { os: 'android', arch } })], { input: template, encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr);
     const node = catalog.tools.find(tool => tool.package === 'node');
     assert.ok(result.stdout.includes(`nodejs_${node.version}_${termuxArch}.deb`));
@@ -104,7 +106,7 @@ for (const [arch, termuxArch] of Object.entries({ arm64: 'aarch64', arm: 'arm', 
 
 for (const arch of ['arm64', 'amd64', 'arm', '386']) {
   test('Termux Codex architecture availability: ' + arch, { skip: !available }, () => {
-    const result = spawnSync(binary, ['execute-template', '--source', new URL('..', import.meta.url).pathname, '--override-data', JSON.stringify({ chezmoi: { os: 'android', arch } })], { input: template, encoding: 'utf8' });
+    const result = spawnSync(binary, ['execute-template', '--source', fileURLToPath(new URL('..', import.meta.url)), '--override-data', JSON.stringify({ chezmoi: { os: 'android', arch } })], { input: template, encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr);
     const codex = catalog.tools.find(tool => tool.package === 'npm:@openai/codex');
     const checksum = codex.android.checksums[arch];
