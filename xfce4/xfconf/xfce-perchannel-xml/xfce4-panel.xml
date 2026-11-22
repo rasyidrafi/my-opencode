@@ -1,0 +1,10 @@
+<?xml version="1.1" encoding="UTF-8"?>
+
+<channel name="xfce4-panel" version="1.0">
+  <property name="panels" type="empty">
+    <property name="panel-1" type="empty">
+      <property name="size" type="uint" value="32"/>
+      <property name="icon-size" type="uint" value="20"/>
+    </property>
+  </property>
+</channel>

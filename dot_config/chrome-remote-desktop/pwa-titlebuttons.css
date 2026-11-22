@@ -2,9 +2,9 @@
  * and default-decoration headerbars, and avoid the theme's tall vertical
  * padding: Chrome scales the entire button down when it exceeds the titlebar. */
 headerbar.titlebar.chromium button.titlebutton.chromium {
-  /* 26px button + Chromium's 6px inter-button gap = Mint XFWM's 32px pitch. */
-  min-width: 26px;
-  min-height: 20px;
+  /* At the preset's 10pt / 96 DPI these are 26px by 20px. */
+  min-width: 1.95em;
+  min-height: 1.5em;
   padding: 0;
   margin: 0;
 }

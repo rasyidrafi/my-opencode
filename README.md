@@ -781,33 +781,58 @@ updated loaders. Test with
 `node --test dot_config/azure-mnt-cache/setup.test.mjs dot_config/shell/setup.test.mjs`
 (the real isolated file-transfer test requires rsync).
 
-Run `mise run crd:setup` on Debian or Ubuntu x86-64 after applying chezmoi to
-install Chrome Remote Desktop and XFCE for a virtual desktop session. The task
-requires sudo and internet access. For first-time registration, open the displayed
-Google headless setup page on another device, authorize it, and paste only the
-authorization code into the terminal; then set the requested PIN. The code and
-PIN are not stored in the repository. An existing session configuration is
-preserved. If the service is already running, the task enables panel work-area
-recovery without restarting it or reapplying the desktop preset. If a registered
-service is stopped, the task starts it.
-The task installs missing CRD, XFCE and dbus-x11 packages and their required
-dependencies without recommended packages or upgrading installed packages. It
-does not install a browser; existing browsers remain available to the session.
+Run `mise run selkies:setup` after applying chezmoi for a separate XFCE session
+on the host, without Chrome Remote Desktop registration. Requires Debian 12/13
+or Ubuntu 24.04/26.04 (amd64/arm64), curl, sudo for missing packages, and a
+systemd user session. Selkies uses the same XFCE packages, Mint theme, wallpaper,
+panel, shortcuts, fonts, Thunar archive support and Asia/Jakarta system timezone
+as the former CRD installer, without installing or registering CRD. Selkies
+honors the existing one-time preset marker to preserve desktop customizations.
+Open **http://127.0.0.1:8443**.
+On the packaged 2.2.1 client, choose **Gaming Mode** for its usual keyboard
+capture with normal, absolute mouse input. Automatic pointer lock is disabled;
+ordinary Fullscreen is unchanged. When Chrome grants keyboard lock, tap Esc
+for the remote app and hold Esc to leave fullscreen.
+The service serves a user-local copy; unknown client builds use stock behavior.
+In Selkies, **Scale UI** also scales the Mint bottom panel and its icons:
+32/20 px at 100%, 40/25 px at 125%, and 48/30 px at 150%. The same watcher
+scales the tray, Whisker menu (450×500 baseline, nearest supported icon sizes),
+desktop icons and previews, Thunar sidebar icons, and XFWM snap, shadow and
+double-click distances. These managed dimensions reset to their calculated
+values on login or DPI changes; fonts already use points, and Selkies handles
+cursor scaling. Chromium's managed GTK title buttons use font-relative units.
+The DPI watcher
+only runs in Selkies. XFCE persists the sizes in the shared user profile.
+From another machine, run `ssh -N -L 8443:127.0.0.1:8443 user@host`, then open
+the same URL locally. Selkies listens only on IPv4 loopback and explicitly
+disables authentication: any local user can control the desktop. Setup restarts
+a running session only when the installed service definition changes.
+For logs: `journalctl --user -u selkies-desktop.service`.
+
+`mise run crd:setup` is deprecated and always fails. Use `mise run selkies:setup`.
+To retire an installed CRD host, use `mise run crd:uninstall` from Selkies or SSH,
+not the CRD session being removed. It purges the machine-wide CRD package (ending
+CRD access for all users) and removes only the invoking user's local registrations,
+paired clients and stock session launcher. Custom launchers and other users' files
+are preserved. It does not autoremove packages, uninstall Chrome, remove the shared
+desktop helpers under `~/.config/chrome-remote-desktop`, or restart Selkies.
+
+**Selkies desktop provisioning:**
 Every setup run also installs missing `thunar`, `thunar-archive-plugin`,
-`xarchiver`, and `7zip` packages, including when CRD is already running. This
+`xarchiver`, and `7zip` packages. This
 adds **Extract Here** and **Extract To…** for `.7z` archives in Thunar. Repeated
 runs skip archive installation when these packages are already installed.
 Reopen Thunar after the first installation to load the plugin; setup leaves
-open file manager windows and the CRD session running.
+open file manager windows alone.
 It installs `xfce4-screenshooter`; the initial XFCE preset binds **Ctrl+Shift+S**
 to interactive screenshot area selection and the **Super** key to Whisker Menu.
 Later setup runs preserve shortcut customizations except that they ensure the
-Super-key menu binding; the CRD service itself is never restarted.
+Super-key menu binding.
 An XFCE autostart helper refreshes panel space reservations at login and after
 screen-size changes, working around stale work areas during CRD's “Resize to
 fit” with high-DPI mode off or on. It preserves panel sizes, does not force a
 resolution or DPI, and does not restart CRD. After applying chezmoi, run
-`mise run crd:setup`: it installs/repairs the autostart entry on every run and
+`mise run selkies:setup`: it installs/repairs the autostart entry on every run and
 starts the helper immediately when run inside the graphical session (`DISPLAY`
 set), otherwise at the next XFCE login. A per-display lock prevents duplicates.
 Every setup run also maintains one marked block in `~/.config/gtk-3.0/gtk.css`
@@ -833,7 +858,7 @@ and `sans-serif` to Ubuntu, including in browser applications.
 Relaunch the browser after setup to clear its cached font selection.
 These desktop fixes also run when CRD is already active; missing terminal fonts
 may require sudo, but CRD and existing terminal sessions are never restarted.
-Every `crd:setup` run also ensures the machine's system timezone is
+Every `selkies:setup` run also ensures the machine's system timezone is
 `Asia/Jakarta` (WIB, UTC+7). It uses sudo only when a change is needed, verifies
 the result, and does not restart CRD or change the actual system clock time.
 It also installs PipeWire, WirePlumber, ALSA's PulseAudio plugin and audio
@@ -856,7 +881,7 @@ the previous XFCE configuration and restarts only the panel.
 Both `Mint-Y-Dark-Aqua` and its light counterpart `Mint-Y-Aqua` are installed
 locally, including on an already running host. Dark remains the default. To use
 light for a **first-time preset initialization**, run
-`CRD_MINT_THEME=light mise run crd:setup` after applying chezmoi. This option
+`CRD_MINT_THEME=light mise run selkies:setup` after applying chezmoi. This option
 does not overwrite an existing preset or change an active session. For an
 existing desktop, select `Mint-Y-Aqua` in XFCE **Appearance** and **Window
 Manager** settings; choose `Mint-Y-Dark-Aqua` to switch back. Installing assets

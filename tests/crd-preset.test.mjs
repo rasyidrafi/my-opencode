@@ -6,6 +6,27 @@ import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 
 const source = new URL('../dot_config/chrome-remote-desktop/', import.meta.url);
+test('CRD uninstall purges only its package and local host data, and is repeatable', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'crd-uninstall-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const config = path.join(root, '.config/chrome-remote-desktop');
+  fs.mkdirSync(path.join(config, 'paired-clients'), { recursive: true });
+  for (const name of ['host#test.json', 'paired-clients/test.json', 'mint-assets.sh']) fs.writeFileSync(path.join(config, name), 'fixture');
+  const session = path.join(root, '.chrome-remote-desktop-session');
+  fs.writeFileSync(session, 'exec /etc/X11/Xsession /usr/bin/xfce4-session\n');
+  for (const [name, body] of Object.entries({id: '[ "$1" = -u ] && echo 1000 || echo test', 'dpkg-query': '[ -f "$HOME/calls" ] || echo installed', systemctl: 'exit 1', sudo: 'echo "$*" >> "$HOME/calls"'})) {
+    fs.writeFileSync(path.join(root, name), '#!/bin/sh\n' + body + '\n', { mode: 0o755 });
+  }
+  const run = () => spawnSync('sh', [new URL('uninstall.sh', source).pathname], { env: { ...process.env, HOME: root, PATH: `${root}:${process.env.PATH}` } });
+  assert.equal(run().status, 0);
+  assert.ok(!fs.existsSync(session));
+  assert.deepEqual(fs.readdirSync(config), ['mint-assets.sh']);
+  fs.writeFileSync(session, 'custom');
+  fs.writeFileSync(path.join(root, 'dpkg-query'), '#!/bin/sh\nexit 1\n');
+  assert.equal(run().status, 0);
+  assert.equal(fs.readFileSync(session, 'utf8'), 'custom');
+  assert.equal(fs.readFileSync(path.join(root, 'calls'), 'utf8'), 'dpkg --purge chrome-remote-desktop\n');
+});
 function titlebuttonFixtures(config) {
   for (const file of ['setup-titlebuttons.py', 'pwa-titlebuttons.css', 'setup-terminal-font.py', 'setup-terminal-helper.py', 'setup-whisker-shortcut.py']) {
     fs.copyFileSync(new URL(file, source), path.join(config, file));
@@ -65,7 +86,7 @@ test('PWA spacing targets Chromium nodes in both headerbar variants without tall
   assert.match(css, /headerbar\.titlebar\.chromium button\.titlebutton\.chromium\s*\{/);
   assert.match(css, /padding:\s*0;/);
   assert.match(css, /margin:\s*0;/);
-  assert.match(css, /min-width:\s*26px;/);
+  assert.match(css, /min-width:\s*1\.95em;/);
   assert.doesNotMatch(css, /headerbar\.default-decoration\.titlebar button/);
 });
 
@@ -82,11 +103,11 @@ test('titlebutton setup preserves user CSS, backs up once, repairs and is idempo
   assert.equal(run().status, 0);
   const first = fs.readFileSync(css, 'utf8');
   const modified = fs.statSync(css).mtimeMs;
-  assert.match(first, /min-width: 26px/);
+  assert.match(first, /min-width: 1\.95em/);
   assert.ok(first.startsWith('/* user styling */\n'));
   assert.equal(run().status, 0);
   assert.equal(fs.statSync(css).mtimeMs, modified);
-  fs.writeFileSync(css, first.replace('26px', '1px') + '/* later user styling */\n');
+  fs.writeFileSync(css, first.replace('1.95em', '1px') + '/* later user styling */\n');
   assert.equal(run().status, 0);
   assert.equal(fs.readFileSync(css, 'utf8'), first + '/* later user styling */\n');
   assert.equal(fs.readFileSync(path.join(root, '.local/state/crd-mint/gtk.css-before-titlebuttons'), 'utf8'), '/* user styling */\n');
@@ -250,7 +271,7 @@ test('light theme is an opt-in for initial GTK and window manager settings', t =
   assert.match(fs.readFileSync(path.join(channels, 'xsettings.xml'), 'utf8'), /value="Mint-Y-Aqua"/);
 });
 
-test('active CRD enables desktop fixes idempotently without unnecessary installation or restart', t => {
+test('Selkies enables desktop fixes idempotently without unnecessary installation or restart', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'crd-active-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const stub = path.join(root, 'systemctl');
@@ -278,10 +299,12 @@ done
 printf '%s' "$value" > "$HOME/shortcut"
 `, { mode: 0o755 });
   fs.writeFileSync(path.join(root, 'timedatectl'), '#!/bin/sh\ncat "$HOME/timezone"\n', { mode: 0o755 });
-  const run = () => spawnSync('sh', [new URL('setup.sh', source).pathname], { env: { ...process.env, DISPLAY: '', DBUS_SESSION_BUS_ADDRESS: '', HOME: root, PATH: `${root}:${process.env.PATH}` }, encoding: 'utf8' });
+  fs.mkdirSync(path.join(root, '.local/state/crd-mint'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.local/state/crd-mint/preset-v1-complete'), 'done');
+  const run = () => spawnSync('sh', [new URL('../selkies/setup-xfce.sh', source).pathname], { env: { ...process.env, DISPLAY: '', DBUS_SESSION_BUS_ADDRESS: '', HOME: root, PATH: `${root}:${process.env.PATH}` }, encoding: 'utf8' });
   const result = run();
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /already running/);
+  assert.match(result.stdout, /already initialized/);
   assert.ok(!fs.existsSync(path.join(root, '.config/autostart/crd-pwa-window-class.desktop')));
   assert.equal(fs.readFileSync(path.join(root, 'shortcut'), 'utf8'), 'xfce4-popup-whiskermenu');
   assert.equal(fs.readFileSync(path.join(root, '.config/xfce4/helpers.rc'), 'utf8'), 'TerminalEmulator=xfce4-terminal\n');
@@ -323,7 +346,7 @@ printf '%s' "$value" > "$HOME/shortcut"
   assert.equal(fs.readFileSync(path.join(root, 'timezone-calls'), 'utf8'), 'timedatectl set-timezone Asia/Jakarta\n');
 });
 
-test('a stopped registered host installs only missing screenshot and audio packages then starts', t => {
+test('CRD setup fails immediately and Selkies installs only missing desktop packages', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'crd-audio-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const put = (name, contents) => fs.writeFileSync(path.join(root, name), `#!/bin/sh\n${contents}\n`, { mode: 0o755 });
@@ -352,9 +375,19 @@ printf '%s' "$value" > "$HOME/shortcut"
   fs.mkdirSync(state, { recursive: true });
   fs.writeFileSync(path.join(state, 'preset-v1-complete'), 'done');
   const result = spawnSync('sh', [new URL('setup.sh', source).pathname], { env: { ...process.env, DISPLAY: '', DBUS_SESSION_BUS_ADDRESS: '', HOME: root, PATH: `${root}:${process.env.PATH}` }, encoding: 'utf8' });
-  assert.equal(result.status, 0, result.stderr);
-  assert.equal(fs.readFileSync(path.join(root, 'shortcut'), 'utf8'), 'xfce4-popup-whiskermenu');
-  const calls = fs.readFileSync(path.join(root, 'sudo-calls'), 'utf8');
-  assert.match(calls, /apt-get install -y --no-install-recommends --no-upgrade xfce4-screenshooter pipewire wireplumber libasound2-plugins pulseaudio-utils/);
-  assert.doesNotMatch(calls, /google-chrome|restart/);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /deprecated.*mise run selkies:setup/);
+  assert.ok(!fs.existsSync(path.join(root, 'sudo-calls')));
+
+  // Selkies uses the same desktop setup, even on ARM, without touching CRD.
+  put('dpkg', 'echo arm64');
+  put('systemctl', 'echo "unexpected service access" >> "$HOME/service-calls"; exit 1');
+  fs.rmSync(path.join(root, '.chrome-remote-desktop-session'), { force: true });
+  const desktop = spawnSync('sh', [new URL('../selkies/setup-xfce.sh', source).pathname], { env: { ...process.env, DISPLAY: '', DBUS_SESSION_BUS_ADDRESS: '', HOME: root, PATH: `${root}:${process.env.PATH}` }, encoding: 'utf8' });
+  assert.equal(desktop.status, 0, desktop.stderr);
+  const desktopCalls = fs.readFileSync(path.join(root, 'sudo-calls'), 'utf8');
+  assert.match(desktopCalls, /xfce4-screenshooter pipewire wireplumber/);
+  assert.doesNotMatch(desktopCalls, /chrome-remote-desktop|systemctl/);
+  assert.ok(!fs.existsSync(path.join(root, 'service-calls')));
+  assert.ok(!fs.existsSync(path.join(root, '.chrome-remote-desktop-session')));
 });

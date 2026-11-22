@@ -7,7 +7,7 @@
           "linux",
           "windows"
         ],
-        "version": "1.5.13"
+        "version": "1.5.14"
       },
       {
         "package": "azure",
@@ -146,7 +146,7 @@
           "linux",
           "windows"
         ],
-        "version": "4.18.1"
+        "version": "4.19.0"
       },
       {
         "package": "github:iOfficeAI/OfficeCLI",
@@ -154,7 +154,7 @@
           "linux",
           "windows"
         ],
-        "version": "1.0.162"
+        "version": "1.0.163"
       },
       {
         "package": "npm:@openai/codex",
@@ -179,7 +179,7 @@
           "linux",
           "windows"
         ],
-        "version": "2.7.3"
+        "version": "2.8.0"
       },
       {
         "package": "npm:opensrc",
@@ -422,8 +422,26 @@
       },
       {
         "name": "crd:setup",
-        "description": "Set up Chrome Remote Desktop with XFCE without interrupting a running session",
+        "description": "Deprecated: use selkies:setup instead",
         "script": "chrome-remote-desktop/setup.sh",
+        "args": "",
+        "platforms": ["linux"],
+        "androidCleanEnv": false,
+        "runner": "sh"
+      },
+      {
+        "name": "crd:uninstall",
+        "description": "Purge the Chrome Remote Desktop host without removing the Selkies desktop",
+        "script": "chrome-remote-desktop/uninstall.sh",
+        "args": "",
+        "platforms": ["linux"],
+        "androidCleanEnv": false,
+        "runner": "sh"
+      },
+      {
+        "name": "selkies:setup",
+        "description": "Set up a browser-accessible XFCE desktop on port 8443",
+        "script": "selkies/setup.sh",
         "args": "",
         "platforms": ["linux"],
         "androidCleanEnv": false,
