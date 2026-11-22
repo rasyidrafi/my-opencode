@@ -3,7 +3,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { test } from 'node:test';
+import { test as portableTest } from 'node:test';
+
+// The integration fixtures execute Linux XFCE and CRD helpers.
+const test = process.platform === 'linux' ? portableTest : portableTest.skip;
 
 const source = new URL('../dot_config/chrome-remote-desktop/', import.meta.url);
 function titlebuttonFixtures(config) {
@@ -60,7 +63,7 @@ test('default terminal helper setup is idempotent, repairs the terminal choice a
   assert.equal(fs.readFileSync(config, 'utf8'), 'WebBrowser=google-chrome\nTerminalEmulator=xfce4-terminal\n');
 });
 
-test('PWA spacing targets Chromium nodes in both headerbar variants without tall padding', () => {
+portableTest('PWA spacing targets Chromium nodes in both headerbar variants without tall padding', () => {
   const css = fs.readFileSync(new URL('pwa-titlebuttons.css', source), 'utf8');
   assert.match(css, /headerbar\.titlebar\.chromium button\.titlebutton\.chromium\s*\{/);
   assert.match(css, /padding:\s*0;/);

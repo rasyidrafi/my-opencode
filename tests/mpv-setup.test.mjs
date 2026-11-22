@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { test } from 'node:test';
+import { test as portableTest } from 'node:test';
 import { setup } from '../dot_config/mpv/setup.mjs';
+
+const test = process.platform === 'linux' ? portableTest : portableTest.skip;
 
 const CONFIG_BLOCK = '# >>> mise mpv:setup (ModernZ) >>>\n# Use ModernZ instead of mpv\'s default on-screen controller.\nosc=no\ntitle-bar=no\n# <<< mise mpv:setup (ModernZ) <<<';
 
@@ -123,7 +125,7 @@ test('asks for sudo and installs mpv only when the player is missing', async t =
   ]);
 });
 
-test('ModernZ setup is Linux-only', async () => {
+portableTest('ModernZ setup is Linux-only', async () => {
   await assert.rejects(setup({ platform: 'darwin', env: {} }), /not supported/);
   await assert.rejects(setup({ platform: 'linux', env: { PREFIX: '/data/data/com.termux/files/usr' } }), /not supported/);
 });

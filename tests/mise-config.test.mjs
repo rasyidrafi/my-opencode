@@ -22,7 +22,7 @@ for (const [platform, env] of [['android', {}], ['linux', { TERMUX_VERSION: '0.1
     const config = render(platform, env);
     assert.equal(tools(config).length, 5);
     assert.ok(config.includes('"http:codex" = '));
-    assert.deepEqual(tools(config).slice(0, 2), ['"npm:@bitwarden/cli" = "2026.10.1"', '"chezmoi" = "2.74.1"']);
+    assert.deepEqual(tools(config).slice(0, 2), ['"npm:@bitwarden/cli" = "2026.11.0"', '"chezmoi" = "2.74.1"']);
     assert.match(tools(config)[2], /^"http:gh" = /);
     const gh = catalog.tools.find(tool => tool.package === 'gh');
     assert.ok(config.includes(`gh_${gh.version}_aarch64.deb`));
@@ -44,7 +44,7 @@ test('Linux and Windows use the shared desktop tool defaults', { skip: !availabl
   assert.ok(!tools(linux).some(line => line.startsWith('\"npm:t3\"')));
   assert.ok(!windows.some(line => line.startsWith('\"npm:t3\"')));
   assert.ok(!tools(render('android')).some(line => line.startsWith('\"npm:t3\"')));
-  assert.ok(tools(linux).includes('"npm:@bitwarden/cli" = "2026.10.1"'));
+  assert.ok(tools(linux).includes('"npm:@bitwarden/cli" = "2026.11.0"'));
   assert.ok(tools(linux).includes('"node" = "26.13.1"'));
   assert.equal(tools(linux).length, 20);
   assert.ok(linux.includes('[settings.npm]\nshell_out = true'));
