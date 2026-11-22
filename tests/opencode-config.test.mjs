@@ -159,7 +159,7 @@ test('workflow skills are installed and discoverable without changing configured
   assert.deepEqual(JSON.parse(read('opencode.json')).instructions, ['~/existing.md']);
   for (const name of ['coding-workflow', 'delegation-rule']) {
     const skill = read(`skills/${name}/SKILL.md`);
-    const frontmatter = skill.match(/^---\n([\s\S]*?)\n---/);
+    const frontmatter = skill.match(/^---\r?\n([\s\S]*?)\r?\n---/);
     assert.ok(frontmatter, `${name} has frontmatter`);
     assert.match(frontmatter[1], new RegExp(`^name: ${name}$`, 'm'));
     assert.match(frontmatter[1], /^description: \S/m);

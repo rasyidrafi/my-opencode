@@ -441,6 +441,17 @@
         "androidCleanEnv": false
       },
       {
+        "name": "playwriter:setup",
+        "description": "Start the Playwriter relay daemon, or restart it if already running",
+        "script": "services/playwriter-setup.mjs",
+        "args": "",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "androidCleanEnv": false
+      },
+      {
         "name": "openchamber:setup",
         "description": "Replace OpenChamber on port 3000 with its native user startup service",
         "script": "services/setup.mjs",
