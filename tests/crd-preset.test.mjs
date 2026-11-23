@@ -292,7 +292,12 @@ test('Desktop setup enables fixes idempotently without unnecessary installation 
   fs.writeFileSync(path.join(root, 'dpkg-query'), '#!/bin/sh\nprintf installed\n', { mode: 0o755 });
   fs.writeFileSync(path.join(root, 'timezone'), 'Asia/Jakarta\n');
   fs.writeFileSync(path.join(root, 'xfconf-query'), `#!/bin/sh
-if [ -f "$HOME/shortcut" ] && [ "$#" -eq 4 ]; then cat "$HOME/shortcut"; exit 0; fi
+case "$4" in
+  /commands/custom/Super_L) file="$HOME/shortcut" ;;
+  '/commands/custom/<Primary><Shift>s') file="$HOME/screenshot-shortcut" ;;
+  *) exit 1 ;;
+esac
+if [ -f "$file" ] && [ "$#" -eq 4 ]; then cat "$file"; exit 0; fi
 value=''
 previous=''
 for arg do
@@ -300,7 +305,7 @@ for arg do
   previous=$arg
 done
 [ -n "$value" ] || exit 1
-printf '%s' "$value" > "$HOME/shortcut"
+printf '%s' "$value" > "$file"
 `, { mode: 0o755 });
   fs.writeFileSync(path.join(root, 'timedatectl'), '#!/bin/sh\ncat "$HOME/timezone"\n', { mode: 0o755 });
   fs.mkdirSync(path.join(root, '.local/state/crd-mint'), { recursive: true });
@@ -312,6 +317,7 @@ printf '%s' "$value" > "$HOME/shortcut"
   assert.match(result.stdout, /No connected display .* Skipping local login setup/);
   assert.ok(!fs.existsSync(path.join(root, '.config/autostart/crd-pwa-window-class.desktop')));
   assert.equal(fs.readFileSync(path.join(root, 'shortcut'), 'utf8'), 'xfce4-popup-whiskermenu');
+  assert.equal(fs.readFileSync(path.join(root, 'screenshot-shortcut'), 'utf8'), 'xfce4-screenshooter -r');
   assert.equal(fs.readFileSync(path.join(root, '.config/xfce4/helpers.rc'), 'utf8'), 'TerminalEmulator=xfce4-terminal\n');
   const autostart = path.join(root, '.config/autostart/crd-panel-workarea.desktop');
   const before = fs.statSync(autostart).mtimeMs;

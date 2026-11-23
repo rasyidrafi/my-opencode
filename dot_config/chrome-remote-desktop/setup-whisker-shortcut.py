@@ -1,14 +1,24 @@
 #!/usr/bin/env python3
-"""Ensure the left Super key opens Whisker Menu in the current XFCE session."""
+"""Set up the XFCE Whisker Menu or region screenshot shortcut."""
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import xml.etree.ElementTree as ET
 
 channel = 'xfce4-keyboard-shortcuts'
-shortcut = '/commands/custom/Super_L'
-command = 'xfce4-popup-whiskermenu'
+if sys.argv[1:] == ['--screenshot']:
+    key = '<Primary><Shift>s'
+    command = 'xfce4-screenshooter -r'
+    label = 'Ctrl+Shift+S'
+    action = 'the region screenshot tool'
+else:
+    key = 'Super_L'
+    command = 'xfce4-popup-whiskermenu'
+    label = 'Super key'
+    action = 'Whisker Menu'
+shortcut = f'/commands/custom/{key}'
 
 env = os.environ.copy()
 if not env.get('DBUS_SESSION_BUS_ADDRESS'):
@@ -23,7 +33,7 @@ live = False
 try:
     current = subprocess.run(query, env=env, text=True, capture_output=True, timeout=5)
     if current.returncode == 0 and current.stdout.rstrip('\n') == command:
-        print('Super key already opens Whisker Menu.')
+        print(f'{label} already opens {action}.')
         raise SystemExit(0)
     args = query.copy()
     if current.returncode != 0:
@@ -34,7 +44,7 @@ except (FileNotFoundError, OSError, subprocess.TimeoutExpired):
     pass
 
 if live:
-    print('Configured Super key to open Whisker Menu.')
+    print(f'Configured {label} to open {action}.')
     raise SystemExit(0)
 
 # A running xfconf session is not always available during CRD setup (for
@@ -59,12 +69,12 @@ def property_child(parent, name, kind):
 
 commands = property_child(root, 'commands', 'empty')
 custom = property_child(commands, 'custom', 'empty')
-binding = property_child(custom, 'Super_L', 'string')
+binding = property_child(custom, key, 'string')
 changed = binding.get('type') != 'string' or binding.get('value') != command
 binding.set('type', 'string')
 binding.set('value', command)
 if not changed:
-    print('Super key shortcut is already configured for the next XFCE login.')
+    print(f'{label} shortcut is already configured for the next XFCE login.')
     raise SystemExit(0)
 
 ET.indent(tree, space='  ')
@@ -79,4 +89,4 @@ try:
 finally:
     if os.path.exists(temporary):
         os.unlink(temporary)
-print('Configured Super key for Whisker Menu at the next XFCE login.')
+print(f'Configured {label} to open {action} at the next XFCE login.')

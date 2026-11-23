@@ -64,7 +64,7 @@ as_root() {
     "$@"
     return
   fi
-  authenticate_sudo
+  authenticate_sudo || return
   sudo "$@"
 }
 
@@ -173,6 +173,100 @@ EndSection'
   fi
 }
 
+configure_wifi_panel() {
+  # The Mint panel preset already includes a Status Tray for nm-applet.
+  # Only install a network manager on local desktops with Wi-Fi hardware.
+  set -- /sys/class/ieee80211/phy*
+  if [ ! -e "$1" ]; then
+    return
+  fi
+  wifi_missing=''
+  for package in network-manager network-manager-gnome polkitd; do
+    if [ "$(dpkg-query -W -f='${db:Status-Status}' "$package" 2>/dev/null || :)" != installed ]; then
+      wifi_missing="$wifi_missing $package"
+    fi
+  done
+  if [ -n "$wifi_missing" ]; then
+    as_root apt-get update
+    as_root apt-get install -y --no-install-recommends --no-upgrade $wifi_missing
+  fi
+  if [ -n "${DISPLAY:-}" ] && [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] &&
+    pgrep -u "$(id -u)" -x xfce4-session >/dev/null 2>&1 &&
+    ! pgrep -u "$(id -u)" -x nm-applet >/dev/null 2>&1; then
+    # The package's XDG autostart starts the applet at subsequent logins.
+    if ! systemd-run --user --quiet --collect --unit=desktop-nm-applet \
+      --setenv="DISPLAY=$DISPLAY" --setenv="DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS" \
+      --setenv="XAUTHORITY=${XAUTHORITY:-$HOME/.Xauthority}" /usr/bin/nm-applet; then
+      nohup /usr/bin/nm-applet </dev/null >/dev/null 2>&1 &
+    fi
+  fi
+}
+
+configure_desktop_dns() {
+  command -v nmcli >/dev/null 2>&1 || return 0
+  device=$(ip -o -4 route get 1.1.1.1 2>/dev/null |
+    awk 'NR == 1 { for (i = 1; i < NF; i++) if ($i == "dev") { print $(i+1); exit } }')
+  [ -n "$device" ] || return 0
+  case $(nmcli -g GENERAL.TYPE device show "$device" 2>/dev/null) in
+    wifi|ethernet) ;;
+    *) return 0 ;;
+  esac
+  profile=$(nmcli -g GENERAL.CON-UUID device show "$device" 2>/dev/null) || return 0
+  [ -n "$profile" ] && [ "$profile" != -- ] || return 0
+
+  old_dns=$(nmcli -g ipv4.dns connection show uuid "$profile") || return 0
+  old_auto4=$(nmcli -g ipv4.ignore-auto-dns connection show uuid "$profile") || return 0
+  old_auto6=$(nmcli -g ipv6.ignore-auto-dns connection show uuid "$profile") || return 0
+  if [ "$old_dns" = 1.1.1.1 ] && [ "$old_auto4" = yes ] && [ "$old_auto6" = yes ]; then
+    return 0
+  fi
+
+  as_root nmcli connection modify uuid "$profile" \
+    ipv4.dns 1.1.1.1 ipv4.ignore-auto-dns yes ipv6.ignore-auto-dns yes || return 1
+  if as_root nmcli device reapply "$device"; then
+    for attempt in 1 2 3 4 5; do
+      if nmcli -g IP4.DNS device show "$device" | grep -Fxq 1.1.1.1 &&
+        timeout 3 getent ahostsv4 cloudflare.com >/dev/null; then
+        return 0
+      fi
+      sleep 1
+    done
+  fi
+
+  echo "DNS validation failed on $device. Restoring the previous DNS settings." >&2
+  as_root nmcli connection modify uuid "$profile" \
+    ipv4.dns "$old_dns" ipv4.ignore-auto-dns "$old_auto4" ipv6.ignore-auto-dns "$old_auto6" &&
+    as_root nmcli device reapply "$device"
+}
+
+configure_battery_panel() {
+  if ! grep -qsx Battery /sys/class/power_supply/*/type; then
+    return
+  fi
+  battery_missing=''
+  for package in xfce4-power-manager xfce4-power-manager-plugins upower; do
+    if [ "$(dpkg-query -W -f='${db:Status-Status}' "$package" 2>/dev/null || :)" != installed ]; then
+      battery_missing="$battery_missing $package"
+    fi
+  done
+  if [ -n "$battery_missing" ]; then
+    as_root apt-get update
+    as_root apt-get install -y --no-install-recommends --no-upgrade $battery_missing
+  fi
+  source_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+  config=${XDG_CONFIG_HOME:-$HOME/.config}
+  mkdir -p "$config/autostart" "$config/desktop"
+  if ! cmp -s "$source_dir/battery-panel.sh" "$config/desktop/battery-panel.sh"; then
+    install -m 644 "$source_dir/battery-panel.sh" "$config/desktop/battery-panel.sh"
+  fi
+  if [ -n "${DISPLAY:-}" ] && [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] &&
+    pgrep -u "$(id -u)" -x xfce4-panel >/dev/null 2>&1; then
+    sh "$config/desktop/battery-panel.sh"
+  else
+    install -m 644 "$source_dir/desktop-battery.desktop" "$config/autostart/desktop-battery.desktop"
+  fi
+}
+
 configure_local_login() {
   # A server can have a graphical seat and GPU without a connected screen.
   if [ "$(loginctl show-seat seat0 -p CanGraphical --value 2>/dev/null)" != yes ] ||
@@ -186,6 +280,9 @@ configure_local_login() {
     exit 1
   fi
   configure_touchpad
+  configure_wifi_panel
+  configure_desktop_dns
+  configure_battery_panel
   if systemctl cat display-manager.service >/dev/null 2>&1; then
     echo 'XFCE is available in the existing display manager.'
     return
@@ -254,8 +351,9 @@ if [ ! -f "$HOME/.local/state/crd-mint/preset-v1-complete" ]; then
 else
   echo 'Mint XFCE preset was already initialized; keeping current settings.'
 fi
-# Apply the shortcut after seeding so the initial preset cannot overwrite it.
+# Apply the shortcuts after seeding so the initial preset cannot overwrite them.
 /usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-whisker-shortcut.py"
+/usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-whisker-shortcut.py" --screenshot
 if [ "$phase" = desktop ]; then
   install_terminal_fonts
 fi
