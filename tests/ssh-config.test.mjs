@@ -9,13 +9,13 @@ import { test } from 'node:test';
 const repository = fileURLToPath(new URL('../', import.meta.url));
 const chezmoi = process.env.CHEZMOI_TEST_BINARY || 'chezmoi';
 
-function fixture(t, content) {
+function fixture(t, content, envOverrides = {}) {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ssh-config-test-'));
   t.after(() => fs.rmSync(home, { recursive: true, force: true }));
   const target = path.join(home, '.ssh/config');
   fs.mkdirSync(path.dirname(target));
   if (content !== undefined) fs.writeFileSync(target, content);
-  const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, '.config'), XDG_DATA_HOME: path.join(home, '.local/share'), XDG_CACHE_HOME: path.join(home, '.cache') };
+  const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, '.config'), XDG_DATA_HOME: path.join(home, '.local/share'), XDG_CACHE_HOME: path.join(home, '.cache'), ...envOverrides };
   const apply = () => {
     const result = spawnSync(chezmoi, ['--source', repository, '--destination', home,
       '--config', path.join(home, 'chezmoi.toml'), '--persistent-state', path.join(home, 'state.boltdb'),
@@ -34,6 +34,32 @@ function fixture(t, content) {
   return { apply, effective, target };
 }
 
+test('removes the managed fallback when Bitwarden is not on PATH', t => {
+  const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'ssh-agent-path-'));
+  t.after(() => fs.rmSync(bin, { recursive: true, force: true }));
+  let resolved = process.env.CHEZMOI_TEST_BINARY || spawnSync('which', ['chezmoi'], { encoding: 'utf8' }).stdout.trim();
+  if (resolved.includes('/mise/shims/')) {
+    resolved = path.join(spawnSync('mise', ['where', 'chezmoi'], { encoding: 'utf8' }).stdout.trim(), 'chezmoi');
+  }
+  fs.symlinkSync(resolved, path.join(bin, 'chezmoi'));
+  const existing = '# >>> my-opencode SSH agent fallback >>>\nHost *\n    IdentityAgent ~/.bitwarden-ssh-agent.sock\n# <<< my-opencode SSH agent fallback <<<\n';
+  const { apply } = fixture(t, existing, { PATH: bin });
+  const result = apply();
+  assert.ok(!result.includes('my-opencode SSH agent fallback'));
+  assert.equal(apply(), result);
+});
+
+test('enables the fallback when the Linux Bitwarden desktop executable is present', { skip: process.platform !== 'linux' }, t => {
+  const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'ssh-agent-bitwarden-'));
+  t.after(() => fs.rmSync(bin, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(bin, 'bitwarden'), '#!/bin/sh\n', { mode: 0o755 });
+  const { apply, effective } = fixture(t, undefined, { PATH: `${bin}${path.delimiter}${process.env.PATH}` });
+  const first = apply();
+  assert.ok(first.includes('# >>> my-opencode SSH agent fallback >>>'));
+  assert.equal(effective('soy').identityagent, path.join(os.homedir(), '.bitwarden-ssh-agent.sock'));
+  assert.equal(apply(), first);
+});
+
 test('creates endpoints on a fresh home and is stable on reapply', t => {
   const { apply, effective } = fixture(t);
   const first = apply();
@@ -43,6 +69,9 @@ test('creates endpoints on a fresh home and is stable on reapply', t => {
     assert.equal(config.hostname, `${alias.split('-')[0]}.qilin-elver.ts.net`);
     assert.equal(config.user, alias);
     assert.equal(config.port, alias.endsWith('-wb') ? '2222' : '22');
+    if (first.includes('# >>> my-opencode SSH agent fallback >>>')) {
+      assert.equal(config.identityagent, path.join(os.homedir(), '.bitwarden-ssh-agent.sock'));
+    }
   }
 });
 

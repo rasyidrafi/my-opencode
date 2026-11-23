@@ -798,7 +798,8 @@ updated loaders. Test with
 
 Run `mise run desktop:setup` after applying chezmoi to install and configure XFCE
 on a Debian or Ubuntu Linux host. It applies the Mint theme, wallpaper, panel,
-shortcuts, fonts, Thunar archive support, and Asia/Jakarta system timezone.
+shortcuts, fonts, XFCE screensaver and screen locking, Thunar archive support,
+and Asia/Jakarta system timezone.
 It honors the existing one-time preset marker to preserve desktop customizations.
 On a host with a connected display and graphical seat, XFCE is available in the
 existing display manager or through LightDM at the next graphical boot. A headless

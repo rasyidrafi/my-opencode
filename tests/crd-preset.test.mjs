@@ -377,7 +377,7 @@ test('CRD setup fails immediately and desktop setup installs only missing deskto
   const put = (name, contents) => fs.writeFileSync(path.join(root, name), `#!/bin/sh\n${contents}\n`, { mode: 0o755 });
   put('systemctl', '[ -f "$HOME/started" ]');
   put('timedatectl', 'printf "Asia/Jakarta\\n"');
-  put('dpkg-query', 'case "$*" in *xfce4-screenshooter|*pipewire|*wireplumber|*libasound2-plugins|*pulseaudio-utils) exit 1;; *) printf installed;; esac');
+  put('dpkg-query', 'case "$*" in *xfce4-screenshooter|*xfce4-screensaver|*pipewire|*wireplumber|*libasound2-plugins|*pulseaudio-utils) exit 1;; *) printf installed;; esac');
   put('sudo', 'if [ "$1" = -n ]; then exit 0; fi\nprintf "%s\\n" "$*" >> "$HOME/sudo-calls"\nif [ "$1" = systemctl ]; then touch "$HOME/started"; fi');
   const config = path.join(root, '.config/chrome-remote-desktop');
   fs.mkdirSync(config, { recursive: true });
@@ -412,7 +412,7 @@ printf '%s' "$value" > "$HOME/shortcut"
   const desktop = spawnSync('sh', [new URL('../desktop/setup.sh', source).pathname], { env: { ...process.env, DISPLAY: '', DBUS_SESSION_BUS_ADDRESS: '', HOME: root, PATH: `${root}:${process.env.PATH}` }, encoding: 'utf8' });
   assert.equal(desktop.status, 0, desktop.stderr);
   const desktopCalls = fs.readFileSync(path.join(root, 'sudo-calls'), 'utf8');
-  assert.match(desktopCalls, /xfce4-screenshooter pipewire wireplumber/);
+  assert.match(desktopCalls, /xfce4-screenshooter xfce4-screensaver pipewire wireplumber/);
   assert.doesNotMatch(desktopCalls, /chrome-remote-desktop|systemctl/);
   assert.ok(!fs.existsSync(path.join(root, 'service-calls')));
   assert.ok(!fs.existsSync(path.join(root, '.chrome-remote-desktop-session')));

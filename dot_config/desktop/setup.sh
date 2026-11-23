@@ -124,7 +124,7 @@ configure_archive_support() {
 
 install_desktop_packages() {
   missing=''
-  for package in xfce4 dbus-x11 xfce4-whiskermenu-plugin mint-y-icons bibata-cursor-theme xfce4-terminal xfce4-notifyd xfce4-screenshooter desktop-base python3 x11-utils pipewire wireplumber libasound2-plugins pulseaudio-utils pavucontrol xfce4-power-manager xfce4-power-manager-plugins upower; do
+  for package in xfce4 dbus-x11 xfce4-whiskermenu-plugin mint-y-icons bibata-cursor-theme xfce4-terminal xfce4-notifyd xfce4-screenshooter xfce4-screensaver desktop-base python3 x11-utils pipewire wireplumber libasound2-plugins pulseaudio-utils pavucontrol xfce4-power-manager xfce4-power-manager-plugins upower; do
     if [ "$(dpkg-query -W -f='${db:Status-Status}' "$package" 2>/dev/null || :)" != installed ]; then
       missing="$missing $package"
     fi
