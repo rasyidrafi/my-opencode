@@ -1058,7 +1058,7 @@ mise run rawroute:local -- --dry-run
 mise run rawroute:local
 ```
 
-Default mode uses `https://rawroute.qzz.io/v1` with `RAWROUTE_API_KEY`.
+Default mode uses `https://rawroute.r45.qzz.io/v1` with `RAWROUTE_API_KEY`.
 Local mode uses `https://rawroute.qilin-elver.ts.net/v1` with
 `RAWROUTE_LOCAL_API_KEY`, which must already be in the invoking environment.
 These tasks only apply OpenCode configuration; they do not switch Codex,

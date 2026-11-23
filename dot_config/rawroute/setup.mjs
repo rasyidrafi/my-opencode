@@ -13,7 +13,7 @@ export const modes = {
 };
 export const rawrouteModes = {
   local: { baseURL: 'https://rawroute.qilin-elver.ts.net/v1', envKey: 'RAWROUTE_LOCAL_API_KEY' },
-  default: { baseURL: 'https://rawroute.qzz.io/v1', envKey: 'RAWROUTE_API_KEY' },
+  default: { baseURL: 'https://rawroute.r45.qzz.io/v1', envKey: 'RAWROUTE_API_KEY' },
 };
 const targets = ['.codex/config.toml', '.config/opencode/opencode.json'];
 const sources = ['dot_codex/modify_config.toml', 'dot_config/opencode/modify_opencode.json'];
