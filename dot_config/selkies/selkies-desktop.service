@@ -2,7 +2,6 @@
 Description=Selkies XFCE web desktop
 
 [Service]
-Environment=SELKIES_SCALE_XFCE_PANEL=1
 ExecStartPre=/opt/selkies/bin/python %h/.config/selkies/prepare-web.py
 ExecStart=/usr/bin/env selkies session --session=xfce --addr=127.0.0.1 --port=8443 --enable-basic-auth=false --enable-https=false --web-root=%h/.local/share/selkies-desktop/web/current
 

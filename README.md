@@ -782,28 +782,31 @@ updated loaders. Test with
 `node --test dot_config/azure-mnt-cache/setup.test.mjs dot_config/shell/setup.test.mjs`
 (the real isolated file-transfer test requires rsync).
 
-Run `mise run selkies:setup` after applying chezmoi for a separate XFCE session
-on the host, without Chrome Remote Desktop registration. Requires Debian 12/13
-or Ubuntu 24.04/26.04 (amd64/arm64), curl, sudo for missing packages, and a
-systemd user session. Selkies uses the same XFCE packages, Mint theme, wallpaper,
-panel, shortcuts, fonts, Thunar archive support and Asia/Jakarta system timezone
-as the former CRD installer, without installing or registering CRD. Selkies
-honors the existing one-time preset marker to preserve desktop customizations.
-Open **http://127.0.0.1:8443**.
+Run `mise run desktop:setup` after applying chezmoi to install and configure XFCE
+on a Debian or Ubuntu Linux host. It applies the Mint theme, wallpaper, panel,
+shortcuts, fonts, Thunar archive support, and Asia/Jakarta system timezone.
+It honors the existing one-time preset marker to preserve desktop customizations.
+On a host with a connected display and graphical seat, XFCE is available in the
+existing display manager or through LightDM at the next graphical boot. A headless
+host skips display manager setup.
+
+XFCE Custom DPI also scales the Mint panel, tray, Whisker menu, desktop icons,
+Thunar sidebar, and selected XFWM distances. The panel and its icons use
+32/20 px at 96 DPI, 40/25 px at 120 DPI, and 48/30 px at 144 DPI. The watcher
+recalculates these sizes at login and when DPI changes. On Xorg, local
+libinput touchpads default to tap-to-click and natural scrolling.
+
+Run `mise run selkies:setup` for a separate browser-accessible XFCE session.
+On Linux it runs the desktop setup first, then adds Selkies. It requires Debian
+12/13 or Ubuntu 24.04/26.04 (amd64/arm64), curl, sudo for missing packages, and
+a systemd user session. Open **http://127.0.0.1:8443**.
 On the packaged 2.2.1 client, choose **Gaming Mode** for its usual keyboard
 capture with normal, absolute mouse input. Automatic pointer lock is disabled;
 ordinary Fullscreen is unchanged. When Chrome grants keyboard lock, tap Esc
 for the remote app and hold Esc to leave fullscreen.
 The service serves a user-local copy; unknown client builds use stock behavior.
-In Selkies, **Scale UI** also scales the Mint bottom panel and its icons:
-32/20 px at 100%, 40/25 px at 125%, and 48/30 px at 150%. The same watcher
-scales the tray, Whisker menu (450×500 baseline, nearest supported icon sizes),
-desktop icons and previews, Thunar sidebar icons, and XFWM snap, shadow and
-double-click distances. These managed dimensions reset to their calculated
-values on login or DPI changes; fonts already use points, and Selkies handles
-cursor scaling. Chromium's managed GTK title buttons use font-relative units.
-The DPI watcher
-only runs in Selkies. XFCE persists the sizes in the shared user profile.
+In Selkies, **Scale UI** updates XFCE DPI. The shared desktop watcher handles
+the panel and other XFCE dimensions.
 From another machine, run `ssh -N -L 8443:127.0.0.1:8443 user@host`, then open
 the same URL locally. Selkies listens only on IPv4 loopback and explicitly
 disables authentication: any local user can control the desktop. Setup restarts
@@ -835,7 +838,7 @@ paired clients and stock session launcher. Custom launchers and other users' fil
 are preserved. It does not autoremove packages, uninstall Chrome, remove the shared
 desktop helpers under `~/.config/chrome-remote-desktop`, or restart Selkies.
 
-**Selkies desktop provisioning:**
+**Shared XFCE provisioning:**
 Every setup run also installs missing `thunar`, `thunar-archive-plugin`,
 `xarchiver`, and `7zip` packages. This
 adds **Extract Here** and **Extract To…** for `.7z` archives in Thunar. Repeated
@@ -850,7 +853,7 @@ An XFCE autostart helper refreshes panel space reservations at login and after
 screen-size changes, working around stale work areas during CRD's “Resize to
 fit” with high-DPI mode off or on. It preserves panel sizes, does not force a
 resolution or DPI, and does not restart CRD. After applying chezmoi, run
-`mise run selkies:setup`: it installs/repairs the autostart entry on every run and
+`mise run desktop:setup`: it installs/repairs the autostart entry on every run and
 starts the helper immediately when run inside the graphical session (`DISPLAY`
 set), otherwise at the next XFCE login. A per-display lock prevents duplicates.
 Every setup run also maintains one marked block in `~/.config/gtk-3.0/gtk.css`
@@ -876,7 +879,7 @@ and `sans-serif` to Ubuntu, including in browser applications.
 Relaunch the browser after setup to clear its cached font selection.
 These desktop fixes also run when CRD is already active; missing terminal fonts
 may require sudo, but CRD and existing terminal sessions are never restarted.
-Every `selkies:setup` run also ensures the machine's system timezone is
+Every Linux desktop setup run also ensures the machine's system timezone is
 `Asia/Jakarta` (WIB, UTC+7). It uses sudo only when a change is needed, verifies
 the result, and does not restart CRD or change the actual system clock time.
 It also installs PipeWire, WirePlumber, ALSA's PulseAudio plugin and audio
@@ -899,7 +902,7 @@ the previous XFCE configuration and restarts only the panel.
 Both `Mint-Y-Dark-Aqua` and its light counterpart `Mint-Y-Aqua` are installed
 locally, including on an already running host. Dark remains the default. To use
 light for a **first-time preset initialization**, run
-`CRD_MINT_THEME=light mise run selkies:setup` after applying chezmoi. This option
+`CRD_MINT_THEME=light mise run desktop:setup` after applying chezmoi. This option
 does not overwrite an existing preset or change an active session. For an
 existing desktop, select `Mint-Y-Aqua` in XFCE **Appearance** and **Window
 Manager** settings; choose `Mint-Y-Dark-Aqua` to switch back. Installing assets

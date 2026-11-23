@@ -439,6 +439,15 @@
         "runner": "sh"
       },
       {
+        "name": "desktop:setup",
+        "description": "Install and configure XFCE and register it for local login when a display is connected",
+        "script": "desktop/setup.sh",
+        "args": "",
+        "platforms": ["linux"],
+        "androidCleanEnv": false,
+        "runner": "sh"
+      },
+      {
         "name": "selkies:setup",
         "description": "Set up a browser-accessible XFCE desktop on port 8443",
         "script": "selkies/setup.sh",
@@ -493,8 +502,8 @@
       {
         "name": "termux:xfce:setup",
         "description": "Install Debian and the shared XFCE desktop preset inside Termux",
-        "script": "selkies/termux.sh",
-        "args": " xfce",
+        "script": "desktop/termux.sh",
+        "args": "",
         "platforms": ["android"],
         "androidCleanEnv": false,
         "runner": "sh"

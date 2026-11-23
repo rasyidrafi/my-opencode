@@ -1,4 +1,8 @@
 """Apply the Mint preset's logical dimensions to this XFCE session."""
+import fcntl
+import hashlib
+import os
+from pathlib import Path
 import subprocess
 
 
@@ -30,7 +34,7 @@ def dimensions(dpi):
         yield 'whiskermenu', key, nearest(base, (16, 24, 32, 48, 64, 96, 128))
 
 
-def main():
+def apply_dimensions():
     raw = query('xsettings', '/Xft/DPI').stdout.strip()
     dpi = int(raw) if raw.isdecimal() and int(raw) > 0 else 96
     # Resolve plugin IDs rather than overwriting a different plugin after edits.
@@ -53,6 +57,33 @@ def main():
                 continue
             args = ['-n', '-t', 'int'] if current.returncode else []
             query(ch, prop, *args, '-s', str(value)).check_returncode()
+
+
+def main():
+    state = Path(os.environ.get('XDG_RUNTIME_DIR') or (Path.home() / '.cache/desktop'))
+    state.mkdir(parents=True, exist_ok=True)
+    session = os.environ.get('DBUS_SESSION_BUS_ADDRESS') or os.environ.get('DISPLAY', '')
+    lock_name = 'desktop-scale-' + hashlib.sha256(session.encode()).hexdigest()[:16]
+    with (state / (lock_name + '.lock')).open('a') as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return
+        env = {**os.environ, 'LC_ALL': 'C'}
+        with subprocess.Popen(
+            ['stdbuf', '-oL', 'xfconf-query', '-c', 'xsettings', '-p', '/Xft/DPI', '-m'],
+            stdout=subprocess.PIPE, text=True, env=env,
+        ) as monitor:
+            try:
+                # The monitor banner triggers initial scaling after subscription.
+                for event in monitor.stdout:
+                    if event.strip():
+                        try:
+                            apply_dimensions()
+                        except subprocess.CalledProcessError as error:
+                            print(error, flush=True)
+            finally:
+                monitor.terminate()
 
 
 if __name__ == '__main__':

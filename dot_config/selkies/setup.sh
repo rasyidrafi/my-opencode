@@ -3,7 +3,7 @@ set -eu
 dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 case "${TERMUX_VERSION:-}:${PREFIX:-}:$(uname -o 2>/dev/null)" in
   ?*:*:*|*:/data/data/com.termux/*:*|*:*:Android)
-    exec sh "$dir/termux.sh" selkies ;;
+    exec sh "$dir/termux.sh" ;;
 esac
 
 . /etc/os-release
@@ -23,6 +23,14 @@ case "${1:-}" in
     guest=true ;;
   *) exit 1 ;;
 esac
+if [ "$guest" = false ]; then
+  if [ ! -f "$HOME/.local/state/crd-mint/preset-v1-complete" ] && systemctl --user is-active --quiet selkies-desktop.service; then
+    echo 'Save your work, stop the existing desktop with systemctl --user stop selkies-desktop.service, then rerun setup to initialize the XFCE preset.' >&2
+    exit 1
+  fi
+  sh "$dir/../desktop/setup.sh"
+fi
+
 if ! command -v selkies >/dev/null; then
   version=2.2.1
   pkg="selkies-$version-$distro-$arch.deb"
@@ -51,16 +59,6 @@ if ! command -v selkies >/dev/null; then
 fi
 
 [ "$guest" = false ] || exit 0
-
-if [ ! -f "$HOME/.local/state/crd-mint/preset-v1-complete" ] && systemctl --user is-active --quiet selkies-desktop.service; then
-  echo 'Save your work, stop the existing desktop with systemctl --user stop selkies-desktop.service, then rerun setup to initialize the XFCE preset.' >&2
-  exit 1
-fi
-sh "$dir/setup-xfce.sh"
-
-autostart=${XDG_CONFIG_HOME:-$HOME/.config}/autostart
-mkdir -p "$autostart"
-install -m 644 "$dir/selkies-panel-scale.desktop" "$autostart/selkies-panel-scale.desktop"
 
 units=${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user
 mkdir -p "$units"

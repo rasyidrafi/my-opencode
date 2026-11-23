@@ -1,6 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Selkies panel scaling
-Exec=sh -c "exec sh $HOME/.config/selkies/panel-scale.sh"
-OnlyShowIn=XFCE;
-Terminal=false

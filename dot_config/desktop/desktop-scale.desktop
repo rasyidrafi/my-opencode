@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=XFCE DPI scaling
+Exec=sh -c "exec python3 \"\\${XDG_CONFIG_HOME:-\\$HOME/.config}/desktop/scale-desktop.py\""
+OnlyShowIn=XFCE;
+Terminal=false

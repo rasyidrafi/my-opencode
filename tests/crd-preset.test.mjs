@@ -274,9 +274,10 @@ test('light theme is an opt-in for initial GTK and window manager settings', t =
   assert.match(fs.readFileSync(path.join(channels, 'xsettings.xml'), 'utf8'), /value="Mint-Y-Aqua"/);
 });
 
-test('Selkies enables desktop fixes idempotently without unnecessary installation or restart', t => {
+test('Desktop setup enables fixes idempotently without unnecessary installation or restart', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'crd-active-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(root, 'loginctl'), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
   const stub = path.join(root, 'systemctl');
   fs.writeFileSync(stub, '#!/bin/sh\n[ "$1" = is-active ] && exit 0\nexit 1\n', { mode: 0o755 });
   const config = path.join(root, '.config/chrome-remote-desktop');
@@ -304,10 +305,11 @@ printf '%s' "$value" > "$HOME/shortcut"
   fs.writeFileSync(path.join(root, 'timedatectl'), '#!/bin/sh\ncat "$HOME/timezone"\n', { mode: 0o755 });
   fs.mkdirSync(path.join(root, '.local/state/crd-mint'), { recursive: true });
   fs.writeFileSync(path.join(root, '.local/state/crd-mint/preset-v1-complete'), 'done');
-  const run = () => spawnSync('sh', [new URL('../selkies/setup-xfce.sh', source).pathname], { env: { ...process.env, DISPLAY: '', DBUS_SESSION_BUS_ADDRESS: '', HOME: root, PATH: `${root}:${process.env.PATH}` }, encoding: 'utf8' });
+  const run = () => spawnSync('sh', [new URL('../desktop/setup.sh', source).pathname], { env: { ...process.env, DISPLAY: '', DBUS_SESSION_BUS_ADDRESS: '', HOME: root, PATH: `${root}:${process.env.PATH}` }, encoding: 'utf8' });
   const result = run();
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /already initialized/);
+  assert.match(result.stdout, /No connected display .* Skipping local login setup/);
   assert.ok(!fs.existsSync(path.join(root, '.config/autostart/crd-pwa-window-class.desktop')));
   assert.equal(fs.readFileSync(path.join(root, 'shortcut'), 'utf8'), 'xfce4-popup-whiskermenu');
   assert.equal(fs.readFileSync(path.join(root, '.config/xfce4/helpers.rc'), 'utf8'), 'TerminalEmulator=xfce4-terminal\n');
@@ -349,7 +351,7 @@ printf '%s' "$value" > "$HOME/shortcut"
   assert.equal(fs.readFileSync(path.join(root, 'timezone-calls'), 'utf8'), 'timedatectl set-timezone Asia/Jakarta\n');
 });
 
-test('CRD setup fails immediately and Selkies installs only missing desktop packages', t => {
+test('CRD setup fails immediately and desktop setup installs only missing desktop packages', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'crd-audio-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const put = (name, contents) => fs.writeFileSync(path.join(root, name), `#!/bin/sh\n${contents}\n`, { mode: 0o755 });
@@ -382,11 +384,12 @@ printf '%s' "$value" > "$HOME/shortcut"
   assert.match(result.stderr, /deprecated.*mise run selkies:setup/);
   assert.ok(!fs.existsSync(path.join(root, 'sudo-calls')));
 
-  // Selkies uses the same desktop setup, even on ARM, without touching CRD.
+  // Standalone desktop setup works on ARM without touching CRD.
   put('dpkg', 'echo arm64');
+  put('loginctl', 'exit 1');
   put('systemctl', 'echo "unexpected service access" >> "$HOME/service-calls"; exit 1');
   fs.rmSync(path.join(root, '.chrome-remote-desktop-session'), { force: true });
-  const desktop = spawnSync('sh', [new URL('../selkies/setup-xfce.sh', source).pathname], { env: { ...process.env, DISPLAY: '', DBUS_SESSION_BUS_ADDRESS: '', HOME: root, PATH: `${root}:${process.env.PATH}` }, encoding: 'utf8' });
+  const desktop = spawnSync('sh', [new URL('../desktop/setup.sh', source).pathname], { env: { ...process.env, DISPLAY: '', DBUS_SESSION_BUS_ADDRESS: '', HOME: root, PATH: `${root}:${process.env.PATH}` }, encoding: 'utf8' });
   assert.equal(desktop.status, 0, desktop.stderr);
   const desktopCalls = fs.readFileSync(path.join(root, 'sudo-calls'), 'utf8');
   assert.match(desktopCalls, /xfce4-screenshooter pipewire wireplumber/);
