@@ -253,7 +253,7 @@ test('seeds an existing XFCE profile once, backs it up, and preserves later edit
   assert.ok(desktop.includes('crd &amp; preset-'));
   assert.ok(!desktop.includes('MINT_WALLPAPER_PATH'));
   const shortcuts = path.join(xfce, 'xfconf/xfce-perchannel-xml/xfce4-keyboard-shortcuts.xml');
-  assert.match(fs.readFileSync(shortcuts, 'utf8'), /name="&lt;Primary&gt;&lt;Shift&gt;s" type="string" value="xfce4-screenshooter -r"/);
+  assert.match(fs.readFileSync(shortcuts, 'utf8'), /name="&lt;Primary&gt;&lt;Shift&gt;s" type="string" value="xfce4-screenshooter -r -c"/);
   assert.match(fs.readFileSync(shortcuts, 'utf8'), /name="Super_L" type="string" value="xfce4-popup-whiskermenu"/);
   fs.writeFileSync(shortcuts, 'user shortcut');
   fs.writeFileSync(panel, 'user customized');
@@ -331,7 +331,7 @@ printf '%s' "$value" > "$file"
   assert.match(result.stdout, /No connected display .* Skipping local login setup/);
   assert.ok(!fs.existsSync(path.join(root, '.config/autostart/crd-pwa-window-class.desktop')));
   assert.equal(fs.readFileSync(path.join(root, 'shortcut'), 'utf8'), 'xfce4-popup-whiskermenu');
-  assert.equal(fs.readFileSync(path.join(root, 'screenshot-shortcut'), 'utf8'), 'xfce4-screenshooter -r');
+  assert.equal(fs.readFileSync(path.join(root, 'screenshot-shortcut'), 'utf8'), 'xfce4-screenshooter -r -c');
   assert.equal(fs.readFileSync(path.join(root, '.config/xfce4/helpers.rc'), 'utf8'), 'TerminalEmulator=xfce4-terminal\n');
   const autostart = path.join(root, '.config/autostart/crd-panel-workarea.desktop');
   const before = fs.statSync(autostart).mtimeMs;

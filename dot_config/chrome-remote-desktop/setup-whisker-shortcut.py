@@ -10,9 +10,9 @@ import xml.etree.ElementTree as ET
 channel = 'xfce4-keyboard-shortcuts'
 if sys.argv[1:] == ['--screenshot']:
     key = '<Primary><Shift>s'
-    command = 'xfce4-screenshooter -r'
+    command = 'xfce4-screenshooter -r -c'
     label = 'Ctrl+Shift+S'
-    action = 'the region screenshot tool'
+    action = 'the region-to-clipboard screenshot tool'
 else:
     key = 'Super_L'
     command = 'xfce4-popup-whiskermenu'

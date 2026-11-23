@@ -1,8 +1,10 @@
 # Forked XFCE taskbar
 
 `mise run desktop:setup` installs SHA-256-verified release packages on Debian 13
-amd64 from `rasyidrafi/xfce4-docklike-plugin` and `rasyidrafi/xfce4-whiskermenu-plugin`
-(branch `taskbar-integration`). No local compilation or GitHub login is required.
+amd64 from three personal forks: `rasyidrafi/xfce4-docklike-plugin`,
+`rasyidrafi/xfce4-whiskermenu-plugin`, and `rasyidrafi/xfce4-screenshooter`.
+Each fork uses `main` for development. Setup pins exact releases rather than
+following a moving branch. No local compilation or GitHub login is required.
 Other OS/architecture combinations retain the ordinary XFCE setup; do not install
 these amd64 packages on them. The package names are the normal XFCE names so the
 package manager owns the files; rerunning setup checks the exact fork versions.

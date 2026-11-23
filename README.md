@@ -861,10 +861,12 @@ adds **Extract Here** and **Extract To…** for `.7z` archives in Thunar. Repeat
 runs skip archive installation when these packages are already installed.
 Reopen Thunar after the first installation to load the plugin; setup leaves
 open file manager windows alone.
-It installs `xfce4-screenshooter`; the initial XFCE preset binds **Ctrl+Shift+S**
-to interactive screenshot area selection and the **Super** key to Whisker Menu.
-Later setup runs preserve shortcut customizations except that they ensure the
-Super-key menu binding.
+On Debian 13 amd64, `desktop:setup` installs the checksum-verified release of
+the [Screenshooter fork](https://github.com/rasyidrafi/xfce4-screenshooter)
+with remembered actions. Other supported systems use the distro package.
+Setup binds **Ctrl+Shift+S** to select an area and immediately copy it to the
+clipboard, independent of Screenshooter's GUI preference. It also binds **Super**
+to Whisker Menu. Later runs ensure both bindings and preserve unrelated shortcuts.
 An XFCE autostart helper refreshes panel space reservations at login and after
 screen-size changes, working around stale work areas during CRD's “Resize to
 fit” with high-DPI mode off or on. It preserves panel sizes, does not force a

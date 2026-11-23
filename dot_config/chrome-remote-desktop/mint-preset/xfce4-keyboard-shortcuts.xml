@@ -2,7 +2,7 @@
 <channel name="xfce4-keyboard-shortcuts" version="1.0">
   <property name="commands" type="empty">
     <property name="custom" type="empty">
-      <property name="&lt;Primary&gt;&lt;Shift&gt;s" type="string" value="xfce4-screenshooter -r" />
+      <property name="&lt;Primary&gt;&lt;Shift&gt;s" type="string" value="xfce4-screenshooter -r -c" />
       <property name="Super_L" type="string" value="xfce4-popup-whiskermenu" />
     </property>
   </property>
