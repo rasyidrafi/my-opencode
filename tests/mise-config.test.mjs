@@ -73,7 +73,8 @@ for (const platform of ['linux', 'windows', 'android']) {
     assert.equal(names.includes('termux:xfce:setup'), platform === 'android');
     assert.equal(names.includes('mpv:setup'), platform === 'linux');
     assert.equal(names.includes('muse:setup'), platform !== 'android');
-    assert.equal(names.includes('cua:startup'), platform === 'linux');
+    assert.equal(names.includes('cua:setup'), platform === 'linux');
+    assert.equal(names.includes('cua:startup'), false);
     assert.equal(names.includes('crd:setup'), platform === 'linux');
     assert.equal(names.includes('codex:setup'), platform !== 'android');
     assert.equal(names.includes('playwriter:setup'), platform !== 'android');

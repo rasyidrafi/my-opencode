@@ -82,6 +82,20 @@ GitHub CLI (`gh`). Mise installs `gh`; install Git with `pkg install git` before
 
 ## Multi-platform tools and tasks
 
+### Cua Driver on Linux
+
+After `chezmoi apply`, run `mise run cua:setup` to install Cua Driver through
+the [official installer](https://cua.ai/cua-driver) if it is missing, install
+`at-spi2-core` on Debian/Ubuntu when needed, and enable its systemd user service.
+The installer leaves shell startup files and agent integrations alone. The task
+requires a running systemd user manager, curl and Bash for a new installation,
+and sudo for missing Debian accessibility packages. On other distributions,
+install the distribution's AT-SPI service separately. The task imports the
+current graphical environment and registers an XFCE login hook so the daemon
+gets the display after login. Each run restarts the daemon, briefly interrupting
+active Cua sessions; existing service or autostart files that differ are not
+overwritten. A graphical login is required for desktop control.
+
 Edit `.chezmoidata/mise.json` to update tool versions, default installation
 platforms, task scripts, and task platform lists. Platform names are `linux`,
 `windows`, and `android`. A tool's `platforms` list controls default installation,
@@ -794,7 +808,9 @@ XFCE Custom DPI also scales the Mint panel, tray, Whisker menu, desktop icons,
 Thunar sidebar, and selected XFWM distances. The panel and its icons use
 32/20 px at 96 DPI, 40/25 px at 120 DPI, and 48/30 px at 144 DPI. The watcher
 recalculates these sizes at login and when DPI changes. On Xorg, local
-libinput touchpads default to tap-to-click and natural scrolling.
+libinput touchpads default to tap-to-click and natural scrolling. On a local
+desktop with a backlight, setup also installs `pkexec` so XFCE Power Manager's
+privileged backlight helper can adjust screen brightness.
 
 Run `mise run selkies:setup` for a separate browser-accessible XFCE session.
 On Linux it runs the desktop setup first, then adds Selkies. It requires Debian
@@ -890,8 +906,12 @@ For a new XFCE profile it also installs Mint-Y icons, Whisker Menu, a cursor
 theme and XFCE Terminal. It uses the official Mint 22.3 XFCE settings for the
 panel, window manager, desktop, terminal and notifications, with the official
 Mint-Y-Dark-Aqua theme, Mint wallpaper, and Ubuntu fonts installed locally. The
-menu uses a Debian logo and generic launchers; Mint-specific XApp and power
-manager panel plugins are omitted. The first setup backs up an existing XFCE
+menu uses a Debian logo and generic launchers. The panel uses Mint's Status Tray,
+notification, XApp, power manager, audio and clock ordering. On Debian 13 and
+Ubuntu 24.04 amd64, setup installs the checksum-pinned Mint 22.3 XApp package
+when it is not available from configured repositories; unsupported systems
+retain the XFCE status tray. It also installs the XApp watcher when available.
+The first setup backs up an existing XFCE
 profile before initializing the preset; later runs preserve user changes and
 repair missing theme assets. A running CRD session is never restarted or reset
 by setup; the targeted desktop fixes above still apply. An existing session can

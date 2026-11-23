@@ -412,8 +412,8 @@
         "androidCleanEnv": false
       },
       {
-        "name": "cua:startup",
-        "description": "Enable and restart the Cua Driver systemd user service on Linux",
+        "name": "cua:setup",
+        "description": "Install Cua Driver and configure its graphical user service on Linux",
         "script": "cua/startup.sh",
         "args": "",
         "platforms": ["linux"],

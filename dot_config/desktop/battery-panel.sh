@@ -11,27 +11,23 @@ configure_status_area() {
   order_changed=false
   for property in $(xfconf-query -c "$channel" -l | grep -E '^/panels/panel-[0-9]+/plugin-ids$'); do
     current=$(xfconf-query -c "$channel" -p "$property" | tail -n +3)
-    notifications= tray= battery= volume= clock=
+    notifications= tray= xapp= battery= volume= clock=
     set --
     for id in $current; do
       case $(xfconf-query -c "$channel" -p "/plugins/plugin-$id") in
         notification-plugin) notifications="$notifications $id" ;;
         systray) tray="$tray $id" ;;
+        xapp-status-plugin) xapp="$xapp $id" ;;
         power-manager-plugin) battery="$battery $id" ;;
         pulseaudio) volume="$volume $id" ;;
         clock) clock="$clock $id" ;;
         *) set -- "$@" "$id" ;;
       esac
     done
-    [ -n "$battery" ] || continue
-    for id in $tray; do
-      xfconf-query -c "$channel" -p "/plugins/plugin-$id/symbolic-icons" -n -t bool -s true
-    done
     for id in $clock; do
-      # XFCE's digital clock layout 3 displays the time on one line.
-      xfconf-query -c "$channel" -p "/plugins/plugin-$id/digital-layout" -n -t uint -s 3
+      xfconf-query -c "$channel" -p "/plugins/plugin-$id/digital-layout" -n -t uint -s 1
     done
-    set -- "$@" $notifications $tray $battery $volume $clock
+    set -- "$@" $tray $notifications $xapp $battery $volume $clock
     if [ "$(printf '%s\n' "$@")" != "$current" ]; then
       ids="$*"
       set --
@@ -42,7 +38,9 @@ configure_status_area() {
       order_changed=true
     fi
   done
-  xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/show-panel-label -n -t int -s 0
+  if [ "$(xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/show-panel-label 2>/dev/null || :)" != 0 ]; then
+    xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/show-panel-label -n -t int -s 0
+  fi
   # A running panel reads the new plugin order on restart.
   if [ "$order_changed" = true ]; then
     xfce4-panel --restart
@@ -53,7 +51,12 @@ configure_status_area() {
 restarted=false
 for attempt in 1 2 3 4 5 6 7 8 9 10; do
   if pgrep -u "$(id -u)" -x xfce4-panel >/dev/null 2>&1; then
-    if ! has_battery_plugin; then
+    if [ -f /usr/share/xfce4/panel/plugins/xapp-status-plugin.desktop ] &&
+      ! xfconf-query -c xfce4-panel -lv | grep -Eq '^/plugins/plugin-[0-9]+[[:space:]]+xapp-status-plugin$'; then
+      xfce4-panel --add=xapp-status-plugin
+      sleep 1
+    fi
+    if [ -f /usr/share/xfce4/panel/plugins/power-manager-plugin.desktop ] && ! has_battery_plugin; then
       xfce4-panel --add=power-manager-plugin
       sleep 1
       if ! has_battery_plugin; then

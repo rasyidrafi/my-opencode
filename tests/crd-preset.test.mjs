@@ -9,6 +9,20 @@ import { test as portableTest } from 'node:test';
 const test = process.platform === 'linux' ? portableTest : portableTest.skip;
 
 const source = new URL('../dot_config/chrome-remote-desktop/', import.meta.url);
+test('Mint panel preset contains the official status plugins in order', () => {
+  const result = spawnSync('python3', ['-c', `
+import sys, xml.etree.ElementTree as E
+r = E.parse(sys.argv[1]).getroot()
+panel = r.find("./property[@name='panels']/property[@name='panel-1']/property[@name='plugin-ids']")
+plugins = r.find("./property[@name='plugins']")
+names = {p.get('name')[7:]: p.get('value') for p in plugins}
+assert [names[x.get('value')] for x in panel][-6:] == ['systray', 'notification-plugin', 'xapp-status-plugin', 'power-manager-plugin', 'pulseaudio', 'clock']
+clock = plugins.find("./property[@name='plugin-13']")
+assert clock.find("./property[@name='digital-layout']").get('value') == '1'
+assert clock.find("./property[@name='digital-time-format']").get('value') == '%H:%M'
+`, new URL('mint-preset/xfce4-panel.xml', source).pathname], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+});
 test('CRD uninstall purges only its package and local host data, and is repeatable', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'crd-uninstall-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));

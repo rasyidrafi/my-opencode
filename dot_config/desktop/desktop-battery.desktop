@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=Add XFCE battery indicator
-Exec=sh -c "exec sh \"\\${XDG_CONFIG_HOME:-\\$HOME/.config}/desktop/battery-panel.sh\""
+Name=Configure XFCE status panel
+Exec=sh -c "exec sh ${XDG_CONFIG_HOME:-$HOME/.config}/desktop/battery-panel.sh"
 OnlyShowIn=XFCE;
 Terminal=false

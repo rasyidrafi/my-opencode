@@ -3,6 +3,8 @@
 import os
 from pathlib import Path
 import shutil
+import subprocess
+import xml.etree.ElementTree as ET
 from xml.sax.saxutils import escape
 
 home = Path.home()
@@ -39,6 +41,20 @@ for src in preset.glob('*.xml'):
     data = src.read_text(encoding='utf-8').replace('MINT_WALLPAPER_PATH', escape(str(wallpaper), {'"': '&quot;'}))
     if src.name in ('xsettings.xml', 'xfwm4.xml'):
         data = data.replace('Mint-Y-Dark-Aqua', theme_name)
+    if src.name == 'xfce4-panel.xml':
+        panel = ET.fromstring(data)
+        ids = panel.find("./property[@name='panels']/property[@name='panel-1']/property[@name='plugin-ids']")
+        plugins = panel.find("./property[@name='plugins']")
+        for plugin_id, package in [('10', 'xfce4-xapp-status-plugin'), ('11', 'xfce4-power-manager-plugins')]:
+            installed = subprocess.run(['dpkg-query', '-W', '-f=${db:Status-Status}', package], capture_output=True, text=True)
+            if installed.stdout != 'installed':
+                for node in list(ids):
+                    if node.get('value') == plugin_id:
+                        ids.remove(node)
+                for node in list(plugins):
+                    if node.get('name') == 'plugin-' + plugin_id:
+                        plugins.remove(node)
+        data = ET.tostring(panel, encoding='unicode')
     (channels / src.name).write_text(data, encoding='utf-8')
 shutil.copytree(preset / 'panel', xfce / 'panel', dirs_exist_ok=True)
 (xfce / 'terminal').mkdir(parents=True, exist_ok=True)

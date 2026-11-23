@@ -124,7 +124,7 @@ configure_archive_support() {
 
 install_desktop_packages() {
   missing=''
-  for package in xfce4 dbus-x11 xfce4-whiskermenu-plugin mint-y-icons bibata-cursor-theme xfce4-terminal xfce4-notifyd xfce4-screenshooter desktop-base python3 x11-utils pipewire wireplumber libasound2-plugins pulseaudio-utils; do
+  for package in xfce4 dbus-x11 xfce4-whiskermenu-plugin mint-y-icons bibata-cursor-theme xfce4-terminal xfce4-notifyd xfce4-screenshooter desktop-base python3 x11-utils pipewire wireplumber libasound2-plugins pulseaudio-utils pavucontrol xfce4-power-manager xfce4-power-manager-plugins upower; do
     if [ "$(dpkg-query -W -f='${db:Status-Status}' "$package" 2>/dev/null || :)" != installed ]; then
       missing="$missing $package"
     fi
@@ -133,6 +133,47 @@ install_desktop_packages() {
     echo "Installing missing desktop packages:$missing"
     as_root apt-get update
     as_root apt-get install -y --no-install-recommends --no-upgrade $missing
+  fi
+  # Respect an existing PulseAudio server instead of replacing it.
+  if [ "$(dpkg-query -W -f='${db:Status-Status}' pipewire-pulse 2>/dev/null || :)" != installed ] &&
+    [ "$(dpkg-query -W -f='${db:Status-Status}' pulseaudio 2>/dev/null || :)" != installed ]; then
+    as_root apt-get update
+    as_root apt-get install -y --no-install-recommends --no-upgrade pipewire-pulse
+  fi
+}
+
+install_xapp_plugin() {
+  if [ "$(dpkg-query -W -f='${db:Status-Status}' xfce4-xapp-status-plugin 2>/dev/null || :)" != installed ]; then
+    if apt-cache show xfce4-xapp-status-plugin >/dev/null 2>&1; then
+      as_root apt-get update
+      as_root apt-get install -y --no-install-recommends xfce4-xapp-status-plugin
+    else
+      # The official Mint 22.3 package is published for amd64 only.
+      if [ "$(dpkg --print-architecture)" != amd64 ]; then
+        echo 'XApp panel plugin unavailable for this architecture; using XFCE Status Tray.'
+        return 0
+      fi
+      . /etc/os-release
+      case "$ID:$VERSION_ID" in
+        debian:13|ubuntu:24.04) package='xfce4-xapp-status-plugin_0.3.6+wilma_amd64.deb'; hash=73fff87581f22a9897e5bfa03b23a0aaa58384ee9427afcd6b7e9ebc7fa81d21 ;;
+        *) echo 'XApp panel plugin unavailable for this distribution; using XFCE Status Tray.'; return 0 ;;
+      esac
+      tmp=$(mktemp -d)
+      if ! curl -fsSL "https://mirrors.edge.kernel.org/linuxmint-packages/pool/backport/x/xfce4-xapp-status-plugin/$package" -o "$tmp/xapp.deb" ||
+        ! printf '%s  %s\n' "$hash" "$tmp/xapp.deb" | sha256sum -c -; then
+        rm -f "$tmp/xapp.deb"; rmdir "$tmp"
+        echo 'Could not download verified XApp panel plugin.' >&2
+        return 1
+      fi
+      if ! as_root apt-get update || ! as_root apt-get install -y --no-install-recommends "$tmp/xapp.deb"; then
+        rm -f "$tmp/xapp.deb"; rmdir "$tmp"; return 1
+      fi
+      rm -f "$tmp/xapp.deb"; rmdir "$tmp"
+    fi
+  fi
+  if [ "$(dpkg-query -W -f='${db:Status-Status}' xapp-sn-watcher 2>/dev/null || :)" != installed ] && apt-cache show xapp-sn-watcher >/dev/null 2>&1; then
+    as_root apt-get update
+    as_root apt-get install -y --no-install-recommends xapp-sn-watcher
   fi
 }
 
@@ -240,18 +281,11 @@ configure_desktop_dns() {
 }
 
 configure_battery_panel() {
-  if ! grep -qsx Battery /sys/class/power_supply/*/type; then
-    return
-  fi
-  battery_missing=''
-  for package in xfce4-power-manager xfce4-power-manager-plugins upower; do
-    if [ "$(dpkg-query -W -f='${db:Status-Status}' "$package" 2>/dev/null || :)" != installed ]; then
-      battery_missing="$battery_missing $package"
-    fi
-  done
-  if [ -n "$battery_missing" ]; then
+  set -- /sys/class/backlight/*
+  if [ "$phase" = desktop ] && [ -e "$1" ] &&
+    [ "$(dpkg-query -W -f='${db:Status-Status}' pkexec 2>/dev/null || :)" != installed ]; then
     as_root apt-get update
-    as_root apt-get install -y --no-install-recommends --no-upgrade $battery_missing
+    as_root apt-get install -y --no-install-recommends --no-upgrade pkexec
   fi
   source_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
   config=${XDG_CONFIG_HOME:-$HOME/.config}
@@ -279,10 +313,17 @@ configure_local_login() {
     echo 'The XFCE login session is missing after package installation.' >&2
     exit 1
   fi
+  if [ ! -x /usr/lib/policykit-1-gnome/polkit-gnome-authentication-agent-1 ] &&
+    [ ! -x /usr/lib/mate-polkit/polkit-mate-authentication-agent-1 ] &&
+    [ ! -x /usr/libexec/polkit-mate-authentication-agent-1 ] &&
+    [ ! -x /usr/libexec/polkit-gnome-authentication-agent-1 ] &&
+    [ "$(dpkg-query -W -f='${db:Status-Status}' mate-polkit 2>/dev/null || :)" != installed ]; then
+    as_root apt-get update
+    as_root apt-get install -y --no-install-recommends --no-upgrade mate-polkit
+  fi
   configure_touchpad
   configure_wifi_panel
   configure_desktop_dns
-  configure_battery_panel
   if systemctl cat display-manager.service >/dev/null 2>&1; then
     echo 'XFCE is available in the existing display manager.'
     return
@@ -315,6 +356,7 @@ else
 fi
 if [ "$phase" = packages ]; then
   install_desktop_packages
+  install_xapp_plugin
   install_terminal_fonts
   exit 0
 fi
@@ -337,6 +379,7 @@ fi
 
 if [ "$phase" = desktop ]; then
   install_desktop_packages
+  install_xapp_plugin
 fi
 
 # Enable on every run, independently of the one-time Mint profile marker.
@@ -359,6 +402,7 @@ if [ "$phase" = desktop ]; then
 fi
 /usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-terminal-font.py"
 configure_desktop_scaling
+configure_battery_panel
 
 if [ "$phase" = desktop ]; then
   configure_local_login
