@@ -441,7 +441,7 @@
       {
         "name": "desktop:setup",
         "description": "Install and configure XFCE and register it for local login when a display is connected",
-        "script": "desktop/setup.sh",
+        "script": "desktop/setup-with-taskbar.sh",
         "args": "",
         "platforms": ["linux"],
         "androidCleanEnv": false,
