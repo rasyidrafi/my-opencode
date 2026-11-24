@@ -15,7 +15,8 @@ config=$HOME/.config/chrome-remote-desktop
 rm -f -- "$config"/host\#*.json "$config"/paired-clients/*.json
 if [ -d "$config/paired-clients" ]; then rmdir --ignore-fail-on-non-empty -- "$config/paired-clients"; fi
 session=$HOME/.chrome-remote-desktop-session
-if printf '%s\n' 'exec /etc/X11/Xsession /usr/bin/xfce4-session' | cmp -s - "$session"; then
+if cmp -s "$(dirname -- "$0")/session.sh" "$session" ||
+   printf '%s\n' 'exec /etc/X11/Xsession /usr/bin/xfce4-session' | cmp -s - "$session"; then
   rm -- "$session"
 fi
 echo 'Chrome Remote Desktop removed locally. Selkies and shared XFCE settings were preserved.'

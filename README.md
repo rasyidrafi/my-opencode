@@ -841,6 +841,12 @@ disables authentication: any local user can control the desktop. Setup restarts
 a running session only when the installed service definition changes.
 For logs: `journalctl --user -u selkies-desktop.service`.
 
+On Linux, run `mise run selkies:uninstall` from SSH or another independent
+session to stop and disable Selkies, purge its system-wide package, and remove
+the invoking user's Selkies service and generated web/session data. This ends
+any active Selkies session, but preserves XFCE, its settings, and other desktop
+packages. The chezmoi-managed Selkies setup scripts remain available for reuse.
+
 On Android/Termux (ARM64 or x86-64), run these after applying chezmoi:
 
 ```sh
@@ -858,7 +864,14 @@ root. Android can stop the Termux process in the background. Rerun
 session PID and `proot-distro kill PID` to stop it. The guest log is at
 `/home/desktop/.local/state/selkies-desktop/session.log`.
 
-`mise run crd:setup` is deprecated and always fails. Use `mise run selkies:setup`.
+On Debian or Ubuntu amd64, run `mise run desktop:setup` for the shared XFCE
+desktop, then `mise run crd:setup` to install Chrome Remote Desktop. CRD setup
+starts the XFCE panel, desktop, and window manager directly, bypassing `xfce4-session`.
+It upgrades the old stock launcher, preserves custom launchers, and never restarts an active CRD session.
+For a new host, open https://remotedesktop.google.com/headless, authorize it, and
+run the Debian Linux command Google provides in an interactive terminal; choose
+a PIN when prompted. For an existing registered host, setup starts the stopped
+service. CRD setup does not install or modify the shared desktop configuration.
 To retire an installed CRD host, use `mise run crd:uninstall` from Selkies or SSH,
 not the CRD session being removed. It purges the machine-wide CRD package (ending
 CRD access for all users) and removes only the invoking user's local registrations,

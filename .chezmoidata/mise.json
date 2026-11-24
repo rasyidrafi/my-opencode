@@ -422,7 +422,7 @@
       },
       {
         "name": "crd:setup",
-        "description": "Deprecated: use selkies:setup instead",
+        "description": "Install and register Chrome Remote Desktop without changing XFCE settings",
         "script": "chrome-remote-desktop/setup.sh",
         "args": "",
         "platforms": ["linux"],
@@ -453,6 +453,15 @@
         "script": "selkies/setup.sh",
         "args": "",
         "platforms": ["linux", "android"],
+        "androidCleanEnv": false,
+        "runner": "sh"
+      },
+      {
+        "name": "selkies:uninstall",
+        "description": "Remove Selkies while preserving the XFCE desktop",
+        "script": "selkies/uninstall.sh",
+        "args": "",
+        "platforms": ["linux"],
         "androidCleanEnv": false,
         "runner": "sh"
       },

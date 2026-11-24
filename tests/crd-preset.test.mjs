@@ -377,7 +377,34 @@ printf '%s' "$value" > "$file"
   assert.equal(fs.readFileSync(path.join(root, 'timezone-calls'), 'utf8'), 'timedatectl set-timezone Asia/Jakarta\n');
 });
 
-test('CRD setup fails immediately and desktop setup installs only missing desktop packages', t => {
+test('CRD setup preserves active sessions and starts registered hosts without changing desktop settings', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'crd-setup-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const put = (name, contents) => fs.writeFileSync(path.join(root, name), `#!/bin/sh\n${contents}\n`, { mode: 0o755 });
+  put('id', '[ "$1" = -u ] && echo 1000 || echo test');
+  put('dpkg', 'echo amd64');
+  put('dpkg-query', 'printf installed');
+  put('systemctl', '[ -f "$HOME/started" ]');
+  put('sudo', 'echo "$*" >> "$HOME/calls"; touch "$HOME/started"');
+  const config = path.join(root, '.config/chrome-remote-desktop');
+  fs.mkdirSync(config, { recursive: true });
+  fs.writeFileSync(path.join(config, 'host#test.json'), '{}');
+  const run = () => spawnSync('sh', [new URL('setup.sh', source).pathname], { env: { ...process.env, TERMUX_VERSION: '', PREFIX: '', HOME: root, PATH: `${root}:${process.env.PATH}` }, encoding: 'utf8' });
+  const first = run();
+  assert.equal(first.status, 0, first.stderr);
+  assert.equal(fs.readFileSync(path.join(root, 'calls'), 'utf8'), 'systemctl start chrome-remote-desktop@test.service\n');
+  const session = path.join(root, '.chrome-remote-desktop-session');
+  assert.equal(fs.readFileSync(session, 'utf8'), fs.readFileSync(new URL('session.sh', source), 'utf8'));
+  fs.writeFileSync(session, 'custom session\n');
+  const again = run();
+  assert.equal(again.status, 0, again.stderr);
+  assert.match(again.stdout, /already running/);
+  assert.equal(fs.readFileSync(session, 'utf8'), 'custom session\n');
+  assert.equal(fs.readFileSync(path.join(root, 'calls'), 'utf8'), 'systemctl start chrome-remote-desktop@test.service\n');
+  assert.ok(!fs.existsSync(path.join(root, '.config/xfce4')));
+});
+
+test('desktop setup installs only missing desktop packages', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'crd-audio-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const put = (name, contents) => fs.writeFileSync(path.join(root, name), `#!/bin/sh\n${contents}\n`, { mode: 0o755 });
@@ -406,11 +433,6 @@ printf '%s' "$value" > "$HOME/shortcut"
   const state = path.join(root, '.local/state/crd-mint');
   fs.mkdirSync(state, { recursive: true });
   fs.writeFileSync(path.join(state, 'preset-v1-complete'), 'done');
-  const result = spawnSync('sh', [new URL('setup.sh', source).pathname], { env: { ...process.env, DISPLAY: '', DBUS_SESSION_BUS_ADDRESS: '', HOME: root, PATH: `${root}:${process.env.PATH}` }, encoding: 'utf8' });
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /deprecated.*mise run selkies:setup/);
-  assert.ok(!fs.existsSync(path.join(root, 'sudo-calls')));
-
   // Standalone desktop setup works on ARM without touching CRD.
   put('dpkg', 'echo arm64');
   put('loginctl', 'exit 1');
