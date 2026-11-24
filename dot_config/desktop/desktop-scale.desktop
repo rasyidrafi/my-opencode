@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
 Name=XFCE DPI scaling
-Exec=sh -c "exec python3 \"\\${XDG_CONFIG_HOME:-\\$HOME/.config}/desktop/scale-desktop.py\""
+Exec=/usr/bin/python3 -c "import os, runpy; runpy.run_path(os.path.join(os.getenv('XDG_CONFIG_HOME') or os.path.expanduser('~/.config'), 'desktop/scale-desktop.py'), run_name='__main__')"
 OnlyShowIn=XFCE;
 Terminal=false
