@@ -10,7 +10,7 @@ config = home / '.config/chrome-remote-desktop'
 target = home / '.config/gtk-3.0/gtk.css'
 start = '/* BEGIN crd-managed PWA titlebuttons */'
 end = '/* END crd-managed PWA titlebuttons */'
-block = start + '\n' + (config / 'pwa-titlebuttons.css').read_text() + end + '\n'
+block = start + '\n' + (config / 'pwa-titlebuttons.css').read_text() + (config / 'panel-status-icons.css').read_text() + end + '\n'
 old = target.read_text() if target.exists() else ''
 if start in old or end in old:
     if old.count(start) != 1 or old.count(end) != 1 or old.index(start) > old.index(end):

@@ -16,8 +16,9 @@ r = E.parse(sys.argv[1]).getroot()
 panel = r.find("./property[@name='panels']/property[@name='panel-1']/property[@name='plugin-ids']")
 plugins = r.find("./property[@name='plugins']")
 names = {p.get('name')[7:]: p.get('value') for p in plugins}
-assert [names[x.get('value')] for x in panel][-6:] == ['systray', 'notification-plugin', 'xapp-status-plugin', 'power-manager-plugin', 'pulseaudio', 'clock']
+assert [names[x.get('value')] for x in panel][-6:] == ['systray', 'notification-plugin', 'xapp-status-plugin', 'pulseaudio', 'power-manager-plugin', 'clock']
 clock = plugins.find("./property[@name='plugin-13']")
+assert plugins.find("./property[@value='systray']/property[@name='square-icons'][@type='bool']").get('value') == 'true'
 assert clock.find("./property[@name='digital-layout']").get('value') == '1'
 assert clock.find("./property[@name='digital-time-format']").get('value') == '%H:%M'
 `, new URL('mint-preset/xfce4-panel.xml', source).pathname], { encoding: 'utf8' });
@@ -45,7 +46,7 @@ test('CRD uninstall purges only its package and local host data, and is repeatab
   assert.equal(fs.readFileSync(path.join(root, 'calls'), 'utf8'), 'dpkg --purge chrome-remote-desktop\n');
 });
 function titlebuttonFixtures(config) {
-  for (const file of ['setup-titlebuttons.py', 'pwa-titlebuttons.css', 'setup-terminal-font.py', 'setup-terminal-helper.py', 'setup-whisker-shortcut.py']) {
+  for (const file of ['setup-titlebuttons.py', 'pwa-titlebuttons.css', 'panel-status-icons.css', 'setup-terminal-font.py', 'setup-terminal-helper.py', 'setup-whisker-shortcut.py']) {
     fs.copyFileSync(new URL(file, source), path.join(config, file));
   }
 }
@@ -290,6 +291,8 @@ test('light theme is an opt-in for initial GTK and window manager settings', t =
 
 test('Desktop setup enables fixes idempotently without unnecessary installation or restart', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'crd-active-'));
+  // Keep the desktop fixture offline; the Mint network applet is amd64-only.
+  fs.writeFileSync(path.join(root, 'dpkg'), '#!/bin/sh\necho arm64\n', { mode: 0o755 });
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.writeFileSync(path.join(root, 'loginctl'), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
   const stub = path.join(root, 'systemctl');
@@ -306,7 +309,9 @@ test('Desktop setup enables fixes idempotently without unnecessary installation 
   fs.writeFileSync(path.join(root, 'dpkg-query'), '#!/bin/sh\nprintf installed\n', { mode: 0o755 });
   fs.writeFileSync(path.join(root, 'timezone'), 'Asia/Jakarta\n');
   fs.writeFileSync(path.join(root, 'xfconf-query'), `#!/bin/sh
+if [ "$2:$3" = xfce4-panel:-lv ]; then echo '/plugins/plugin-27 systray'; exit 0; fi
 case "$4" in
+  /plugins/plugin-27/square-icons) file="$HOME/tray-square" ;;
   /commands/custom/Super_L) file="$HOME/shortcut" ;;
   '/commands/custom/<Primary><Shift>s') file="$HOME/screenshot-shortcut" ;;
   *) exit 1 ;;
@@ -328,6 +333,7 @@ printf '%s' "$value" > "$file"
   const result = run();
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /already initialized/);
+  assert.equal(fs.readFileSync(path.join(root, 'tray-square'), 'utf8'), 'true');
   assert.match(result.stdout, /No connected display .* Skipping local login setup/);
   assert.ok(!fs.existsSync(path.join(root, '.config/autostart/crd-pwa-window-class.desktop')));
   assert.equal(fs.readFileSync(path.join(root, 'shortcut'), 'utf8'), 'xfce4-popup-whiskermenu');
@@ -384,6 +390,7 @@ test('CRD setup fails immediately and desktop setup installs only missing deskto
   fs.writeFileSync(path.join(config, 'host#test.json'), '{}');
   titlebuttonFixtures(config);
   fs.writeFileSync(path.join(root, 'xfconf-query'), `#!/bin/sh
+if [ "$2:$3" = xfce4-panel:-lv ]; then exit 0; fi
 if [ -f "$HOME/shortcut" ] && [ "$#" -eq 4 ]; then cat "$HOME/shortcut"; exit 0; fi
 value=''
 previous=''

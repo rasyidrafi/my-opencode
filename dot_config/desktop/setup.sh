@@ -402,7 +402,16 @@ if [ "$phase" = desktop ]; then
 fi
 /usr/bin/python3 "$HOME/.config/chrome-remote-desktop/setup-terminal-font.py"
 configure_desktop_scaling
+# Existing profiles skip the preset; resolve their actual tray instance IDs.
+if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+  sh "$(dirname "$0")/configure-tray-spacing.sh"
+else
+  dbus-run-session -- sh "$(dirname "$0")/configure-tray-spacing.sh"
+fi
 configure_battery_panel
+if [ "$phase" = desktop ]; then
+  sh "$(dirname "$0")/configure-network-applet.sh"
+fi
 
 if [ "$phase" = desktop ]; then
   configure_local_login

@@ -27,7 +27,9 @@ def dimensions(dpi):
     # Thunar enum names, not raw pixels. Only the preset's sidebar is managed.
     names = ['SMALLEST', 'SMALLER', 'SMALL', 'NORMAL', 'LARGE', 'LARGER', 'LARGEST']
     yield 'thunar', '/shortcuts-icon-size', 'THUNAR_ICON_SIZE_' + names[nearest(16, (16, 24, 32, 48, 64, 96, 128))]
-    yield 'systray', 'icon-size', px(20)
+    yield 'systray', 'icon-size', px(16)
+    yield 'xapp-status-plugin', 'symbolic-icon-size', px(16)
+    yield 'xapp-status-plugin', 'color-icon-size', px(16)
     yield 'whiskermenu', 'menu-width', px(450)
     yield 'whiskermenu', 'menu-height', px(500)
     for key, base in [('launcher-icon-size', 32), ('category-icon-size', 24)]:
@@ -46,6 +48,16 @@ def apply_dimensions():
         if len(fields) == 2 and fields[0].startswith('/plugins/plugin-') and fields[0].count('/') == 2:
             plugins.setdefault(fields[1], []).append(fields[0])
     for channel, key, value in dimensions(dpi):
+        if channel == 'xapp-status-plugin':
+            if channel in plugins:
+                from gi.repository import Gio
+                schema = Gio.SettingsSchemaSource.get_default().lookup('org.x.apps.xfce4-status-plugin', True)
+                if schema and schema.has_key(key):
+                    settings = Gio.Settings.new_full(schema, None, None)
+                    if settings.get_int(key) != value:
+                        settings.set_int(key, value)
+                        Gio.Settings.sync()
+            continue
         plugin = channel in ('whiskermenu', 'systray')
         targets = [('xfce4-panel', p + '/' + key) for p in plugins.get(channel, [])] if plugin else [(channel, key)]
         for ch, prop in targets:

@@ -27,7 +27,7 @@ configure_status_area() {
     for id in $clock; do
       xfconf-query -c "$channel" -p "/plugins/plugin-$id/digital-layout" -n -t uint -s 1
     done
-    set -- "$@" $tray $notifications $xapp $battery $volume $clock
+    set -- "$@" $tray $notifications $xapp $volume $battery $clock
     if [ "$(printf '%s\n' "$@")" != "$current" ]; then
       ids="$*"
       set --

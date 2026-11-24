@@ -1,0 +1,17 @@
+/* These plugins use the panel-wide icon size (20 logical px). Scale only
+ * their painted glyphs to 16 logical px; leave buttons and menus alone. */
+.xfce4-panel #xfce4-notification-plugin image,
+.xfce4-panel #pulseaudio-button image,
+.xfce4-panel #xfce4-power-manager-plugin image {
+  -gtk-icon-transform: scale(0.8);
+}
+
+/* Native status buttons are already square; XApp's Wi-Fi button otherwise
+ * hugs its image. At the preset's 10pt font, 2.4em = 32px at 96 DPI. */
+.xfce4-panel button#xfce-panel-toggle-button {
+  min-width: 2.4em;
+  padding-left: 0;
+  padding-right: 0;
+  border-left-width: 0;
+  border-right-width: 0;
+}
