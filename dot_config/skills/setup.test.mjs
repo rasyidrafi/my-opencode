@@ -42,22 +42,6 @@ test('dry run writes nothing', t => {
   assert.equal(fs.existsSync(path.join(f.project, '.agents')), false);
 });
 
-test('simulator-hub installs a complete independent copy and preserves existing paths', t => {
-  const f = fixture(t);
-  const source = path.join(f.catalog, 'simulator-hub');
-  fs.mkdirSync(path.join(source, 'references'), { recursive: true });
-  fs.writeFileSync(path.join(source, 'SKILL.md'), 'original');
-  fs.writeFileSync(path.join(source, 'references', 'api.md'), 'reference');
-  const plan = planInstall({ ...f, names: ['simulator-hub'] });
-  applyPlan(plan);
-  const target = plan.links[0].target;
-  assert.ok(fs.lstatSync(target).isDirectory());
-  assert.equal(fs.readFileSync(path.join(target, 'references', 'api.md'), 'utf8'), 'reference');
-  fs.writeFileSync(path.join(source, 'SKILL.md'), 'changed');
-  assert.equal(fs.readFileSync(path.join(target, 'SKILL.md'), 'utf8'), 'original');
-  assert.throws(() => planInstall({ ...f, names: ['simulator-hub'] }), /Refusing to replace/);
-});
-
 test('validates all skills before making any changes', t => {
   const f = fixture(t);
   assert.throws(() => planInstall({ ...f, names: ['ask-bun', '../bad'] }), /Unknown skill/);

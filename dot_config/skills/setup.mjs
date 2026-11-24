@@ -6,20 +6,10 @@ import { createInterface } from 'node:readline/promises';
 
 const defaultCatalog = home => path.join(home, '.local/share/my-opencode/optional-skills');
 const validName = name => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name);
-const copiedSkills = new Set(['simulator-hub']);
 
 function stat(file) {
   try { return fs.lstatSync(file); }
   catch (error) { if (error.code === 'ENOENT') return null; throw error; }
-}
-
-function validateCopySource(directory) {
-  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    const file = path.join(directory, entry.name);
-    if (entry.isSymbolicLink()) throw new Error(`Refusing symlink in skill copy: ${file}`);
-    if (entry.isDirectory()) validateCopySource(file);
-    else if (!entry.isFile()) throw new Error(`Refusing special file in skill copy: ${file}`);
-  }
 }
 
 export function catalogSkills(catalog) {
@@ -74,13 +64,10 @@ export function planInstall({ names, scope, project, home = os.homedir(), catalo
     const source = fs.realpathSync(path.join(catalog, name));
     const target = path.join(destination, name);
     const entry = stat(target);
-    const copy = copiedSkills.has(name);
-    if (copy) validateCopySource(source);
-    if (copy && entry) throw new Error(`Refusing to replace existing path: ${target}`);
     if (entry && (!entry.isSymbolicLink() || !fs.existsSync(target) || fs.realpathSync(target) !== source)) {
       throw new Error(`Refusing to replace existing path: ${target}`);
     }
-    return { source, target, exists: Boolean(entry), copy };
+    return { source, target, exists: Boolean(entry) };
   });
   return { root, destination, links };
 }
@@ -93,21 +80,12 @@ export function applyPlan(plan, { dryRun = false } = {}) {
   try {
     for (const link of plan.links) {
       if (link.exists) continue;
-      if (link.copy) {
-        fs.mkdirSync(link.target);
-        created.push(link);
-        for (const name of fs.readdirSync(link.source)) {
-          fs.cpSync(path.join(link.source, name), path.join(link.target, name), { recursive: true, dereference: false, errorOnExist: true, force: false });
-        }
-        continue;
-      }
       fs.symlinkSync(link.source, link.target, process.platform === 'win32' ? 'junction' : 'dir');
       created.push(link);
     }
   } catch (error) {
     // Roll back only links created by this invocation and still owned by it.
     for (const link of created.reverse()) {
-      if (link.copy) { fs.rmSync(link.target, { recursive: true, force: true }); continue; }
       if (stat(link.target)?.isSymbolicLink() && fs.existsSync(link.target) && fs.realpathSync(link.target) === link.source) fs.unlinkSync(link.target);
     }
     throw error;
@@ -147,13 +125,13 @@ export async function main(argv = process.argv.slice(2)) {
       }
     }
     const plan = planInstall({ ...args, catalog, cwd: process.env.MISE_ORIGINAL_CWD || process.cwd() });
-    for (const link of plan.links) console.log(`${link.exists ? 'Already linked' : args.dryRun ? (link.copy ? 'Would copy' : 'Would link') : (link.copy ? 'Copy' : 'Link')}: ${link.target} <- ${link.source}`);
+    for (const link of plan.links) console.log(`${link.exists ? 'Already linked' : args.dryRun ? 'Would link' : 'Link'}: ${link.target} <- ${link.source}`);
     if (interactive && !args.dryRun && (await prompt.question('Install these skills? [y/N]: ')).trim().toLowerCase() !== 'y') {
       console.log('Cancelled.');
       return;
     }
     applyPlan(plan, args);
-    if (args.scope === 'project' && plan.links.some(link => !link.copy)) console.log('Local absolute symlinks should not be committed. Optionally add their paths to this project’s .git/info/exclude.');
+    if (args.scope === 'project') console.log('Local absolute symlinks should not be committed. Optionally add their paths to this project’s .git/info/exclude.');
   } finally { prompt?.close(); }
 }
 
