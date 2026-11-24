@@ -18,7 +18,7 @@ else:
     command = 'xfce4-popup-whiskermenu'
     label = 'Super key'
     action = 'Whisker Menu'
-shortcut = f'/commands/custom/{key}'
+override = '/commands/custom/override'
 
 env = os.environ.copy()
 if not env.get('DBUS_SESSION_BUS_ADDRESS'):
@@ -28,9 +28,13 @@ if not env.get('DBUS_SESSION_BUS_ADDRESS'):
     else:
         env.pop('DBUS_SESSION_BUS_ADDRESS', None)
 
-query = ['xfconf-query', '-c', channel, '-p', shortcut]
+query_base = ['xfconf-query', '-c', channel, '-p']
 live = False
 try:
+    # XFCE clones the defaults into custom bindings on first startup.
+    enabled = subprocess.run(query_base + [override], env=env, text=True, capture_output=True, timeout=5)
+    group = 'custom' if enabled.returncode == 0 and enabled.stdout.strip() == 'true' else 'default'
+    query = query_base + [f'/commands/{group}/{key}']
     current = subprocess.run(query, env=env, text=True, capture_output=True, timeout=5)
     if current.returncode == 0 and current.stdout.rstrip('\n') == command:
         print(f'{label} already opens {action}.')
@@ -50,7 +54,8 @@ if live:
 # A running xfconf session is not always available during CRD setup (for
 # example, on first install over SSH). Keep the persistent setting correct so
 # XFCE loads it at the next login instead of failing the whole setup task.
-target = Path.home() / '.config/xfce4/xfconf/xfce-perchannel-xml' / f'{channel}.xml'
+config = Path(os.environ.get('XDG_CONFIG_HOME') or Path.home() / '.config')
+target = config / 'xfce4/xfconf/xfce-perchannel-xml' / f'{channel}.xml'
 parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
 if target.exists():
     resolved = target.resolve()
@@ -68,8 +73,9 @@ def property_child(parent, name, kind):
     return ET.SubElement(parent, 'property', {'name': name, 'type': kind})
 
 commands = property_child(root, 'commands', 'empty')
-custom = property_child(commands, 'custom', 'empty')
-binding = property_child(custom, key, 'string')
+enabled = commands.find("./property[@name='custom']/property[@name='override']")
+group = 'custom' if enabled is not None and enabled.get('value') == 'true' else 'default'
+binding = property_child(property_child(commands, group, 'empty'), key, 'string')
 changed = binding.get('type') != 'string' or binding.get('value') != command
 binding.set('type', 'string')
 binding.set('value', command)

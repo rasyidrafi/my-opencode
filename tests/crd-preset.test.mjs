@@ -143,6 +143,8 @@ test('Whisker shortcut setup is idempotent and repairs the configured key', t =>
   const store = path.join(root, 'shortcut');
   const query = path.join(bin, 'xfconf-query');
   fs.writeFileSync(query, `#!/bin/sh
+[ "$4" = /commands/custom/override ] && { echo true; exit 0; }
+[ "$4" = /commands/custom/Super_L ] || exit 1
 if [ -f "$HOME/shortcut" ] && [ "$#" -eq 4 ]; then cat "$HOME/shortcut"; exit 0; fi
 value=''
 previous=''
@@ -173,13 +175,13 @@ test('Whisker shortcut setup falls back to persistent XFCE config without a sess
   fs.mkdirSync(path.dirname(channel), { recursive: true });
   fs.writeFileSync(channel, `<?xml version="1.0"?>\n<channel name="xfce4-keyboard-shortcuts" version="1.0"><property name="commands" type="empty"><property name="custom" type="empty"><property name="&lt;Primary&gt;&lt;Shift&gt;s" type="string" value="xfce4-screenshooter -r" /></property></property></channel>\n`);
   const run = () => spawnSync('/usr/bin/python3', [new URL('setup-whisker-shortcut.py', source).pathname], {
-    env: { ...process.env, HOME: root, PATH: bin, DBUS_SESSION_BUS_ADDRESS: '' }, encoding: 'utf8',
+    env: { ...process.env, HOME: root, XDG_CONFIG_HOME: path.join(root, '.config'), PATH: bin, DBUS_SESSION_BUS_ADDRESS: '' }, encoding: 'utf8',
   });
   let result = run();
   assert.equal(result.status, 0, result.stderr);
   let xml = fs.readFileSync(channel, 'utf8');
   assert.match(xml, /name="&lt;Primary&gt;&lt;Shift&gt;s" type="string" value="xfce4-screenshooter -r"/);
-  assert.match(xml, /name="Super_L" type="string" value="xfce4-popup-whiskermenu"/);
+  assert.match(xml, /name="default" type="empty">\s*<property name="Super_L" type="string" value="xfce4-popup-whiskermenu"/);
   const mtime = fs.statSync(channel).mtimeMs;
   result = run();
   assert.equal(result.status, 0, result.stderr);
@@ -254,6 +256,7 @@ test('seeds an existing XFCE profile once, backs it up, and preserves later edit
   assert.ok(desktop.includes('crd &amp; preset-'));
   assert.ok(!desktop.includes('MINT_WALLPAPER_PATH'));
   const shortcuts = path.join(xfce, 'xfconf/xfce-perchannel-xml/xfce4-keyboard-shortcuts.xml');
+  assert.match(fs.readFileSync(shortcuts, 'utf8'), /name="default" type="empty">/);
   assert.match(fs.readFileSync(shortcuts, 'utf8'), /name="&lt;Primary&gt;&lt;Shift&gt;s" type="string" value="xfce4-screenshooter -r -c"/);
   assert.match(fs.readFileSync(shortcuts, 'utf8'), /name="Super_L" type="string" value="xfce4-popup-whiskermenu"/);
   fs.writeFileSync(shortcuts, 'user shortcut');
@@ -312,8 +315,8 @@ test('Desktop setup enables fixes idempotently without unnecessary installation 
 if [ "$2:$3" = xfce4-panel:-lv ]; then echo '/plugins/plugin-27 systray'; exit 0; fi
 case "$4" in
   /plugins/plugin-27/square-icons) file="$HOME/tray-square" ;;
-  /commands/custom/Super_L) file="$HOME/shortcut" ;;
-  '/commands/custom/<Primary><Shift>s') file="$HOME/screenshot-shortcut" ;;
+  /commands/default/Super_L) file="$HOME/shortcut" ;;
+  '/commands/default/<Primary><Shift>s') file="$HOME/screenshot-shortcut" ;;
   *) exit 1 ;;
 esac
 if [ -f "$file" ] && [ "$#" -eq 4 ]; then cat "$file"; exit 0; fi
@@ -436,7 +439,7 @@ printf '%s' "$value" > "$HOME/shortcut"
   // Standalone desktop setup works on ARM without touching CRD.
   put('dpkg', 'echo arm64');
   put('loginctl', 'exit 1');
-  put('systemctl', 'echo "unexpected service access" >> "$HOME/service-calls"; exit 1');
+  put('systemctl', '[ "$*" = "--user is-active --quiet sockets.target" ] && exit 1; echo "unexpected service access" >> "$HOME/service-calls"; exit 1');
   fs.rmSync(path.join(root, '.chrome-remote-desktop-session'), { force: true });
   const desktop = spawnSync('sh', [new URL('../desktop/setup.sh', source).pathname], { env: { ...process.env, DISPLAY: '', DBUS_SESSION_BUS_ADDRESS: '', HOME: root, PATH: `${root}:${process.env.PATH}` }, encoding: 'utf8' });
   assert.equal(desktop.status, 0, desktop.stderr);

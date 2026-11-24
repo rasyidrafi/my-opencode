@@ -142,6 +142,21 @@ install_desktop_packages() {
   fi
 }
 
+start_desktop_audio() {
+  if [ "$(dpkg-query -W -f='${db:Status-Status}' pipewire-pulse 2>/dev/null || :)" != installed ] ||
+    ! systemctl --user is-active --quiet sockets.target; then
+    return 0
+  fi
+  if systemctl --user is-active --quiet pipewire.socket &&
+    systemctl --user is-active --quiet pipewire-pulse.socket &&
+    systemctl --user is-active --quiet wireplumber.service; then
+    return 0
+  fi
+  # The user manager may already have reached sockets.target before installation.
+  systemctl --user daemon-reload
+  systemctl --user start pipewire.socket pipewire-pulse.socket wireplumber.service
+}
+
 install_xapp_plugin() {
   if [ "$(dpkg-query -W -f='${db:Status-Status}' xfce4-xapp-status-plugin 2>/dev/null || :)" != installed ]; then
     if apt-cache show xfce4-xapp-status-plugin >/dev/null 2>&1; then
@@ -230,6 +245,21 @@ configure_wifi_panel() {
   if [ -n "$wifi_missing" ]; then
     as_root apt-get update
     as_root apt-get install -y --no-install-recommends --no-upgrade $wifi_missing
+  fi
+  if ! wifi_status=$(nmcli -t -f DEVICE,TYPE,STATE device status); then
+    echo 'Wi-Fi panel setup incomplete: NetworkManager is unavailable. Check: systemctl status NetworkManager' >&2
+  elif printf '%s\n' "$wifi_status" | grep -q ':wifi:unmanaged$'; then
+    echo 'Wi-Fi panel setup incomplete: NetworkManager reports unmanaged Wi-Fi.' >&2
+  else
+    wifi_status=ready
+  fi
+  if [ "$wifi_status" != ready ]; then
+    echo 'Check ownership with: nmcli device status; sudo ifquery --list' >&2
+    echo 'If ifupdown owns Wi-Fi, run a one-time migration with rollback from the local console, then rerun mise run desktop:setup.' >&2
+    if [ -x "$HOME/.local/bin/migrate-dell-wifi" ]; then
+      printf 'Local migration command: sudo "%s"\n' "$HOME/.local/bin/migrate-dell-wifi" >&2
+      printf 'If recovery needs a retry: sudo "%s" --recover\n' "$HOME/.local/bin/migrate-dell-wifi" >&2
+    fi
   fi
   if [ -n "${DISPLAY:-}" ] && [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] &&
     pgrep -u "$(id -u)" -x xfce4-session >/dev/null 2>&1 &&
@@ -379,6 +409,7 @@ fi
 
 if [ "$phase" = desktop ]; then
   install_desktop_packages
+  start_desktop_audio
   install_xapp_plugin
 fi
 
@@ -412,9 +443,8 @@ else
 fi
 configure_battery_panel
 if [ "$phase" = desktop ]; then
-  sh "$(dirname "$0")/configure-network-applet.sh"
-fi
-
-if [ "$phase" = desktop ]; then
   configure_local_login
+  if ! sh "$(dirname "$0")/configure-network-applet.sh"; then
+    echo 'Wi-Fi panel applet setup failed. Rerun mise run desktop:setup to retry; the system applet is available at /usr/bin/nm-applet.' >&2
+  fi
 fi

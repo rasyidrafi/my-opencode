@@ -23,7 +23,15 @@ mkdir -p "$(dirname "$entry")"
 cat > "$dir/start" <<'SH'
 #!/bin/sh
 case ":${XDG_CURRENT_DESKTOP:-}:" in
-  *:XFCE:*) exec "$(dirname "$0")/nm-applet" "$@" ;;
+  *:XFCE:*)
+    # An orphaned XApp wrapper can keep the status monitor name across logout.
+    for pid in $(pgrep -u "$(id -u)" -P 1 -f '^/usr/lib/[^ ]*/xfce4/panel/wrapper-2\.0 [^ ]*/libxapp-status-plugin\.so ' || :); do
+      session=$(sed -n 's|.*/session-\([^/]*\)\.scope.*|\1|p' "/proc/$pid/cgroup" 2>/dev/null)
+      [ -n "$session" ] || continue
+      [ "$(loginctl show-session "$session" -p State --value 2>/dev/null)" = closing ] || continue
+      kill -TERM "$pid" 2>/dev/null || :
+    done
+    exec "$(dirname "$0")/nm-applet" "$@" ;;
   *) exec /usr/bin/nm-applet "$@" ;;
 esac
 SH
@@ -40,14 +48,20 @@ done < "$stock" > "$entry"
 case ":${XDG_CURRENT_DESKTOP:-}:" in *:XFCE:*) ;; *) exit 0 ;; esac
 [ -n "${DISPLAY:-}" ] && [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] || exit 0
 for pid in $(pgrep -u "$(id -u)" -x nm-applet || :); do
-  [ "$(readlink "/proc/$pid/exe" || :)" = /usr/bin/nm-applet ] || continue
-  tr '\0' '\n' < "/proc/$pid/environ" | grep -Fxq "DISPLAY=$DISPLAY" || continue
+  applet_display=$(tr '\0' '\n' < "/proc/$pid/environ" | sed -n 's/^DISPLAY=//p')
+  [ "${applet_display%.0}" = "${DISPLAY%.0}" ] || continue
+  applet_exe=$(readlink "/proc/$pid/exe" || :)
+  [ "$applet_exe" != "$bin" ] || exit 0
+  [ "$applet_exe" = /usr/bin/nm-applet ] || continue
   kill -TERM "$pid"
   for wait_step in $(seq 1 50); do
     kill -0 "$pid" 2>/dev/null || break
     sleep 0.1
   done
   if kill -0 "$pid" 2>/dev/null; then echo 'Stock applet still exiting; layout will apply at login.'; exit 0; fi
-  gio launch "$entry"
   break
 done
+systemd-run --user --quiet --collect \
+  --setenv="DISPLAY=$DISPLAY" --setenv="DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS" \
+  --setenv="XAUTHORITY=${XAUTHORITY:-$HOME/.Xauthority}" \
+  --setenv="XDG_CURRENT_DESKTOP=$XDG_CURRENT_DESKTOP" "$dir/start"
