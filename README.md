@@ -801,6 +801,9 @@ on a Debian or Ubuntu Linux host. It applies the Mint theme, wallpaper, panel,
 shortcuts, fonts, XFCE screensaver and screen locking, Thunar archive support,
 and Asia/Jakarta system timezone.
 It honors the existing one-time preset marker to preserve desktop customizations.
+On each desktop setup run, the XFCE PulseAudio panel plugin is configured to
+show an on-screen volume indicator for the keyboard volume keys, including on
+existing profiles created with notifications disabled.
 On a host with a connected display and graphical seat, XFCE is available in the
 existing display manager or through LightDM at the next graphical boot. A headless
 host skips display manager setup.

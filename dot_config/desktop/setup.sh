@@ -405,8 +405,10 @@ configure_desktop_scaling
 # Existing profiles skip the preset; resolve their actual tray instance IDs.
 if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
   sh "$(dirname "$0")/configure-tray-spacing.sh"
+  sh "$(dirname "$0")/configure-volume-osd.sh"
 else
   dbus-run-session -- sh "$(dirname "$0")/configure-tray-spacing.sh"
+  dbus-run-session -- sh "$(dirname "$0")/configure-volume-osd.sh"
 fi
 configure_battery_panel
 if [ "$phase" = desktop ]; then
