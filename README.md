@@ -805,6 +805,14 @@ On a host with a connected display and graphical seat, XFCE is available in the
 existing display manager or through LightDM at the next graphical boot. A headless
 host skips display manager setup.
 
+On the Ice Lake **Infinix INBOOK X2** (EM_IC325, ESSX8326), setup also installs
+the pinned, SHA-256-verified [speaker fix](https://github.com/rasyidrafi/inbook-x2-audio/releases/tag/v1.0.0)
+and enables its per-user login recovery timer. This unsigned release targets
+Debian 13 amd64 kernel `6.12.118+deb13-amd64` only. Other boards, kernel ABIs
+and Secure Boot systems are skipped; setup never builds, reloads a module or
+reboots the laptop. See the [driver guide](https://github.com/rasyidrafi/inbook-x2-audio#readme)
+for verification, kernel upgrades and rollback.
+
 XFCE Custom DPI also scales the Mint panel, tray, Whisker menu, desktop icons,
 Thunar sidebar, and selected XFWM distances. The panel and its icons use
 32/20 px at 96 DPI, 40/25 px at 120 DPI, and 48/30 px at 144 DPI. The watcher

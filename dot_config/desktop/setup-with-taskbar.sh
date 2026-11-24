@@ -9,6 +9,7 @@ if [ "$ID:${VERSION_ID:-}:$(dpkg --print-architecture)" != debian:13:amd64 ]; th
 fi
 [ "$(id -u)" != 0 ] || { echo 'Run desktop:setup as your desktop user.' >&2; exit 1; }
 sh "$dir/install-taskbar-forks.sh"
+sh "$dir/install-inbook-audio.sh"
 sh "$dir/setup.sh" "$@"
 # xfconf-query needs a bus even when provisioning before the first login.
 if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
