@@ -424,7 +424,8 @@ containers, caches, or user data.
 ## Optional agent skills
 
 `ask-bun` and `ask-docker` are opt-in skills, adapted from the sibling
-`ai-personal` repository. Their catalog lives in
+`ai-personal` repository. `simulator-hub` is an opt-in copy of the skill in
+the sibling `simulator-hub` repository. Their catalog lives in
 `dot_local/share/my-opencode/optional-skills/`; `chezmoi apply` installs it at
 `~/.local/share/my-opencode/optional-skills/` without activating any skills.
 Existing always-on skills in `dot_agents/skills/` remain unchanged.
@@ -437,10 +438,14 @@ mise run skills:install  # Select skills, project/global scope, then confirm
 mise run skills:install -- ask-bun ask-docker --global
 mise run skills:install -- ask-bun --project /absolute/path/to/project --dry-run
 mise run skills:install -- ask-bun --project /absolute/path/to/project
+mise run skills:install -- simulator-hub --project /absolute/path/to/project
 ```
 
 Global links go into `~/.agents/skills/`; project links go into the selected
 directory's `.agents/skills/`. The project directory must already exist.
+Unlike the other skills, `simulator-hub` is installed as an independent copy,
+not a symlink. An existing destination is never replaced; updates to the catalog
+do not automatically update installed copies.
 Relative project paths use `MISE_ORIGINAL_CWD` when available, otherwise the task's
 working directory; absolute paths are unambiguous. Interactive mode defaults to project scope
 and asks for the directory (using `MISE_ORIGINAL_CWD` as a suggestion when present).
@@ -458,7 +463,7 @@ Do not commit project links containing machine-specific absolute paths; optional
 exclude individual links through that project's `.git/info/exclude`. To deactivate,
 remove only the chosen activation symlink, not its catalog directory.
 
-Both skills require Python 3.10+ and internet access, use only the Python standard
+The `ask-bun` and `ask-docker` skills require Python 3.10+ and internet access, use only the Python standard
 library, and send questions to the respective public documentation AI service.
 Do not include secrets in questions. Their scripts and original mocked tests were
 ported from `ai-personal`; no live AI requests are needed to run these tests:

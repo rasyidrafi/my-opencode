@@ -1,7 +1,17 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { retiredEnvironmentNames, renderEnvironment, renderEnvironmentFish } from './setup.mjs';
+
+test('registers Simulator Hub values from matching Bitwarden items', () => {
+  const manifest = JSON.parse(readFileSync(new URL('./manifest.json', import.meta.url), 'utf8'));
+  for (const name of ['SIMULATOR_HUB_ADMIN_TOKEN', 'SIMULATOR_HUB_BASE_URL', 'SIMULATOR_HUB_CLIENT_TOKEN']) {
+    assert.deepEqual(manifest.secrets.find(entry => entry.name === name), {
+      name, item: name, field: 'login.password', output: 'env',
+    });
+  }
+});
 
 test('retires only previous managed names and keeps reintroduced names', () => {
   assert.deepEqual(retiredEnvironmentNames(['KEEP', 'RETURNED'], ['KEEP', 'OLD'], ['RETURNED']), ['CCS_LOCAL_API_KEY', 'OLD']);
