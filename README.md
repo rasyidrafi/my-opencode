@@ -604,6 +604,13 @@ downloads on subsequent runs once setup is complete. Windows, macOS, and
 Android/Termux are not supported. Test without system changes with
 `node --test tests/mpv-setup.test.mjs`.
 
+### T3 Code
+
+Run `mise run t3code:setup` on Linux or Windows to install or update the T3 Code
+CLI using its official installer. Run `t3` to start its server and open the web
+app. This is an opt-in native install, not a Mise-managed tool; the installer
+uses the latest stable release by default. See https://t3.codes for details.
+
 ### Muse Code
 
 Run `mise run muse:setup` on Linux or Windows to install or update Meta's

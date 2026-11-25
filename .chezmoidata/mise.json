@@ -360,6 +360,14 @@
         "androidCleanEnv": false
       },
       {
+        "name": "t3code:setup",
+        "description": "Install or update the T3 Code CLI via its official installer",
+        "script": "t3code/setup.mjs",
+        "args": "",
+        "platforms": ["linux", "windows"],
+        "androidCleanEnv": false
+      },
+      {
         "name": "chrome:setup",
         "description": "Reuse an installed Chrome, Edge, Chromium, or Brave browser; otherwise install Chrome on Debian-family Linux amd64",
         "script": "chrome/setup.mjs",

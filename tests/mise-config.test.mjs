@@ -66,7 +66,7 @@ for (const platform of ['linux', 'windows', 'android']) {
     const config = render(platform);
     const names = [...config.matchAll(/\[tasks\."([^"]+)"\]/g)].map(match => match[1]);
     assert.deepEqual(names, catalog.tasks.filter(task => task.platforms.includes(platform)).map(task => task.name));
-    assert.equal(names.length, { linux: 29, windows: 16, android: 12 }[platform]);
+    assert.equal(names.length, { linux: 30, windows: 17, android: 12 }[platform]);
     assert.equal(names.includes('crd:uninstall'), platform === 'linux');
     assert.equal(names.includes('desktop:setup'), platform === 'linux');
     assert.equal(names.includes('selkies:setup'), platform !== 'windows');
@@ -74,6 +74,7 @@ for (const platform of ['linux', 'windows', 'android']) {
     assert.equal(names.includes('termux:xfce:setup'), platform === 'android');
     assert.equal(names.includes('mpv:setup'), platform === 'linux');
     assert.equal(names.includes('muse:setup'), platform !== 'android');
+    assert.equal(names.includes('t3code:setup'), platform !== 'android');
     assert.equal(names.includes('cua:setup'), platform === 'linux');
     assert.equal(names.includes('cua:startup'), false);
     assert.equal(names.includes('crd:setup'), platform === 'linux');
