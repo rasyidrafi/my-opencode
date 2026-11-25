@@ -1,6 +1,6 @@
 {
   "defaultModel": "rawroute/gpt-core",
-  "agentControlToolEnabled": false,
+  "agentControlToolEnabled": true,
   "agentScheduleToolEnabled": false,
   "agentWebToolEnabled": false,
   "agentKnowledgeToolEnabled": false,

@@ -36,6 +36,11 @@
           "effect": "allow"
         },
         {
+          "action": "openchamber",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
           "action": "openchamber_render",
           "resource": "*",
           "effect": "allow"

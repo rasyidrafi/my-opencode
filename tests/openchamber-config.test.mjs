@@ -31,8 +31,8 @@ test('OpenChamber saves pasted images as files', () => {
   assert.equal(preferences.savePastedImagesAsFiles, true);
 });
 
-test('OpenChamber control and workflow tools are disabled while secret and render tools are enabled', () => {
-  assert.equal(settings.agentControlToolEnabled, false);
+test('OpenChamber control, secret and render tools are enabled while workflow is disabled', () => {
+  assert.equal(settings.agentControlToolEnabled, true);
   assert.equal(settings.agentSecretToolEnabled, true);
   assert.equal(settings.agentRenderToolEnabled, true);
   assert.equal(settings.agentWorkflowToolEnabled, false);

@@ -199,7 +199,7 @@ test('agent files replace local permission overrides with the managed policy', t
   const first = apply();
   assert.deepEqual(agent('build').permissions, [
     { action: '*', resource: '*', effect: 'deny' },
-    ...['shell', 'edit', 'patch', 'skill', 'external_directory', 'openchamber_render', 'openchamber_secret', 'read_media']
+    ...['shell', 'edit', 'patch', 'skill', 'external_directory', 'openchamber', 'openchamber_render', 'openchamber_secret', 'read_media']
       .map(action => ({ action, resource: '*', effect: 'allow' })),
   ]);
   for (const name of ['general', 'explore', 'plan']) assert.equal(Object.hasOwn(agent(name), 'permissions'), false);
