@@ -868,7 +868,13 @@ It requires the CLI on PATH; run `mise install` and `mise reshim` first.
 
 Run `mise run openchamber:uninstall` to disable and remove the native startup
 service and stop the OpenChamber instance on port 3000. Run it from a terminal
-outside OpenChamber. It leaves packages, settings and data untouched.
+outside OpenChamber, as the user who started the service and within the same
+system or container. The task preserves the package, settings, and user data.
+
+If mise or its tools have been removed, run the installed script directly.
+
+- Linux `bash ~/.config/services/openchamber-uninstall.sh`
+- Windows `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$HOME/.config/services/openchamber-uninstall.ps1"`
 
 This is a chezmoi source directory. Its `dot_codex/modify_config.toml` template
 updates `~/.codex/config.toml` in place: it enforces the Rawroute defaults while

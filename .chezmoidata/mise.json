@@ -472,7 +472,10 @@
       {
         "name": "openchamber:uninstall",
         "description": "Stop OpenChamber on port 3000 and remove its startup service",
-        "script": "services/openchamber-uninstall.mjs",
+        "script": "services/openchamber-uninstall.ps1",
+        "runner": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File",
+        "linuxScript": "services/openchamber-uninstall.sh",
+        "linuxRunner": "bash",
         "args": "",
         "platforms": ["linux", "windows"],
         "androidCleanEnv": false

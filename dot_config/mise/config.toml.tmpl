@@ -29,7 +29,7 @@ shell_out = true
 {{ if has $platform .platforms -}}
 [tasks.{{ .name | quote }}]
 description = {{ .description | quote }}
-run = '{{ if and $android .androidCleanEnv }}env -u LD_LIBRARY_PATH {{ end }}{{ if hasKey . "runner" }}{{ .runner }}{{ else }}node{{ end }} "{{ `{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}` }}/.config/{{ if and (eq $platform "linux") (hasKey . "linuxScript") }}{{ .linuxScript }}{{ else }}{{ .script }}{{ end }}"{{ .args }}'
+run = '{{ if and $android .androidCleanEnv }}env -u LD_LIBRARY_PATH {{ end }}{{ if and (eq $platform "linux") (hasKey . "linuxRunner") }}{{ .linuxRunner }}{{ else if hasKey . "runner" }}{{ .runner }}{{ else }}node{{ end }} "{{ `{% if os() == "windows" %}{{ env.USERPROFILE }}{% else %}{{ env.HOME }}{% endif %}` }}/.config/{{ if and (eq $platform "linux") (hasKey . "linuxScript") }}{{ .linuxScript }}{{ else }}{{ .script }}{{ end }}"{{ .args }}'
 raw = true
 
 {{ end -}}
