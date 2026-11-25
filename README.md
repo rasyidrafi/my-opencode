@@ -321,9 +321,6 @@ containers, caches, or user data.
 `ai-personal` repository. Their catalog lives in
 `dot_local/share/my-opencode/optional-skills/`; `chezmoi apply` installs it at
 `~/.local/share/my-opencode/optional-skills/` without activating any skills.
-The `simulator-hub` skill is managed globally in `dot_agents/skills/` and is
-available at `~/.agents/skills/simulator-hub/` after `chezmoi apply`.
-
 After applying the catalog and task assets:
 
 ```sh
