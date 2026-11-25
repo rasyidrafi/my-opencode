@@ -64,7 +64,7 @@ test('creates endpoints on a fresh home and is stable on reapply', t => {
   const { apply, effective } = fixture(t);
   const first = apply();
   assert.equal(apply(), first);
-  for (const alias of ['soy', 'soy-wb', 'bull', 'bull-wb']) {
+  for (const alias of ['soy', 'soy-wb', 'bull']) {
     const config = effective(alias);
     assert.equal(config.hostname, `${alias.split('-')[0]}.qilin-elver.ts.net`);
     assert.equal(config.user, alias);
@@ -73,6 +73,14 @@ test('creates endpoints on a fresh home and is stable on reapply', t => {
       assert.equal(config.identityagent, path.join(os.homedir(), '.bitwarden-ssh-agent.sock'));
     }
   }
+});
+
+test('removes the retired bull-wb endpoint on reapply', t => {
+  const { apply, effective } = fixture(t, 'Host bull-wb\n    HostName bull.qilin-elver.ts.net\n    User bull-wb\n    Port 2222\n');
+  const result = apply();
+  assert.ok(!result.includes('Host bull-wb'));
+  assert.equal(effective('bull-wb').hostname, 'bull-wb');
+  assert.equal(apply(), result);
 });
 
 test('preserves shared Bitwarden socket, per-host options, Match and unrelated aliases', t => {

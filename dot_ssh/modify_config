@@ -52,11 +52,6 @@ Host bull
     User bull
     Port 22
 
-Host bull-wb
-    HostName bull.qilin-elver.ts.net
-    User bull-wb
-    Port 2222
-
 # Restore global scope for the preserved user configuration below.
 Host *
 {{ $end }}

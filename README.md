@@ -138,7 +138,7 @@ executable path again. Test: `node --test dot_config/github/setup.test.mjs`.
 
 SSH configuration uses `dot_ssh/modify_config` to preserve local options and
 unrelated aliases. A leading managed block owns HostName, User and Port for
-`soy`, `soy-wb`, `bull` and `bull-wb`, plus the Docker SSH fragment Include.
+`soy`, `soy-wb` and `bull`, plus the Docker SSH fragment Include.
 Local IdentityAgent settings (including Bitwarden sockets), IdentityFile and
 other options survive `chezmoi apply`, whether in individual or shared Host
 blocks. Old endpoint fields in single-alias blocks are removed; shared and
