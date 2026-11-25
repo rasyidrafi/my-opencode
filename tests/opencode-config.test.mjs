@@ -58,6 +58,20 @@ function expectedAgentFrontmatter(name) {
   return frontmatter;
 }
 
+test('managed OpenChamber delegation skill and model guidance are installed', t => {
+  const { applyAll, home } = fixture(t);
+  applyAll();
+  const source = path.join(repository, 'dot_agents/skills/openchamber-delegation');
+  const target = path.join(home, '.agents/skills/openchamber-delegation');
+  for (const name of ['SKILL.md', 'model-routing.md']) {
+    assert.equal(fs.readFileSync(path.join(target, name), 'utf8'), fs.readFileSync(path.join(source, name), 'utf8'));
+  }
+  const skill = fs.readFileSync(path.join(target, 'SKILL.md'), 'utf8');
+  assert.match(skill, /ownWork: true/);
+  assert.match(skill, /returnResult: true/);
+  assert.match(skill, /not a permission sandbox/);
+});
+
 test('applying retires explicit local plugin paths without changing other plugins', t => {
   const { apply, put, read, directory, home } = fixture(t);
   const others = ['another-plugin', { package: 'custom-plugin', options: { keep: true } }];
