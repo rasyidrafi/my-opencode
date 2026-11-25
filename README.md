@@ -924,27 +924,26 @@ reference.
 | `mise run provider:local` | `RAWROUTE_LOCAL_BASE_URL` | `RAWROUTE_LOCAL_API_KEY` |
 
 The secrets manifest maps each variable to the password field of a Bitwarden
-login item with the same name. Run `mise run secrets:setup` and open a new
-initialized shell. Both variables for the selected mode must be present when
-running either task. The generated app configs contain the URL and a reference
-to the key variable.
-
-On a fresh setup, export `RAWROUTE_BASE_URL` before the first `chezmoi apply`
-so the app configs can render and the secrets task can be installed.
+login item with the same name. Run `chezmoi apply` to install the tasks, then
+run `mise run secrets:setup` and open a new initialized shell to use the apps.
 
 ```sh
 mise run provider:local -- --dry-run
 mise run provider:local
 mise run provider:default
+mise run codex:rawroute
 ```
 
+Apply and switching write variable names even when the environment is empty.
+OpenCode expands the `{env:...}` URL reference natively. Codex treats
+`base_url` as a literal, so use `mise run codex:rawroute` to start it with the
+resolved URL as a runtime config override. Pass Codex arguments after `--`.
+The API key is resolved by each app at runtime.
+
 Both templates read the same marker, `~/.config/rawroute/local-enabled`.
-Ordinary `chezmoi apply` keeps the selected mode and reads that mode's URL from
-the current environment. The switch creates private backups under
-`~/.local/state/rawroute-backups` and restores both configs and the previous
-markers if applying or validating the configs fails. `--dry-run` validates the
-environment and source ownership without applying changes. Restart existing
-applications or services to reload the config and environment as needed.
+The switch creates private backups under `~/.local/state/rawroute-backups` and
+restores both configs and the previous markers if applying or validating the
+configs fails. `--dry-run` checks source ownership without applying changes.
 
 The applied `source.json` records the chezmoi source used to install the task.
 If the checkout moves, reapply the task assets or pass

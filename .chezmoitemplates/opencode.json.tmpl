@@ -11,8 +11,8 @@
   "providers": {
     "rawroute": {
       "name": "RawRoute",
-      "env": [{{ $route.envKey | toJson }}],
       "package": "@opencode/ai/providers/openai-compatible",
+      "env": [{{ $route.envKey | toJson }}],
       "settings": {
         "baseURL": {{ $route.baseURL | toJson }}
       },

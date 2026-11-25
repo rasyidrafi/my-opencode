@@ -37,16 +37,6 @@ test('mode and CLI options are explicit', () => {
   for (const args of [[], ['other'], ['local', '--rawroute'], ['local', '--force'], ['local', '--source']]) assert.throws(() => options(args));
 });
 
-test('each mode requires its URL and API key before writing files', () => fixture(args => {
-  for (const mode of ['default', 'local']) {
-    for (const name of Object.values(modes[mode])) {
-      assert.throws(() => configure({ ...args, env: { ...args.env, [name]: '' }, mode }), new RegExp(`${name} is missing`));
-    }
-  }
-  assert.throws(() => configure({ ...args, env: { ...args.env, RAWROUTE_BASE_URL: 'relative/path' }, mode: 'default' }), /absolute HTTP or HTTPS URL/);
-  assert.deepEqual(fs.readdirSync(args.home), []);
-}));
-
 test('dry-run validates ownership but writes no configs, marker or lock', () => fixture(args => {
   const result = configure({ ...args, mode: 'local', dryRun: true, execute: fakeRunner(args.home, () => assert.fail('must not apply')) });
   assert.equal(result.dryRun, true);
@@ -109,9 +99,11 @@ test('real chezmoi renders both modes, survives reapply and preserves local Code
     assert.match(toml, new RegExp(`^model = ['"]${expectedModel}['"]$`, 'm'));
     assert.match(toml, new RegExp(`^model_reasoning_effort = ['"]${expectedEffort}['"]$`, 'm'));
     const { urlEnv, envKey } = modes[mode];
-    assert.ok(toml.includes(args.env[urlEnv]));
+    const reference = `{env:${urlEnv}}`;
+    assert.ok(toml.includes(reference));
+    assert.ok(!toml.includes(args.env[urlEnv]));
     assert.ok(toml.includes(envKey));
-    assert.equal(json.providers.rawroute.settings.baseURL, args.env[urlEnv]);
+    assert.equal(json.providers.rawroute.settings.baseURL, reference);
     assert.deepEqual(json.providers.rawroute.env, [envKey]);
     assert.ok(toml.includes('keep-me')); assert.ok(toml.includes('trusted'));
     for (const { envKey } of Object.values(modes)) {
@@ -154,4 +146,36 @@ test('real chezmoi renders both modes, survives reapply and preserves local Code
       assert.equal(fs.statSync(path.join(backups, entry, 'manifest.json')).mode & 0o777, 0o600);
     }
   }
+}));
+
+test('full apply and switches write references without any Rawroute env', { skip: !chezmoi && 'Set CHEZMOI_TEST_BINARY to a real chezmoi executable.' }, () => fixture(args => {
+  const env = { ...args.env };
+  for (const mode of Object.values(modes)) {
+    delete env[mode.urlEnv];
+    delete env[mode.envKey];
+  }
+  const apply = () => {
+    const result = spawnSync(chezmoi, ['--source', repository, '--destination', args.home,
+      '--no-tty', 'apply', '--force'], { env, encoding: 'utf8', timeout: 60_000 });
+    assert.equal(result.status, 0, result.stderr);
+  };
+  const read = name => fs.readFileSync(path.join(args.home, name), 'utf8');
+  const check = ({ urlEnv, envKey }) => {
+    const reference = `{env:${urlEnv}}`;
+    const codex = read('.codex/config.toml');
+    assert.ok(codex.includes(reference));
+    assert.ok(codex.includes(envKey));
+    const provider = JSON.parse(read('.config/opencode/opencode.json')).providers.rawroute;
+    assert.equal(provider.settings.baseURL, reference);
+    assert.deepEqual(provider.env, [envKey]);
+  };
+
+  apply();
+  check(modes.default);
+  configure({ ...args, env, mode: 'local' });
+  check(modes.local);
+  apply();
+  check(modes.local);
+  configure({ ...args, env, mode: 'default' });
+  check(modes.default);
 }));

@@ -34,16 +34,7 @@ export function configure({ mode, home = os.homedir(), env = process.env, source
   if (!['linux', 'darwin', 'win32', 'android'].includes(platform)) throw new Error('Rawroute switching supports Linux, macOS, Windows and Android.');
   if (!Object.hasOwn(modes, mode)) throw new Error('Expected local or default mode.');
   const { urlEnv, envKey } = modes[mode];
-  const baseURL = env[urlEnv]?.trim();
-  for (const name of [urlEnv, envKey]) {
-    if (!env[name]?.trim()) throw new Error(`${name} is missing. Run secrets:setup separately, then use a new initialized shell.`);
-  }
-  let endpoint;
-  try { endpoint = new URL(baseURL); }
-  catch { throw new Error(`${urlEnv} must be an absolute HTTP or HTTPS URL.`); }
-  if (!['http:', 'https:'].includes(endpoint.protocol) || endpoint.username || endpoint.password) {
-    throw new Error(`${urlEnv} must be an absolute HTTP or HTTPS URL without embedded credentials.`);
-  }
+  const baseURL = `{env:${urlEnv}}`;
   home = path.resolve(home);
   if (!source) {
     const stamp = path.join(directory, 'source.json');

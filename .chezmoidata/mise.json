@@ -289,6 +289,14 @@
         "androidCleanEnv": false
       },
       {
+        "name": "codex:rawroute",
+        "description": "Launch Codex with the selected Rawroute URL from the environment",
+        "script": "rawroute/codex.mjs",
+        "args": "",
+        "platforms": ["linux", "windows", "android"],
+        "androidCleanEnv": false
+      },
+      {
         "name": "provider:local",
         "description": "Use local Rawroute for Codex and OpenCode",
         "script": "rawroute/setup.mjs",
