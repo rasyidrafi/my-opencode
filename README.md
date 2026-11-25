@@ -906,67 +906,43 @@ context, a 128,000-token output limit, and text, image, and PDF input.
 
 Verify with `node --test tests/opencode-config.test.mjs dot_config/rawroute/setup.test.mjs`.
 
-### Rawroute endpoint opt-in
+### Rawroute endpoint switch
 
-Codex defaults to `https://ccs.halotec.my.id/v1` using
-`CCS_HALOTEC_API_KEY`. After applying these task assets, opt into the local route
-**on this machine only**:
+Each task updates both Codex (`~/.codex/config.toml`) and OpenCode
+(`~/.config/opencode/opencode.json`) to the same Rawroute endpoint and API key
+reference.
+
+| Task | Base URL variable | API key variable |
+| --- | --- | --- |
+| `mise run provider:default` | `RAWROUTE_BASE_URL` | `RAWROUTE_API_KEY` |
+| `mise run provider:local` | `RAWROUTE_LOCAL_BASE_URL` | `RAWROUTE_LOCAL_API_KEY` |
+
+The secrets manifest maps each variable to the password field of a Bitwarden
+login item with the same name. Run `mise run secrets:setup` and open a new
+initialized shell. Both variables for the selected mode must be present when
+running either task. The generated app configs contain the URL and a reference
+to the key variable.
+
+On a fresh setup, export `RAWROUTE_BASE_URL` before the first `chezmoi apply`
+so the app configs can render and the secrets task can be installed.
 
 ```sh
 mise run provider:local -- --dry-run
 mise run provider:local
-# Restore the default endpoint and key reference:
 mise run provider:default
 ```
 
-Local mode uses `https://rawroute.qilin-elver.ts.net/v1` and
-`CCS_HALOTEC_LOCAL_API_KEY`, mapped from Bitwarden item `ccs.halotec local API` (password).
-Run `secrets:setup` separately and open a new initialized shell first; switching
-requires the local key in the invoking environment but never prints or embeds it.
-No network/model calls or automatic secret sync are performed.
+Both templates read the same marker, `~/.config/rawroute/local-enabled`.
+Ordinary `chezmoi apply` keeps the selected mode and reads that mode's URL from
+the current environment. The switch creates private backups under
+`~/.local/state/rawroute-backups` and restores both configs and the previous
+markers if applying or validating the configs fails. `--dry-run` validates the
+environment and source ownership without applying changes. Restart existing
+applications or services to reload the config and environment as needed.
 
-The separate OpenCode `rawroute` provider has its own endpoint switch:
-
-```sh
-mise run rawroute:default
-mise run rawroute:local -- --dry-run
-mise run rawroute:local
-```
-
-Default mode uses `https://rawroute.r45.qzz.io/v1` with `RAWROUTE_API_KEY`.
-Local mode uses `https://rawroute.qilin-elver.ts.net/v1` with
-`RAWROUTE_LOCAL_API_KEY`, which must already be in the invoking environment.
-These tasks only apply OpenCode configuration; they do not switch Codex,
-OpenAI configuration, or model selections.
-The separate local-mode marker persists across chezmoi applies. Backups,
-rollback, and `--dry-run` work like `provider:*`; no models are added.
-Both sets of switches support Windows. Config backups are restricted to the
-current Windows account with an ACL; Linux/macOS use private file modes.
-
-Mode is stored in `~/.config/rawroute/local-enabled`, never in Git. The Codex template
-checks this marker, so later ordinary `chezmoi apply` preserves local mode until
-explicit opt-out. Existing machines remain default when the marker is absent.
-`provider:*` applies **only** the Codex target; `rawroute:*` applies only the
-OpenCode target. Each creates private backups
-under `~/.local/state/rawroute-backups`, and restores its target file and the
-previous marker on failure. Symlink targets and concurrent switches are refused.
-Keep backups private: pre-existing configs may contain credentials.
-
-The applied `source.json` records the actual chezmoi source used to install the
-task. If that checkout moves, reapply the task assets or pass
-`--source /absolute/path/to/checkout`; setup verifies ownership before writing.
-`--dry-run` validates inputs without creating a marker or applying any targets.
-Existing applications/services may require a separate restart to reload config
-or newly synced secrets; switching does not restart them.
-
-Tests use synthetic credentials and an isolated temporary home:
-`node --test dot_config/rawroute/setup.test.mjs` (chezmoi required for render tests).
-
-The default Rawroute provider reads its credential from `CCS_HALOTEC_API_KEY`; no key is
-stored in this repository or in `config.toml`. The existing
-`dot_config/secrets/manifest.json` already maps that environment variable from
-Bitwarden. Set it up with `mise run secrets:setup` if it is not available in new
-processes yet.
+The applied `source.json` records the chezmoi source used to install the task.
+If the checkout moves, reapply the task assets or pass
+`--source /absolute/path/to/checkout`.
 
 Apply this source with `chezmoi apply`. The TOML is parsed and re-serialized, so
 formatting and comments may change. Tables use flat section headers without

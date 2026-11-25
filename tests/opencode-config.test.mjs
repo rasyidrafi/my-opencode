@@ -18,7 +18,7 @@ function fixture(t) {
   t.after(() => fs.rmSync(home, { recursive: true, force: true }));
   const directory = path.join(home, '.config/opencode');
   fs.mkdirSync(path.join(directory, 'agents'), { recursive: true });
-  const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, '.config'), XDG_DATA_HOME: path.join(home, '.local/share'), XDG_CACHE_HOME: path.join(home, '.cache') };
+  const env = { ...process.env, HOME: home, RAWROUTE_BASE_URL: 'https://rawroute.example.test/v1', XDG_CONFIG_HOME: path.join(home, '.config'), XDG_DATA_HOME: path.join(home, '.local/share'), XDG_CACHE_HOME: path.join(home, '.cache') };
   const cm = (args, input) => {
     const result = spawnSync(chezmoi, ['--source', repository, '--destination', home,
       '--config', path.join(home, 'chezmoi.toml'), '--persistent-state', path.join(home, 'state.boltdb'),

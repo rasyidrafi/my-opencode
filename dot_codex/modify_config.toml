@@ -1,12 +1,6 @@
 {{- /* chezmoi:modify-template */ -}}
 {{- $config := fromToml .chezmoi.stdin -}}
-{{- $local := stat (joinPath .chezmoi.destDir ".config" "rawroute" "local-enabled") -}}
-{{- $baseURL := "https://ccs.halotec.my.id/v1" -}}
-{{- $envKey := "CCS_HALOTEC_API_KEY" -}}
-{{- if $local -}}
-  {{- $baseURL = "https://rawroute.qilin-elver.ts.net/v1" -}}
-  {{- $envKey = "CCS_HALOTEC_LOCAL_API_KEY" -}}
-{{- end -}}
+{{- $route := includeTemplate "rawroute-endpoint" . | fromJson -}}
 {{- $config = $config | setValueAtPath "model_provider" "rawroute" -}}
 {{- /* Seed the repo default without replacing the user's selected model. */ -}}
 {{- if not (hasKey $config "model") -}}
@@ -19,9 +13,9 @@
 {{- $config = $config | setValueAtPath "approval_policy" "never" -}}
 {{- $config = $config | setValueAtPath "sandbox_mode" "danger-full-access" -}}
 {{- $config = $config | setValueAtPath "model_providers.rawroute.name" "Rawroute" -}}
-{{- $config = $config | setValueAtPath "model_providers.rawroute.base_url" $baseURL -}}
+{{- $config = $config | setValueAtPath "model_providers.rawroute.base_url" $route.baseURL -}}
 {{- $config = $config | setValueAtPath "model_providers.rawroute.wire_api" "responses" -}}
-{{- $config = $config | setValueAtPath "model_providers.rawroute.env_key" $envKey -}}
+{{- $config = $config | setValueAtPath "model_providers.rawroute.env_key" $route.envKey -}}
 {{- $config = $config | deleteValueAtPath "model_providers.rawroute.experimental_bearer_token" -}}
 {{- $config = $config | setValueAtPath "agents.enabled" false -}}
 {{- /* Flatten the encoder's visual nesting and omit redundant parent headers.

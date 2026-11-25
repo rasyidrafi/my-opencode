@@ -290,7 +290,7 @@
       },
       {
         "name": "provider:local",
-        "description": "Opt into local Rawroute for Codex on this machine",
+        "description": "Use local Rawroute for Codex and OpenCode",
         "script": "rawroute/setup.mjs",
         "args": " local",
         "platforms": [
@@ -302,33 +302,9 @@
       },
       {
         "name": "provider:default",
-        "description": "Restore the default Rawroute endpoint for Codex",
+        "description": "Restore default Rawroute for Codex and OpenCode",
         "script": "rawroute/setup.mjs",
         "args": " default",
-        "platforms": [
-          "linux",
-          "windows",
-          "android"
-        ],
-        "androidCleanEnv": false
-      },
-      {
-        "name": "rawroute:default",
-        "description": "Use the public Rawroute provider endpoint in OpenCode",
-        "script": "rawroute/setup.mjs",
-        "args": " default --rawroute",
-        "platforms": [
-          "linux",
-          "windows",
-          "android"
-        ],
-        "androidCleanEnv": false
-      },
-      {
-        "name": "rawroute:local",
-        "description": "Use the local Rawroute provider endpoint in OpenCode",
-        "script": "rawroute/setup.mjs",
-        "args": " local --rawroute",
         "platforms": [
           "linux",
           "windows",

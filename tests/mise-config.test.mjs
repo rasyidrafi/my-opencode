@@ -72,7 +72,11 @@ for (const platform of ['linux', 'windows', 'android']) {
     const config = render(platform);
     const names = [...config.matchAll(/\[tasks\."([^"]+)"\]/g)].map(match => match[1]);
     assert.deepEqual(names, catalog.tasks.filter(task => task.platforms.includes(platform)).map(task => task.name));
-    assert.equal(names.length, { linux: 30, windows: 16, android: 12 }[platform]);
+    assert.equal(names.length, { linux: 28, windows: 14, android: 10 }[platform]);
+    assert.ok(names.includes('provider:default'));
+    assert.ok(names.includes('provider:local'));
+    assert.ok(!names.includes('rawroute:default'));
+    assert.ok(!names.includes('rawroute:local'));
     assert.equal(names.includes('crd:uninstall'), platform === 'linux');
     assert.equal(names.includes('desktop:setup'), platform === 'linux');
     assert.equal(names.includes('selkies:setup'), platform !== 'windows');

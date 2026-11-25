@@ -5,7 +5,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
-import { configure, modes, rawrouteModes, options } from './setup.mjs';
+import { configure, modes, options } from './setup.mjs';
 
 const repository = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const located = spawnSync('mise', ['which', 'chezmoi'], { encoding: 'utf8' });
@@ -14,7 +14,7 @@ const chezmoi = process.env.CHEZMOI_TEST_BINARY || (located.status === 0 ? locat
 function fixture(fn) {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rawroute-test-'));
   const put = (name, text) => { const p = path.join(home, name); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, text); };
-  const env = { ...process.env, HOME: home, USERPROFILE: home, PATH: process.env.PATH, LANG: 'C.UTF-8', CCS_HALOTEC_LOCAL_API_KEY: 'synthetic-test-value', XDG_CONFIG_HOME: path.join(home, '.config'), XDG_CACHE_HOME: path.join(home, '.cache'), XDG_STATE_HOME: path.join(home, '.local/state'), XDG_DATA_HOME: path.join(home, '.local/share') };
+  const env = { ...process.env, HOME: home, USERPROFILE: home, PATH: process.env.PATH, LANG: 'C.UTF-8', RAWROUTE_API_KEY: 'synthetic-default-key', RAWROUTE_BASE_URL: 'https://default.example.test/v1', RAWROUTE_LOCAL_API_KEY: 'synthetic-local-key', RAWROUTE_LOCAL_BASE_URL: 'http://local.example.test:8080/v1', XDG_CONFIG_HOME: path.join(home, '.config'), XDG_CACHE_HOME: path.join(home, '.cache'), XDG_STATE_HOME: path.join(home, '.local/state'), XDG_DATA_HOME: path.join(home, '.local/share') };
   try { fn({ home, put, env, source: repository, chezmoi }); }
   finally { fs.rmSync(home, { recursive: true, force: true }); }
 }
@@ -28,44 +28,23 @@ function fakeRunner(home, apply) {
       return { status: 0, stdout: path.join(repository, name) };
     }
     if (args.includes('apply')) return apply();
-    if (args.includes('execute-template')) return { status: 0, stdout: JSON.stringify(modes.local) };
     throw new Error('Unexpected invocation');
   };
 }
 
 test('mode and CLI options are explicit', () => {
-  assert.deepEqual(options(['local', '--rawroute']), { mode: 'local', rawroute: true });
   assert.deepEqual(options(['local', '--dry-run', '--source', '/repo']), { mode: 'local', dryRun: true, source: '/repo' });
-  for (const args of [[], ['other'], ['local', '--force'], ['local', '--source']]) assert.throws(() => options(args));
+  for (const args of [[], ['other'], ['local', '--rawroute'], ['local', '--force'], ['local', '--source']]) assert.throws(() => options(args));
 });
 
-test('Rawroute local requires its own credential', () => fixture(args => {
-  assert.throws(() => configure({ ...args, env: { ...args.env, RAWROUTE_LOCAL_API_KEY: '' }, mode: 'local', rawroute: true }), /RAWROUTE_LOCAL_API_KEY is missing/);
-  assert.deepEqual(fs.readdirSync(args.home), []);
-}));
-
-test('real Rawroute switches preserve Codex, provider routing and model selections', { skip: !chezmoi && 'Set CHEZMOI_TEST_BINARY to a real chezmoi executable.' }, () => fixture(({ put, ...args }) => {
-  put('.codex/config.toml', 'untouched = true\n');
-  put('.config/rawroute/local-enabled', '1\n');
-  put('.config/opencode/opencode.json', JSON.stringify({ model: 'custom/main', providers: { rawroute: { models: { custom: { name: 'Keep' } } } } }));
-  const env = { ...args.env, RAWROUTE_LOCAL_API_KEY: 'synthetic-rawroute-secret' };
-  for (const mode of ['default', 'local', 'default']) {
-    configure({ ...args, env, mode, rawroute: true });
-    const json = JSON.parse(fs.readFileSync(path.join(args.home, '.config/opencode/opencode.json'), 'utf8'));
-    assert.equal(json.providers.rawroute.settings.baseURL, rawrouteModes[mode].baseURL);
-    assert.deepEqual(json.providers.rawroute.env, [rawrouteModes[mode].envKey]);
-    assert.equal(json.providers.rawroute.models.custom.name, 'Keep');
-    assert.equal(json.model, 'custom/main');
-    assert.ok(!Object.hasOwn(json.provider ?? {}, 'openai'));
-    assert.equal(fs.readFileSync(path.join(args.home, '.codex/config.toml'), 'utf8'), 'untouched = true\n');
-    assert.equal(fs.readFileSync(path.join(args.home, '.config/rawroute/local-enabled'), 'utf8'), '1\n');
-    assert.ok(!JSON.stringify(json).includes('synthetic-rawroute-secret'));
+test('each mode requires its URL and API key before writing files', () => fixture(args => {
+  for (const mode of ['default', 'local']) {
+    for (const name of Object.values(modes[mode])) {
+      assert.throws(() => configure({ ...args, env: { ...args.env, [name]: '' }, mode }), new RegExp(`${name} is missing`));
+    }
   }
-}));
-
-test('missing local credential fails without creating a marker', () => fixture(({ home, ...args }) => {
-  assert.throws(() => configure({ ...args, home, mode: 'local', env: {} }), /CCS_HALOTEC_LOCAL_API_KEY is missing/);
-  assert.equal(fs.existsSync(path.join(home, '.config/rawroute/local-enabled')), false);
+  assert.throws(() => configure({ ...args, env: { ...args.env, RAWROUTE_BASE_URL: 'relative/path' }, mode: 'default' }), /absolute HTTP or HTTPS URL/);
+  assert.deepEqual(fs.readdirSync(args.home), []);
 }));
 
 test('dry-run validates ownership but writes no configs, marker or lock', () => fixture(args => {
@@ -78,11 +57,13 @@ test('partial apply failure restores configs and marker byte-for-byte', () => fi
   put('.codex/config.toml', 'unrelated = "preserve"\n');
   put('.config/opencode/opencode.json', '{"original":true}\n');
   put('.config/rawroute/local-enabled', 'original-marker\n');
+  put('.config/rawroute/rawroute-local-enabled', 'legacy-marker\n');
   const execute = fakeRunner(args.home, () => {
     put('.codex/config.toml', 'partial = true\n');
+    put('.config/opencode/opencode.json', '{}\n');
     return { status: 1, stderr: 'sensitive output must not escape' };
   });
-  assert.throws(() => configure({ ...args, mode: 'default', env: {}, execute }), error => {
+  assert.throws(() => configure({ ...args, mode: 'default', execute }), error => {
     assert.match(error.message, /previous configs and marker restored/);
     assert.ok(!error.message.includes('sensitive output must not escape'));
     return true;
@@ -90,6 +71,7 @@ test('partial apply failure restores configs and marker byte-for-byte', () => fi
   assert.equal(fs.readFileSync(path.join(args.home, '.codex/config.toml'), 'utf8'), 'unrelated = "preserve"\n');
   assert.equal(fs.readFileSync(path.join(args.home, '.config/opencode/opencode.json'), 'utf8'), '{"original":true}\n');
   assert.equal(fs.readFileSync(path.join(args.home, '.config/rawroute/local-enabled'), 'utf8'), 'original-marker\n');
+  assert.equal(fs.readFileSync(path.join(args.home, '.config/rawroute/rawroute-local-enabled'), 'utf8'), 'legacy-marker\n');
   assert.equal(fs.existsSync(path.join(args.home, '.config/rawroute/.switch.lock')), false);
 }));
 
@@ -115,6 +97,7 @@ test('symlink targets and concurrent switches are refused', () => fixture(({ put
 test('real chezmoi renders both modes, survives reapply and preserves local Codex/OpenCode choices', { skip: !chezmoi && 'Set CHEZMOI_TEST_BINARY to a real chezmoi executable.' }, () => fixture(({ put, ...args }) => {
   put('.codex/config.toml', 'custom_setting = "keep-me"\n[projects."/example"]\ntrust_level = "trusted"\n');
   put('.config/opencode/opencode.json', JSON.stringify({ model: 'custom/main', agents: { general: { model: 'custom/general#high' } } }));
+  put('.config/rawroute/rawroute-local-enabled', '1\n');
   put('.config/unrelated-file', 'must stay untouched\n');
   let expectedModel = 'gpt-6-luna';
   const readConfigs = mode => {
@@ -125,23 +108,29 @@ test('real chezmoi renders both modes, survives reapply and preserves local Code
     const toml = fs.readFileSync(path.join(args.home, '.codex/config.toml'), 'utf8');
     assert.match(toml, new RegExp(`^model = ['"]${expectedModel}['"]$`, 'm'));
     assert.match(toml, new RegExp(`^model_reasoning_effort = ['"]${expectedEffort}['"]$`, 'm'));
-    assert.ok(toml.includes(modes[mode].baseURL)); assert.ok(toml.includes(modes[mode].envKey));
+    const { urlEnv, envKey } = modes[mode];
+    assert.ok(toml.includes(args.env[urlEnv]));
+    assert.ok(toml.includes(envKey));
+    assert.equal(json.providers.rawroute.settings.baseURL, args.env[urlEnv]);
+    assert.deepEqual(json.providers.rawroute.env, [envKey]);
     assert.ok(toml.includes('keep-me')); assert.ok(toml.includes('trusted'));
-    assert.ok(!toml.includes('synthetic-test-value')); assert.ok(!JSON.stringify(json).includes('synthetic-test-value'));
+    for (const { envKey } of Object.values(modes)) {
+      assert.ok(!toml.includes(args.env[envKey]));
+      assert.ok(!JSON.stringify(json).includes(args.env[envKey]));
+    }
     return [toml, JSON.stringify(json)];
   };
   let expectedEffort = 'xhigh';
-  configure({ ...args, mode: 'default', env: { ...args.env, CCS_HALOTEC_LOCAL_API_KEY: '' } });
+  configure({ ...args, mode: 'default', env: { ...args.env, RAWROUTE_LOCAL_API_KEY: '' } });
   readConfigs('default');
+  assert.equal(fs.existsSync(path.join(args.home, '.config/rawroute/rawroute-local-enabled')), false);
   const codexFile = path.join(args.home, '.codex/config.toml');
   put('.codex/config.toml', fs.readFileSync(codexFile, 'utf8')
     .replace(/^model = .*$/m, 'model = "gpt-6-astra"')
     .replace(/^model_reasoning_effort = .*$/m, 'model_reasoning_effort = "low"'));
   expectedModel = 'gpt-6-astra';
   expectedEffort = 'low';
-  const openCodeBeforeSwitch = fs.readFileSync(path.join(args.home, '.config/opencode/opencode.json'), 'utf8');
   configure({ ...args, mode: 'local' });
-  assert.equal(fs.readFileSync(path.join(args.home, '.config/opencode/opencode.json'), 'utf8'), openCodeBeforeSwitch);
   const local = readConfigs('local');
   const r = spawnSync(chezmoi, ['--source', repository, '--destination', args.home, '--no-tty', 'apply', '--force'], { env: args.env, encoding: 'utf8', timeout: 60_000 });
   assert.equal(r.status, 0, 'isolated full chezmoi apply failed (output withheld)');

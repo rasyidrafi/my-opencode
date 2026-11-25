@@ -1,0 +1,10 @@
+{{- $prefix := "RAWROUTE" -}}
+{{- if stat (joinPath .chezmoi.destDir ".config" "rawroute" "local-enabled") -}}
+  {{- $prefix = "RAWROUTE_LOCAL" -}}
+{{- end -}}
+{{- $urlEnv := printf "%s_BASE_URL" $prefix -}}
+{{- $baseURL := env $urlEnv | trim -}}
+{{- if not $baseURL -}}
+  {{- fail (printf "%s is missing. Load the Rawroute environment before applying." $urlEnv) -}}
+{{- end -}}
+{{- dict "baseURL" $baseURL "envKey" (printf "%s_API_KEY" $prefix) | toJson -}}
