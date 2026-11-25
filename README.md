@@ -121,6 +121,9 @@ Run `node --test tests/mise-config.test.mjs tests/platform.test.mjs` to verify
 the platform matrix. These tests render configuration without installing tools.
 Apply the repository with `chezmoi apply` to activate changes on your machine.
 
+On Linux and Windows, `mise install` installs the pinned Pi coding agent. Run
+`pi` to start it and configure a provider or sign in using Pi's prompts.
+
 ## GitHub HTTPS credentials
 
 After `chezmoi apply` and `mise install`, run `mise run github:setup` once
@@ -909,14 +912,16 @@ can change which OpenAI model each alias resolves to without changing the
 OpenCode model IDs. RawRoute also exposes `base-alpha` (Base Alpha), `base-beta`
 (Base Beta), and `base-charlie` (Base Charlie), each with a 1,000,000-token
 context, a 128,000-token output limit, and text, image, and PDF input.
+The shared source of these model definitions is `.chezmoidata/rawroute.json`;
+both OpenCode and Pi render their provider metadata from that catalog.
 
 Verify with `node --test tests/opencode-config.test.mjs dot_config/rawroute/setup.test.mjs`.
 
 ### Rawroute endpoint switch
 
-Each task updates both Codex (`~/.codex/config.toml`) and OpenCode
-(`~/.config/opencode/opencode.json`) to the same Rawroute endpoint and API key
-reference.
+Each task updates Codex (`~/.codex/config.toml`), OpenCode
+(`~/.config/opencode/opencode.json`), and Pi (`~/.pi/agent/models.json`)
+to use the same RawRoute endpoint and API key variables.
 
 | Task | Base URL variable | API key variable |
 | --- | --- | --- |
@@ -931,18 +936,23 @@ run `mise run secrets:setup` and open a new initialized shell to use the apps.
 mise run provider:local -- --dry-run
 mise run provider:local
 mise run provider:default
-mise run codex:rawroute
 ```
 
-Apply and switching write variable names even when the environment is empty.
-OpenCode expands the `{env:...}` URL reference natively. Codex treats
-`base_url` as a literal, so use `mise run codex:rawroute` to start it with the
-resolved URL as a runtime config override. Pass Codex arguments after `--`.
-The API key is resolved by each app at runtime.
+Codex stores the selected base URL from the environment when you apply or
+switch modes. If the URL is empty or unset, the command warns and writes a
+`{env:VARIABLE_NAME}` marker. Reapply once the URL is available so Codex can
+connect. OpenCode resolves the URL reference at runtime. Pi stores the selected
+URL when applying or switching and resolves the API key from the environment;
+reapply if the URL changes. Pi's native model configuration is visible to T3
+Code even when it runs Pi without extensions. Refresh the Pi provider in T3
+Code after switching, and restart Pi sessions to pick up changes. Pi's provider contains the same six managed model
+IDs, names, reasoning support, context windows and output limits from the shared catalog.
+Pi supports text and image input, but its model schema does not expose PDF input.
+Pi retains its built-in providers, including OpenAI.
 
-Both templates read the same marker, `~/.config/rawroute/local-enabled`.
+All three templates read the same marker, `~/.config/rawroute/local-enabled`.
 The switch creates private backups under `~/.local/state/rawroute-backups` and
-restores both configs and the previous markers if applying or validating the
+restores all three configs and the previous markers if applying or validating the
 configs fails. `--dry-run` checks source ownership without applying changes.
 
 The applied `source.json` records the chezmoi source used to install the task.

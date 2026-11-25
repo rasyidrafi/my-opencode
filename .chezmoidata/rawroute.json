@@ -1,0 +1,99 @@
+{
+  "rawroute": {
+    "models": {
+      "base-alpha": {
+        "name": "Base Alpha",
+        "input": [
+          "text",
+          "image",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ],
+        "tools": true,
+        "temperature": true,
+        "reasoning": true,
+        "context": 1000000,
+        "maxOutput": 128000
+      },
+      "base-beta": {
+        "name": "Base Beta",
+        "input": [
+          "text",
+          "image",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ],
+        "tools": true,
+        "temperature": true,
+        "reasoning": true,
+        "context": 1000000,
+        "maxOutput": 128000
+      },
+      "base-charlie": {
+        "name": "Base Charlie",
+        "input": [
+          "text",
+          "image",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ],
+        "tools": true,
+        "temperature": true,
+        "reasoning": true,
+        "context": 1000000,
+        "maxOutput": 128000
+      },
+      "gpt-base": {
+        "name": "GPT Base",
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "tools": true,
+        "temperature": true,
+        "reasoning": true,
+        "context": 1000000,
+        "maxOutput": 128000
+      },
+      "gpt-core": {
+        "name": "GPT Core",
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "tools": true,
+        "temperature": true,
+        "reasoning": true,
+        "context": 640000,
+        "maxOutput": 128000
+      },
+      "gpt-peak": {
+        "name": "GPT Peak",
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "tools": true,
+        "temperature": true,
+        "reasoning": true,
+        "context": 400000,
+        "maxOutput": 128000
+      }
+    }
+  }
+}

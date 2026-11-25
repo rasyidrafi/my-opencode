@@ -124,15 +124,6 @@
         }
       },
       {
-        "package": "opencode",
-        "platforms": [
-          "linux",
-          "windows"
-        ],
-        "version": "2.4.1",
-        "options": "allow_builds = [\"@opencode/cli\"], allow_low_downloads = true"
-      },
-      {
         "package": "uv",
         "platforms": [
           "linux",
@@ -161,6 +152,14 @@
         "platforms": ["linux"],
         "version": "0.1.11",
         "options": "matching = \"t3-\""
+      },
+      {
+        "package": "npm:@earendil-works/pi-coding-agent",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "version": "1.6.0"
       },
       {
         "package": "npm:@openai/codex",
@@ -286,14 +285,6 @@
           "windows",
           "android"
         ],
-        "androidCleanEnv": false
-      },
-      {
-        "name": "codex:rawroute",
-        "description": "Launch Codex with the selected Rawroute URL from the environment",
-        "script": "rawroute/codex.mjs",
-        "args": "",
-        "platforms": ["linux", "windows", "android"],
         "androidCleanEnv": false
       },
       {

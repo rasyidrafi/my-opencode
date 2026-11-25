@@ -1,3 +1,7 @@
+{{- $models := dict -}}
+{{- range $id, $model := .rawroute.models -}}
+  {{- $_ := set $models $id (dict "name" $model.name "capabilities" (dict "tools" $model.tools "input" $model.input "output" $model.output "temperature" $model.temperature "reasoning" (dict "supported" $model.reasoning)) "limit" (dict "context" $model.context "output" $model.maxOutput)) -}}
+{{- end -}}
 {{- $route := includeTemplate "rawroute-endpoint" . | fromJson -}}
 {{- $agentPolicy := includeTemplate "dot_config/opencode/plugins/my-opencode/agent-policy.json" . | mustFromJson -}}
 {
@@ -16,104 +20,7 @@
       "settings": {
         "baseURL": {{ $route.baseURL | toJson }}
       },
-      "models": {
-        "base-alpha": {
-          "name": "Base Alpha",
-          "capabilities": {
-            "tools": true,
-            "input": ["text", "image", "pdf"],
-            "output": ["text"],
-            "temperature": true,
-            "reasoning": {
-              "supported": true
-            }
-          },
-          "limit": {
-            "context": 1000000,
-            "output": 128000
-          }
-        },
-        "base-beta": {
-          "name": "Base Beta",
-          "capabilities": {
-            "tools": true,
-            "input": ["text", "image", "pdf"],
-            "output": ["text"],
-            "temperature": true,
-            "reasoning": {
-              "supported": true
-            }
-          },
-          "limit": {
-            "context": 1000000,
-            "output": 128000
-          }
-        },
-        "base-charlie": {
-          "name": "Base Charlie",
-          "capabilities": {
-            "tools": true,
-            "input": ["text", "image", "pdf"],
-            "output": ["text"],
-            "temperature": true,
-            "reasoning": {
-              "supported": true
-            }
-          },
-          "limit": {
-            "context": 1000000,
-            "output": 128000
-          }
-        },
-        "gpt-base": {
-          "name": "GPT Base",
-          "capabilities": {
-            "tools": true,
-            "input": ["text", "image"],
-            "output": ["text"],
-            "temperature": true,
-            "reasoning": {
-              "supported": true
-            }
-          },
-          "limit": {
-            "context": 1000000,
-            "output": 128000
-          }
-        },
-        "gpt-core": {
-          "name": "GPT Core",
-          "capabilities": {
-            "tools": true,
-            "input": ["text", "image"],
-            "output": ["text"],
-            "temperature": true,
-            "reasoning": {
-              "supported": true
-            }
-          },
-          "limit": {
-            "context": 640000,
-            "output": 128000
-          }
-        },
-        "gpt-peak": {
-          "name": "GPT Peak",
-          "capabilities": {
-            "tools": true,
-            "input": ["text", "image"],
-            "output": ["text"],
-            "temperature": true,
-            "reasoning": {
-              "supported": true
-            }
-          },
-          "limit": {
-            "context": 400000,
-            "output": 128000
-          }
-        }
-      }
+      "models": {{ $models | toJson }}
     }
   },
   "disabled_providers": [

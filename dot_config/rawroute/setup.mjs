@@ -11,8 +11,8 @@ export const modes = {
   local: { urlEnv: 'RAWROUTE_LOCAL_BASE_URL', envKey: 'RAWROUTE_LOCAL_API_KEY' },
   default: { urlEnv: 'RAWROUTE_BASE_URL', envKey: 'RAWROUTE_API_KEY' },
 };
-const targets = ['.codex/config.toml', '.config/opencode/opencode.json'];
-const sources = ['dot_codex/modify_config.toml', 'dot_config/opencode/modify_opencode.json'];
+const targets = ['.codex/config.toml', '.config/opencode/opencode.json', '.pi/agent/models.json'];
+const sources = ['dot_codex/modify_config.toml', 'dot_config/opencode/modify_opencode.json', 'dot_pi/agent/modify_models.json'];
 
 export function options(argv) {
   const mode = argv[0];
@@ -34,7 +34,10 @@ export function configure({ mode, home = os.homedir(), env = process.env, source
   if (!['linux', 'darwin', 'win32', 'android'].includes(platform)) throw new Error('Rawroute switching supports Linux, macOS, Windows and Android.');
   if (!Object.hasOwn(modes, mode)) throw new Error('Expected local or default mode.');
   const { urlEnv, envKey } = modes[mode];
-  const baseURL = `{env:${urlEnv}}`;
+  const reference = `{env:${urlEnv}}`;
+  const urlValue = env[urlEnv]?.trim();
+  const baseURL = urlValue || reference;
+  const warning = urlValue ? null : `${urlEnv} is empty or unset; Codex base_url will contain ${reference}. Reapply when the URL is available.`;
   home = path.resolve(home);
   if (!source) {
     const stamp = path.join(directory, 'source.json');
@@ -46,7 +49,8 @@ export function configure({ mode, home = os.homedir(), env = process.env, source
   const paths = targets.map(name => path.join(home, name));
   const marker = path.join(home, '.config/rawroute/local-enabled');
   const legacyMarker = path.join(home, '.config/rawroute/rawroute-local-enabled');
-  const managedPaths = [...paths, marker, legacyMarker];
+  const retiredPiExtension = path.join(home, '.pi/agent/extensions/rawroute.js');
+  const managedPaths = [...paths, retiredPiExtension, marker, legacyMarker];
   for (const target of managedPaths) assertSafe(home, target);
   const flags = ['--source', source, '--destination', home, '--no-tty', '--no-pager'];
   const cm = (args, input) => {
@@ -57,9 +61,9 @@ export function configure({ mode, home = os.homedir(), env = process.env, source
   };
   for (let i = 0; i < paths.length; i++) {
     const expected = path.join(source, sources[i]);
-    if (!fs.existsSync(expected) || path.resolve(cm(['source-path', paths[i]])) !== expected) throw new Error('Source ownership does not match the expected Codex/OpenCode targets.');
+    if (!fs.existsSync(expected) || path.resolve(cm(['source-path', paths[i]])) !== expected) throw new Error('Source ownership does not match the expected Codex/OpenCode/Pi targets.');
   }
-  if (dryRun) return { mode, baseURL, envKey, dryRun: true, backup: null };
+  if (dryRun) return { mode, urlEnv, envKey, warning, dryRun: true, backup: null };
 
   const lock = path.join(home, '.config/rawroute/.switch.lock');
   assertSafe(home, lock);
@@ -87,12 +91,15 @@ export function configure({ mode, home = os.homedir(), env = process.env, source
       if (fs.existsSync(legacyMarker)) fs.unlinkSync(legacyMarker);
       for (const target of paths) fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
       cm(['apply', '--force', ...paths]);
-      const [codexPath, openCodePath] = paths;
+      if (fs.existsSync(retiredPiExtension)) fs.unlinkSync(retiredPiExtension);
+      const [codexPath, openCodePath, piPath] = paths;
       const query = '{{ $p := index (fromToml .chezmoi.stdin) "model_providers" "rawroute" }}{{ dict "baseURL" $p.base_url "envKey" $p.env_key | toJson }}';
       const codex = JSON.parse(cm(['execute-template', '--with-stdin', query], fs.readFileSync(codexPath, 'utf8')));
       const provider = JSON.parse(fs.readFileSync(openCodePath, 'utf8')).providers.rawroute;
+      const pi = JSON.parse(fs.readFileSync(piPath, 'utf8')).providers.rawroute;
       if (codex.baseURL !== baseURL || codex.envKey !== envKey ||
-          provider.settings.baseURL !== baseURL || provider.env.length !== 1 || provider.env[0] !== envKey) {
+          provider.settings.baseURL !== reference || provider.env.length !== 1 || provider.env[0] !== envKey ||
+          pi.baseUrl !== baseURL || pi.apiKey !== `\${${envKey}}`) {
         throw new Error('Rendered provider settings do not match the requested mode.');
       }
     } catch {
@@ -108,7 +115,7 @@ export function configure({ mode, home = os.homedir(), env = process.env, source
       }
       throw new Error(`Rawroute switch failed; ${rollbackFailed ? 'rollback incomplete—restore from private backup' : 'previous configs and marker restored'}. Backup: ${backup}. Sensitive output withheld.`);
     }
-    return { mode, baseURL, envKey, dryRun: false, backup };
+    return { mode, urlEnv, envKey, warning, dryRun: false, backup };
   } finally {
     fs.closeSync(fd);
     fs.unlinkSync(lock);
@@ -118,7 +125,8 @@ export function configure({ mode, home = os.homedir(), env = process.env, source
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const result = configure(options(process.argv.slice(2)));
-    console.log(`${result.dryRun ? 'Dry run; no changes' : 'Updated Codex and OpenCode'}: ${result.mode}, ${result.baseURL}, ${result.envKey}.`);
+    console.log(`${result.dryRun ? 'Dry run; no changes' : 'Updated Codex, OpenCode and Pi'}: ${result.mode}, ${result.urlEnv}, ${result.envKey}.`);
+    if (result.warning) console.warn(`Warning: ${result.warning}`);
     if (result.backup) console.log(`Private backup: ${result.backup}. Restart existing applications/services separately if needed.`);
   } catch (error) { console.error(error.message); process.exitCode = 1; }
 }

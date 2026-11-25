@@ -4,4 +4,4 @@
 {{- end -}}
 {{- $urlEnv := printf "%s_BASE_URL" $prefix -}}
 {{- $baseURL := printf "{env:%s}" $urlEnv -}}
-{{- dict "baseURL" $baseURL "envKey" (printf "%s_API_KEY" $prefix) | toJson -}}
+{{- dict "urlEnv" $urlEnv "baseURL" $baseURL "envKey" (printf "%s_API_KEY" $prefix) | toJson -}}

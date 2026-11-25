@@ -11,3 +11,4 @@
 .config/opencode/plugins/my-opencode/fusion.js
 .config/opencode/plugins/my-opencode/fusion.json
 .config/opencode/plugins/my-opencode/simulated.js
+.pi/agent/extensions/rawroute.js

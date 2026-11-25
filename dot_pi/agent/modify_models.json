@@ -1,0 +1,21 @@
+{{- /* chezmoi:modify-template */ -}}
+{{- $config := dict -}}
+{{- if ne (trim .chezmoi.stdin) "" -}}{{- $config = mustFromJson .chezmoi.stdin -}}{{- end -}}
+{{- $route := includeTemplate "rawroute-endpoint" . | fromJson -}}
+{{- $url := env $route.urlEnv | trim -}}
+{{- if not $url -}}
+  {{- warnf "%s is empty or unset; Pi baseUrl will contain %s. Reapply when the URL is available." $route.urlEnv $route.baseURL -}}
+  {{- $url = $route.baseURL -}}
+{{- end -}}
+{{- $models := list -}}
+{{- range $id, $model := .rawroute.models -}}
+  {{- $input := list -}}
+  {{- range $type := $model.input -}}
+    {{- if has $type (list "text" "image") -}}{{- $input = append $input $type -}}{{- end -}}
+  {{- end -}}
+  {{- $models = append $models (dict "id" $id "name" $model.name "reasoning" $model.reasoning "input" $input "contextWindow" $model.context "maxTokens" $model.maxOutput "cost" (dict "input" 0 "output" 0 "cacheRead" 0 "cacheWrite" 0)) -}}
+{{- end -}}
+{{- $providers := get $config "providers" | default dict -}}
+{{- $_ := set $providers "rawroute" (dict "baseUrl" $url "apiKey" (printf "${%s}" $route.envKey) "api" "openai-completions" "models" $models) -}}
+{{- $_ := set $config "providers" $providers -}}
+{{ $config | toPrettyJson }}

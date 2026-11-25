@@ -132,10 +132,10 @@
 {{- end -}}
 {{- /* These models support reasoning without selectable effort variants. Replace
       nested metadata so stale toggle/effort keys do not survive deep merging. */ -}}
-{{- range $id := list "base-alpha" "base-beta" "base-charlie" "gpt-base" "gpt-core" "gpt-peak" -}}
+{{- range $id, $_ := .rawroute.models -}}
   {{- $model := index $config.providers.rawroute.models $id -}}
   {{- if and $model (hasKey $model "capabilities") -}}
-    {{- $_ := set $model.capabilities "reasoning" (dict "supported" true) -}}
+    {{- $_ := set $model.capabilities "reasoning" (dict "supported" (index $.rawroute.models $id).reasoning) -}}
   {{- end -}}
 {{- end -}}
 {{- $config = setValueAtPath "disabled_providers" $disabled $config -}}
