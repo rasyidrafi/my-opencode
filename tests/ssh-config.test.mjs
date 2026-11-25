@@ -66,9 +66,9 @@ test('creates endpoints on a fresh home and is stable on reapply', t => {
   assert.equal(apply(), first);
   for (const alias of ['soy', 'soy-wb', 'bull']) {
     const config = effective(alias);
-    assert.equal(config.hostname, `${alias.split('-')[0]}.qilin-elver.ts.net`);
+    assert.equal(config.hostname, `${alias}.qilin-elver.ts.net`);
     assert.equal(config.user, alias);
-    assert.equal(config.port, alias.endsWith('-wb') ? '2222' : '22');
+    assert.equal(config.port, '22');
     if (first.includes('# >>> my-opencode SSH agent fallback >>>')) {
       assert.equal(config.identityagent, path.join(os.homedir(), '.bitwarden-ssh-agent.sock'));
     }
@@ -111,7 +111,7 @@ Match originalhost personal
   }
   assert.equal(effective('soy').identityfile, '/tmp/soy-key');
   assert.equal(effective('soy').port, '22');
-  assert.equal(effective('soy-wb').port, '2222');
+  assert.equal(effective('soy-wb').port, '22');
   assert.equal(effective('personal').hostname, 'personal.example');
   assert.equal(effective('personal').user, 'personal-user');
   assert.equal(effective('personal').port, '9999');

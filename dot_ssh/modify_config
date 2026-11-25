@@ -43,9 +43,9 @@ Host soy
     Port 22
 
 Host soy-wb
-    HostName soy.qilin-elver.ts.net
+    HostName soy-wb.qilin-elver.ts.net
     User soy-wb
-    Port 2222
+    Port 22
 
 Host bull
     HostName bull.qilin-elver.ts.net
