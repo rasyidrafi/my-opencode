@@ -148,20 +148,6 @@
         "version": "1.0.163"
       },
       {
-        "package": "github:pingdotgg/t3code",
-        "platforms": ["linux"],
-        "version": "0.1.11",
-        "options": "matching = \"t3-\""
-      },
-      {
-        "package": "npm:@earendil-works/pi-coding-agent",
-        "platforms": [
-          "linux",
-          "windows"
-        ],
-        "version": "1.6.0"
-      },
-      {
         "package": "npm:@openai/codex",
         "platforms": [
           "linux",
@@ -339,6 +325,15 @@
         "args": "",
         "platforms": ["linux"],
         "androidCleanEnv": false
+      },
+      {
+        "name": "t3code:uninstall",
+        "description": "Stop and remove the T3 Code systemd user service",
+        "script": "t3code/uninstall.sh",
+        "args": "",
+        "platforms": ["linux"],
+        "androidCleanEnv": false,
+        "runner": "sh"
       },
       {
         "name": "chrome:setup",

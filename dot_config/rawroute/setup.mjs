@@ -11,8 +11,8 @@ export const modes = {
   local: { urlEnv: 'RAWROUTE_LOCAL_BASE_URL', envKey: 'RAWROUTE_LOCAL_API_KEY' },
   default: { urlEnv: 'RAWROUTE_BASE_URL', envKey: 'RAWROUTE_API_KEY' },
 };
-const targets = ['.codex/config.toml', '.config/opencode/opencode.json', '.pi/agent/models.json'];
-const sources = ['dot_codex/modify_config.toml', 'dot_config/opencode/modify_opencode.json', 'dot_pi/agent/modify_models.json'];
+const targets = ['.codex/config.toml', '.config/opencode/opencode.json'];
+const sources = ['dot_codex/modify_config.toml', 'dot_config/opencode/modify_opencode.json'];
 
 export function options(argv) {
   const mode = argv[0];
@@ -49,8 +49,7 @@ export function configure({ mode, home = os.homedir(), env = process.env, source
   const paths = targets.map(name => path.join(home, name));
   const marker = path.join(home, '.config/rawroute/local-enabled');
   const legacyMarker = path.join(home, '.config/rawroute/rawroute-local-enabled');
-  const retiredPiExtension = path.join(home, '.pi/agent/extensions/rawroute.js');
-  const managedPaths = [...paths, retiredPiExtension, marker, legacyMarker];
+  const managedPaths = [...paths, marker, legacyMarker];
   for (const target of managedPaths) assertSafe(home, target);
   const flags = ['--source', source, '--destination', home, '--no-tty', '--no-pager'];
   const cm = (args, input) => {
@@ -61,7 +60,7 @@ export function configure({ mode, home = os.homedir(), env = process.env, source
   };
   for (let i = 0; i < paths.length; i++) {
     const expected = path.join(source, sources[i]);
-    if (!fs.existsSync(expected) || path.resolve(cm(['source-path', paths[i]])) !== expected) throw new Error('Source ownership does not match the expected Codex/OpenCode/Pi targets.');
+    if (!fs.existsSync(expected) || path.resolve(cm(['source-path', paths[i]])) !== expected) throw new Error('Source ownership does not match the expected Codex/OpenCode targets.');
   }
   if (dryRun) return { mode, urlEnv, envKey, warning, dryRun: true, backup: null };
 
@@ -91,15 +90,12 @@ export function configure({ mode, home = os.homedir(), env = process.env, source
       if (fs.existsSync(legacyMarker)) fs.unlinkSync(legacyMarker);
       for (const target of paths) fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
       cm(['apply', '--force', ...paths]);
-      if (fs.existsSync(retiredPiExtension)) fs.unlinkSync(retiredPiExtension);
-      const [codexPath, openCodePath, piPath] = paths;
+      const [codexPath, openCodePath] = paths;
       const query = '{{ $p := index (fromToml .chezmoi.stdin) "model_providers" "rawroute" }}{{ dict "baseURL" $p.base_url "envKey" $p.env_key | toJson }}';
       const codex = JSON.parse(cm(['execute-template', '--with-stdin', query], fs.readFileSync(codexPath, 'utf8')));
       const provider = JSON.parse(fs.readFileSync(openCodePath, 'utf8')).providers.rawroute;
-      const pi = JSON.parse(fs.readFileSync(piPath, 'utf8')).providers.rawroute;
       if (codex.baseURL !== baseURL || codex.envKey !== envKey ||
-          provider.settings.baseURL !== reference || provider.env.length !== 1 || provider.env[0] !== envKey ||
-          pi.baseUrl !== baseURL || pi.apiKey !== `\${${envKey}}`) {
+          provider.settings.baseURL !== reference || provider.env.length !== 1 || provider.env[0] !== envKey) {
         throw new Error('Rendered provider settings do not match the requested mode.');
       }
     } catch {
@@ -125,7 +121,7 @@ export function configure({ mode, home = os.homedir(), env = process.env, source
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const result = configure(options(process.argv.slice(2)));
-    console.log(`${result.dryRun ? 'Dry run; no changes' : 'Updated Codex, OpenCode and Pi'}: ${result.mode}, ${result.urlEnv}, ${result.envKey}.`);
+    console.log(`${result.dryRun ? 'Dry run; no changes' : 'Updated Codex and OpenCode'}: ${result.mode}, ${result.urlEnv}, ${result.envKey}.`);
     if (result.warning) console.warn(`Warning: ${result.warning}`);
     if (result.backup) console.log(`Private backup: ${result.backup}. Restart existing applications/services separately if needed.`);
   } catch (error) { console.error(error.message); process.exitCode = 1; }

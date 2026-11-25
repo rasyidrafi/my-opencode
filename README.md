@@ -121,9 +121,6 @@ Run `node --test tests/mise-config.test.mjs tests/platform.test.mjs` to verify
 the platform matrix. These tests render configuration without installing tools.
 Apply the repository with `chezmoi apply` to activate changes on your machine.
 
-On Linux and Windows, `mise install` installs the pinned Pi coding agent. Run
-`pi` to start it and configure a provider or sign in using Pi's prompts.
-
 ## GitHub HTTPS credentials
 
 After `chezmoi apply` and `mise install`, run `mise run github:setup` once
@@ -494,18 +491,21 @@ Android/Termux are not supported. Test without system changes with
 
 ### T3 Code
 
-On Linux, `mise install` installs the pinned T3 Code CLI from its GitHub releases.
-Run `t3` to start its server and open the web app. Its version is managed in
-`.chezmoidata/mise.json` and appears in `mise list`. A previous installation in
-`~/.local/bin` may take precedence depending on your PATH; check with
-`which t3`. See https://t3.codes for details.
+Install the T3 Code CLI separately on Linux and make `t3` available on your
+PATH. Run `t3` to start its server and open the web app. See https://t3.codes
+for installation details.
 
 After initial service setup with `t3 up`, run `mise run t3code:setup` to start or
 restart the Linux service with the managed shell environment and secrets loaded
-at each start. Its launcher uses the mise-managed T3 version; T3's service
-launcher may run its own installed runtime. Pairing remains a
+at each start. The service wrapper looks for `t3` on its PATH, starting with
+`~/.local/bin`. Pairing remains a
 separate manual step (`t3 pair` or `t3 pair --tailscale`). After syncing secrets,
 restart the service to pick up changes.
+
+Run `mise run t3code:uninstall` to stop, disable, and remove the Linux user
+service and remove its Tailscale HTTPS route to `http://127.0.0.1:3773`.
+Tailscale stays installed and running. The task works even if the `t3` CLI
+has already been removed.
 
 ### Muse Code
 
@@ -912,15 +912,14 @@ can change which OpenAI model each alias resolves to without changing the
 OpenCode model IDs. RawRoute also exposes `base-alpha` (Base Alpha), `base-beta`
 (Base Beta), and `base-charlie` (Base Charlie), each with a 1,000,000-token
 context, a 128,000-token output limit, and text, image, and PDF input.
-The shared source of these model definitions is `.chezmoidata/rawroute.json`;
-both OpenCode and Pi render their provider metadata from that catalog.
+OpenCode renders its provider metadata from `.chezmoidata/rawroute.json`.
 
 Verify with `node --test tests/opencode-config.test.mjs dot_config/rawroute/setup.test.mjs`.
 
 ### Rawroute endpoint switch
 
-Each task updates Codex (`~/.codex/config.toml`), OpenCode
-(`~/.config/opencode/opencode.json`), and Pi (`~/.pi/agent/models.json`)
+Each task updates Codex (`~/.codex/config.toml`) and OpenCode
+(`~/.config/opencode/opencode.json`)
 to use the same RawRoute endpoint and API key variables.
 
 | Task | Base URL variable | API key variable |
@@ -941,16 +940,9 @@ mise run provider:default
 Codex stores the selected base URL from the environment when you apply or
 switch modes. If the URL is empty or unset, the command warns and writes a
 `{env:VARIABLE_NAME}` marker. Reapply once the URL is available so Codex can
-connect. OpenCode resolves the URL reference at runtime. Pi stores the selected
-URL when applying or switching and resolves the API key from the environment;
-reapply if the URL changes. Pi's native model configuration is visible to T3
-Code even when it runs Pi without extensions. Refresh the Pi provider in T3
-Code after switching, and restart Pi sessions to pick up changes. Pi's provider contains the same six managed model
-IDs, names, reasoning support, context windows and output limits from the shared catalog.
-Pi supports text and image input, but its model schema does not expose PDF input.
-Pi retains its built-in providers, including OpenAI.
+connect. OpenCode resolves the URL reference at runtime.
 
-All three templates read the same marker, `~/.config/rawroute/local-enabled`.
+Both templates read the same marker, `~/.config/rawroute/local-enabled`.
 The switch creates private backups under `~/.local/state/rawroute-backups` and
 restores all three configs and the previous markers if applying or validating the
 configs fails. `--dry-run` checks source ownership without applying changes.

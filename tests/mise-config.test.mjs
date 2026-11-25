@@ -40,19 +40,17 @@ for (const [platform, env] of [['android', {}], ['linux', { TERMUX_VERSION: '0.1
 test('Linux and Windows use the shared desktop tool defaults', { skip: !available }, () => {
   const linux = render('linux');
   const windows = tools(render('windows'));
-  const t3 = '"github:pingdotgg/t3code" = { version = "0.1.11", matching = "t3-" }';
-  assert.ok(tools(linux).includes(t3));
-  assert.ok(!windows.includes(t3));
-  assert.ok(!tools(render('android')).includes(t3));
-  assert.deepEqual(tools(linux).filter(line => line !== t3), windows);
+  assert.ok(!tools(linux).some(line => line.includes('github:pingdotgg/t3code')));
+  assert.ok(!tools(render('android')).some(line => line.includes('github:pingdotgg/t3code')));
+  assert.deepEqual(tools(linux), windows);
   assert.ok(!tools(linux).some(line => line.startsWith('\"npm:t3\"')));
   assert.ok(!windows.some(line => line.startsWith('\"npm:t3\"')));
   assert.ok(!tools(render('android')).some(line => line.startsWith('\"npm:t3\"')));
   assert.ok(tools(linux).includes('"npm:@bitwarden/cli" = "2026.11.0"'));
-  assert.ok(tools(linux).includes('"npm:@earendil-works/pi-coding-agent" = "1.6.0"'));
+  assert.ok(!tools(linux).some(line => line.includes('pi-coding-agent')));
   assert.ok(!tools(render('android')).some(line => line.includes('npm:@earendil-works/pi-coding-agent')));
   assert.ok(tools(linux).includes('"node" = "26.13.1"'));
-  assert.equal(tools(linux).length, 20);
+  assert.equal(tools(linux).length, 18);
   assert.ok(!tools(linux).some(line => line.startsWith('"opencode"')));
   assert.ok(!tools(linux).some(line => line.includes('npm:@openchamber/web')));
   assert.ok(!windows.some(line => line.includes('npm:@openchamber/web')));
@@ -75,7 +73,7 @@ for (const platform of ['linux', 'windows', 'android']) {
     const config = render(platform);
     const names = [...config.matchAll(/\[tasks\."([^"]+)"\]/g)].map(match => match[1]);
     assert.deepEqual(names, catalog.tasks.filter(task => task.platforms.includes(platform)).map(task => task.name));
-    assert.equal(names.length, { linux: 28, windows: 14, android: 10 }[platform]);
+    assert.equal(names.length, { linux: 29, windows: 14, android: 10 }[platform]);
     assert.ok(names.includes('provider:default'));
     assert.ok(names.includes('provider:local'));
     assert.ok(!names.includes('rawroute:default'));
@@ -88,6 +86,7 @@ for (const platform of ['linux', 'windows', 'android']) {
     assert.equal(names.includes('mpv:setup'), platform === 'linux');
     assert.equal(names.includes('muse:setup'), platform !== 'android');
     assert.equal(names.includes('t3code:setup'), platform === 'linux');
+    assert.equal(names.includes('t3code:uninstall'), platform === 'linux');
     assert.equal(names.includes('cua:setup'), platform === 'linux');
     assert.equal(names.includes('cua:startup'), false);
     assert.equal(names.includes('crd:setup'), platform === 'linux');
