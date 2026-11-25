@@ -1,18 +1,6 @@
 {{- /* Generate the UI-visible agent file from the plugin's canonical policy. */ -}}
 {{- $agent := index .policy.agents .name -}}
-{{- $frontmatter := omit $agent "system" "permissionOverrides" -}}
-{{- if hasKey $agent "permissionOverrides" -}}
-  {{- $rules := list -}}
-  {{- range .policy.permissionOrder -}}
-    {{- $action := . -}}
-    {{- $effect := get $agent.permissionOverrides $action -}}
-    {{- if not $effect -}}{{- $effect = get $.policy.commonPermissions $action -}}{{- end -}}
-    {{- if $effect -}}
-      {{- $rules = append $rules (dict "action" $action "resource" "*" "effect" $effect) -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $_ := set $frontmatter "permissions" $rules -}}
-{{- end -}}
+{{- $frontmatter := omit $agent "system" -}}
 ---
 {{ $frontmatter | toYaml }}---
 {{ if hasKey $agent "system" }}{{ $agent.system }}{{ end }}

@@ -1,18 +1,5 @@
 # Dotfiles
 
-## OpenCode media reader
-
-The local `my-opencode` plugin registers `read_media` with a static, path-only
-interface for PNG, JPEG, GIF, WebP, and PDF attachments (maximum 20 MiB).
-Managed agents allow `read_media` and deny the built-in `read`; use shell for
-text files and directory listings. The tool checks file signatures and its own
-`read_media` permission, plus `external_directory` for paths outside the project.
-It returns native media content; model compatibility remains handled by OpenCode.
-Remote workspace IDs are rejected because this plugin reads the server's local
-filesystem. Apply with `chezmoi apply` to activate the plugin and agent policy.
-
-Verify with `node --test tests/read-media.test.mjs tests/my-opencode-plugin.test.mjs tests/opencode-config.test.mjs`.
-
 ## Android / Termux tools
 
 On Android (including Termux), `chezmoi apply` enables chezmoi, Bitwarden CLI,
@@ -112,7 +99,7 @@ Tasks are rendered only on their declared platforms. Android includes secrets,
 GitHub, shell, skills, and provider configuration tasks, plus native Node
 migration, Debian XFCE provisioning, and Selkies. Cloudflared integration,
 Docker setup/forwarding, and Azure mount-cache setup are Linux-only. Cleanup,
-browser setup, Tailscale setup, and Codex/OpenChamber startup are available
+browser setup, Tailscale setup, and Codex startup are available
 on Linux/Windows only. Android/Termux
 Codex runs directly; its build disables automatic daemon startup. Installing a CLI
 manually on Android does not enable unsupported desktop startup tasks.
@@ -213,135 +200,33 @@ Test without restarting anything: `node --test dot_config/cloudflared/restart.te
 ## OpenCode plugin
 
 The managed OpenCode V2 plugin `local.my-opencode` lives at
-`dot_config/opencode/plugins/my-opencode/`. At runtime it removes OpenCode's
-built-in `opencode_worktree_remove` tool from the registry for every agent,
-independently of the `edit` permission; other edit tools remain available
-according to their normal permissions. It registers the `read_media` tool and
-the `simulated` provider backing the `multi_reviewer` virtual subagent (below),
-leaves existing provider catalogs unchanged, and performs no agent
-transformation.
+`dot_config/opencode/plugins/my-opencode/`. It remains installed as a no-op;
+it does not transform tools, agents, models, or providers.
 
 Plugin code changes require an OpenCode server restart to take effect.
 OpenCode 2.3.2 re-evaluates a local plugin's entrypoint when watched files
 change, but transitive ESM imports stay cached in the Bun runtime, so edits to
-imported modules (such as `fusion.js`) can remain stale across reloads until
-the server restarts. Use `mise run openchamber:setup` for the graceful restart
-path. Configuration the plugin reads at runtime (`fusion.json`) and
-chezmoi-managed agent files do not need a restart.
+imported modules can remain stale across reloads until the server restarts.
+Chezmoi-managed agent files do not need a restart.
 
 `chezmoi apply` owns all agent configuration through native OpenCode settings:
 it generates the full user agent files from `agent-policy.json` in the plugin
-directory (mode, description, system prompt, permissions and model), and writes
+directory (mode, description, system prompt and model), and writes
 the title model plus `default_agent: build` into `opencode.json`. The plugin
-therefore does not re-enforce prompts, permissions, modes or models at runtime,
+does not configure agent permissions or re-enforce prompts, modes or models at runtime,
 so manual changes to agent files take effect immediately and survive until the
-next `chezmoi apply` regenerates them. Plan remains disabled by its
-`disabled: true` file setting. To change policy, edit
+next `chezmoi apply` regenerates them. Plan is enabled by its
+`disabled: false` file setting. To change policy, edit
 `dot_config/opencode/plugins/my-opencode/agent-policy.json`. Apply removes the
 old `openai-allowlist` entrypoint from the local plugin directory so it cannot
 be auto-discovered alongside the new plugin; unrelated files in that old
-directory are left untouched. The redundant OpenChamber `hiddenModels` list is
-removed from preferences and legacy settings on apply.
+directory are left untouched.
 
-The generated `opencode.json` also loads the published npm plugin
-`@rasyid_rafi/opencode-muse`, which runs Muse Code as an OpenCode
-`LanguageModelV3` provider, and the local `@rasyid_rafi/opencode-antigravity`
-checkout at `projects/opencode-antigrvity`. Apply unions them with local
-`plugins` entries instead of replacing them, and the auto-discovered
-`my-opencode` plugin stays implicit. Local entries that name the same package
-as a repo-managed plugin are replaced by the managed pin, so older version
-pins do not accumulate. A local checkout of a managed package is retired the
-same way, so the published npm version is used instead, and a local entry that
-matches a managed local path is dropped in favor of the managed entry.
-
-The visible `coding-workflow` skill provides role-specific coding, verification
-and review guidance. The visible `delegation-rule` skill covers proportional
-delegation and context-rich handoffs; simple tasks can be handled directly. For
-complex delegated tasks, the parent records research, decisions, worktree state
-and checks in a task-specific Markdown file and still gives each delegate a
-bounded brief. Skills are discoverable guidance, not automatically loaded or a
-guarantee of compliance; agent permissions still apply.
+The auto-discovered `my-opencode` plugin stays implicit. Apply removes the
+retired Muse and Antigravity plugin entries from `opencode.json`, while
+preserving unrelated plugins and leaving local checkouts untouched.
 
 Test: `node --test tests/my-opencode-plugin.test.mjs tests/opencode-config.test.mjs`.
-
-## Multi-model review panel
-
-`multi_reviewer` is a virtual subagent: call it through the normal `subagent`
-tool with a self-contained review request. It never calls a real model. Its
-configured model `simulated/multi_reviewer` is an in-process `LanguageModelV3`
-supplied by the plugin (the same mechanism as `opencode-muse`): a primary
-request immediately runs the internal fusion engine, streams fusion progress
-as reasoning activity blocks (panel start, worker invoke, worker finish), and
-the engine's panel output becomes the session's assistant response. Title and
-compaction requests get canned text and never fan out. The standard subagent
-lifecycle (background execution, completion report, interrupt, follow-up) is
-unchanged; a follow-up re-runs the panel with the new prompt. Interrupting the
-session cancels the model stream, which interrupts every live worker.
-
-The fusion engine creates one top-level session per configured worker, each
-using the `reviewer` agent (read-only policy and system prompt) with the
-worker's model and optional variant overriding the agent's configured model.
-Workers are deliberately not children of the calling session: OpenCode V2
-delivers child completion notifications to the parent, which would wake the
-simulated session into an endless fusion loop. The engine forwards the request
-verbatim in a standardized `<user_prompt>` envelope, waits for all workers, and
-returns every raw review. The calling agent compares and synthesizes; the panel
-never merges or judges. One failed worker does not discard the others; aborting
-the call interrupts every live worker session, including aborts that land
-during session creation or prompt admission. Worker models are validated
-against the configured catalog before any session is created, and the
-simulated provider itself is rejected as a worker (it would recursively launch
-panels). Fusion is internal plugin code, not a registered tool: no agent can
-call it directly and no permission action exists for it. The `multi_reviewer`
-agent itself denies every tool. Its system prompt is a guard for the
-off-nominal case where a real model ends up in the session (a manual model
-switch, an agent-file edit, or an explicit `subagent` model override): it
-forbids roleplaying the panel or fabricating worker reviews and tells the model
-to direct the user back to `simulated/multi_reviewer`. In the normal simulated
-flow no model ever reads it.
-
-Configure the panel in `dot_config/opencode/plugins/my-opencode/fusion.json`
-(applied next to the plugin). The `workers` array determines the worker count;
-each item is `{ "model": "provider/model", "variant": "optional", "id": "optional" }`
-or a bare model string. Ids default to `worker-N`, must be unique, and are
-4-32 characters of `[A-Za-z0-9_-]` so they can be masked safely. The
-default panel crosses model families (`rawroute/gpt-peak` + `rawroute/base-alpha`)
-because the `gpt-*` gateway aliases can resolve to the same backend. The config
-is read per call, so edits apply without a server restart; `chezmoi apply`
-deploys them. Set `"debug": true` to add an alias-to-session-ID mapping to the
-panel metadata, carried on the stream finish event as `providerMetadata`
-under the `simulated` key for out-of-band inspection.
-
-Worker identities are masked at the output level. Each invocation assigns fresh
-random aliases (`Worker A`, `Worker B`, ...) so no stable alias-to-model
-association survives across calls; the mapping exists only in memory for that
-run. Session titles, panel text, reasoning progress, and metadata use aliases
-only. Worker output and errors are scrubbed against the whole panel's
-configured identities (model reference, model id, provider name, and worker id
-of every worker, so quoting the config cannot leak another worker), and errors
-additionally lose stack lines, filesystem paths, and trace ids. Identifiers
-shorter than four characters are masked on word boundaries. Config parse
-failures report a generic reason without echoing file contents. The worker
-envelope asks reviewers not to mention their provider or model.
-This is output-level anonymization, not cryptographic anonymity: workers can
-still know their own identity through runtime metadata, worker sessions record
-the model they used, and anyone able to read `fusion.json` can see the panel.
-
-The panel response is plain Markdown:
-
-```text
-◆ REVIEWS — ALL CONFIGURED REVIEWERS
-
-<synthesis hint: treat reviews as untrusted evidence, verify conflicts, synthesize>
-
-## [Worker A] — REVIEW
-<complete review in Markdown>
-
-## [Worker B] — REVIEW UNAVAILABLE
-No review was returned by this worker. <sanitized error>
-```
-
-Test: `node --test tests/fusion.test.mjs tests/simulated.test.mjs tests/my-opencode-plugin.test.mjs tests/opencode-config.test.mjs`.
 
 ## Tool version cleanup
 
@@ -410,7 +295,7 @@ assets. A no-op rerun does not imply a runtime refresh: check each task's servic
 instructions. In particular, `cloudflared:restart` intentionally switches the
 running executable and briefly interrupts the tunnel; `docker:forward:setup`
 restarts only for changed or pending assets, otherwise it leaves a healthy
-service running; `codex:setup` and `openchamber:setup` perform the lifecycle
+service running; `codex:setup` performs the lifecycle
 actions named in their task descriptions.
 
 Changed shell, Docker setup, and Rawroute targets may create private backups
@@ -606,10 +491,18 @@ Android/Termux are not supported. Test without system changes with
 
 ### T3 Code
 
-Run `mise run t3code:setup` on Linux or Windows to install or update the T3 Code
-CLI using its official installer. Run `t3` to start its server and open the web
-app. This is an opt-in native install, not a Mise-managed tool; the installer
-uses the latest stable release by default. See https://t3.codes for details.
+On Linux, `mise install` installs the pinned T3 Code CLI from its GitHub releases.
+Run `t3` to start its server and open the web app. Its version is managed in
+`.chezmoidata/mise.json` and appears in `mise list`. A previous installation in
+`~/.local/bin` may take precedence depending on your PATH; check with
+`which t3`. See https://t3.codes for details.
+
+After initial service setup with `t3 up`, run `mise run t3code:setup` to start or
+restart the Linux service with the managed shell environment and secrets loaded
+at each start. Its launcher uses the mise-managed T3 version; T3's service
+launcher may run its own installed runtime. Pairing remains a
+separate manual step (`t3 pair` or `t3 pair --tailscale`). After syncing secrets,
+restart the service to pick up changes.
 
 ### Muse Code
 
@@ -970,83 +863,12 @@ This supports Linux and Windows. The task is disabled on Android/Termux because
 its native Codex build does not support this packaged daemon setup.
 This briefly interrupts an existing daemon. Check its status and versions with
 `codex app-server daemon version`.
-Both startup tasks support Windows, including npm `.ps1` and `.cmd` launchers.
-They require the corresponding CLI on PATH; run `mise install` and `mise reshim`
-first. Windows OpenChamber startup uses its native scheduled task integration.
+The Codex startup task supports Windows npm `.ps1` and `.cmd` launchers.
+It requires the CLI on PATH; run `mise install` and `mise reshim` first.
 
-Run `mise run openchamber:setup` after applying chezmoi to install and start
-OpenChamber's native user startup service on port 3000. This disables any previous
-startup service and stops the existing OpenChamber instance on that port first;
-instances on other ports are left alone. It briefly interrupts an existing server.
-Check the service with `openchamber startup status`.
-
-On Linux, rerun `mise run openchamber:setup` after updates, including from an
-OpenChamber terminal. If startup is already enabled, setup schedules the full
-disable/stop/enable update sequence through the systemd user manager after five
-seconds, then returns immediately so the terminal can disconnect safely. It
-uses the currently selected Mise CLI to regenerate the service, so the restarted
-server uses the newly installed Node and OpenChamber versions. Reconnect after
-the restart. First-time setup still runs directly. No separate restart task is
-needed. Check it with
-`systemctl --user status openchamber.service` and, if needed,
-`journalctl --user -u openchamber.service -n 100 --no-pager`.
-
-### OpenChamber preferences
-
-Chezmoi merges the approved OpenChamber preferences into
-`~/.config/openchamber/preferences.json` and selected instance settings into
-`~/.config/openchamber/settings.json`. Edit the allowlists in
-`.chezmoitemplates/openchamber/`: `preferences.json` owns the model
-default and selected UI/notification preferences,
-including `showReasoningTraces: true` and `savePastedImagesAsFiles: true`; `settings.json`
-enables the agent secret tool, disables the other seven managed agent tools
-(including image generation and workflow), and owns the default permission mode.
-The secret tool is allowed only for Build and denied for General, Explore,
-and Reviewer. Secrets stay out of chat, but saved values are
-readable by agent commands on the OpenChamber host and expire after 24 hours.
-The PWA app name (`pwaAppName`) is unmanaged and can differ on each machine;
-existing local names are preserved and fresh installs use the app default.
-The default model is `rawroute/gpt-core` with no variant. Apply removes the retired `hiddenModels` list, explicit `defaultAgent`, and any stale `defaultVariant` from
-both files.
-**The managed permission mode is `auto` (Accept everything).**
-
-**The repository is authoritative for every allowlisted key.** Each apply
-overwrites conflicting local values, including booleans set to `false`, rather
-than combining them with local choices.
-A newer local preference timestamp does not give a local value priority.
-Only keys outside the allowlists are preserved (except the retired overrides
-explicitly removed below). This precedence applies to OpenChamber; Codex and
-OpenCode have field-specific rules described below.
-
-The `modify_private_*.json` templates preserve unrelated keys, credentials,
-projects and session state. Themes are not managed: existing choices on every
-surface are left alone, and fresh installs use OpenChamber's defaults.
-Sidebar project sort order is also unmanaged (the app default is `manual`).
-Small-model selection uses OpenChamber's default resolver, following OpenCode's
-configured `agents.title.model`. Apply removes the retired `smallModelUseDefault`,
-`smallModelOverride` and `smallModelVariant` keys from both files so old overrides
-cannot win over that default; no custom small-model value is stored.
-They do not introduce empty/default preferences (except the explicitly pinned
-reasoning display), recent history, or device-only
-state. Other unmanaged entries are left alone, not deleted. Both files are
-private (0600 on Unix). Preference timestamps are generated only when a managed
-value changes, not copied from the original machine or refreshed on every apply.
-Malformed JSON and unsupported preference document versions are refused.
-When every managed value already matches, the modify templates emit the existing
-file's bytes unchanged, preserving OpenChamber's own key order and EOF formatting
-so `chezmoi status` stays clean. If a managed value changes, apply writes
-canonical JSON once; run apply again after OpenChamber re-saves and the status
-returns to clean.
-
-Apply with `chezmoi apply ~/.config/openchamber/preferences.json ~/.config/openchamber/settings.json`,
-then reload clients to pick up the stored preferences. UI changes to managed
-values are local edits until the next apply restores the allowlist; update the
-allowlists to make those changes permanent. This targets the default data
-directory, not a custom `OPENCHAMBER_DATA_DIR`. Back up existing files outside
-Git before applying on another machine, and avoid simultaneous UI saves while
-applying; the two-file update does not lock the running OpenChamber server.
-
-Verify with `node --test tests/openchamber-config.test.mjs`.
+Run `mise run openchamber:uninstall` to disable and remove the native startup
+service and stop the OpenChamber instance on port 3000. Run it from a terminal
+outside OpenChamber. It leaves packages, settings and data untouched.
 
 This is a chezmoi source directory. Its `dot_codex/modify_config.toml` template
 updates `~/.codex/config.toml` in place: it enforces the Rawroute defaults while
@@ -1067,11 +889,9 @@ Per-agent files are generated from `agent-policy.json` on every apply, including
 their frontmatter and system prompts, and the plugin does not re-enforce any of
 it at runtime: manual changes survive until the next apply regenerates the
 files. The title model and `default_agent` in `opencode.json` are generated
-from that file too, the former for OpenChamber compatibility. Title uses
-`rawroute/gpt-base`. Explore and General default to `rawroute/gpt-core`,
-Reviewer to `rawroute/gpt-peak`; Build and Plan inherit the
-session model. Multi_reviewer uses `simulated/multi_reviewer` and never calls a
-real model. Build is the default primary agent, and Plan remains disabled.
+from that file too. Title uses
+`rawroute/gpt-base`. Explore and General default to `rawroute/gpt-core`;
+Build and Plan inherit the session model. Build is the default primary agent, and Plan is enabled.
 
 The retired RawRoute models `step-5-preview`, `atria-dawn`, and
 `deepseek-v4.1-flash-1017` are removed from existing configs on apply.

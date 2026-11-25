@@ -10,7 +10,7 @@ import agentPolicyData from '../dot_config/opencode/plugins/my-opencode/agent-po
 const repository = fileURLToPath(new URL('../', import.meta.url));
 const located = spawnSync('mise', ['which', 'chezmoi'], { encoding: 'utf8' });
 const chezmoi = process.env.CHEZMOI_TEST_BINARY || (located.status === 0 ? located.stdout.trim() : 'chezmoi');
-const agents = ['build', 'plan', 'general', 'explore', 'reviewer', 'multi_reviewer'];
+const agents = ['build', 'plan', 'general', 'explore'];
 const managedAntigravity = home => ({ package: path.join(home, 'projects', 'opencode-antigrvity') });
 
 function fixture(t) {
@@ -53,17 +53,8 @@ function fixture(t) {
   return { apply, applyAll, put, read, agent, agentBody, directory, home };
 }
 
-// Mirrors .chezmoitemplates/opencode-agent.tmpl: omit system/permissionOverrides,
-// then append the computed permission rules when overrides exist.
 function expectedAgentFrontmatter(name) {
-  const agent = agentPolicyData.agents[name];
-  const { system, permissionOverrides, ...frontmatter } = agent;
-  if (permissionOverrides) {
-    const effects = { ...agentPolicyData.commonPermissions, ...permissionOverrides };
-    frontmatter.permissions = agentPolicyData.permissionOrder
-      .filter(action => Object.hasOwn(effects, action))
-      .map(action => ({ action, resource: '*', effect: effects[action] }));
-  }
+  const { system, ...frontmatter } = agentPolicyData.agents[name];
   return frontmatter;
 }
 
@@ -77,15 +68,17 @@ test('applying retires explicit local plugin paths without changing other plugin
     others[1],
   ] }));
   const first = apply();
-  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, managedAntigravity(home), '@rasyid_rafi/opencode-muse']);
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others]);
   assert.deepEqual(apply(), first);
 });
 
-test('applying retires stale local versions of managed plugins', t => {
+test('applying retires retired plugin packages and paths', t => {
   const { apply, put, read, home } = fixture(t);
   put('opencode.json', JSON.stringify({ plugins: [
     '@rasyid_rafi/opencode-muse',
     '@rasyid_rafi/opencode-muse@0.1.2',
+    '@rasyid_rafi/opencode-antigravity@1.0.0',
+    managedAntigravity(home),
     'another-plugin',
     { package: 'custom-plugin', options: { keep: true } },
   ] }));
@@ -93,13 +86,11 @@ test('applying retires stale local versions of managed plugins', t => {
   assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [
     'another-plugin',
     { package: 'custom-plugin', options: { keep: true } },
-    managedAntigravity(home),
-    '@rasyid_rafi/opencode-muse',
   ]);
   assert.deepEqual(apply(), first);
 });
 
-test('applying retires a local checkout of a managed plugin without changing other plugins', t => {
+test('applying retires a local checkout of a retired plugin without changing other plugins', t => {
   const { apply, put, read, home } = fixture(t);
   const checkout = path.join(home, 'projects', 'opencode-muse');
   fs.mkdirSync(checkout, { recursive: true });
@@ -107,21 +98,21 @@ test('applying retires a local checkout of a managed plugin without changing oth
   const others = ['another-plugin', { package: 'custom-plugin', options: { keep: true } }];
   put('opencode.json', JSON.stringify({ plugins: [checkout, ...others] }));
   const first = apply();
-  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, managedAntigravity(home), '@rasyid_rafi/opencode-muse']);
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others]);
   assert.deepEqual(apply(), first);
 });
 
-test('applying retires a missing local checkout of a managed plugin by directory name', t => {
+test('applying retires a missing local checkout of a retired plugin by directory name', t => {
   const { apply, put, read, home } = fixture(t);
   const checkout = path.join(home, 'projects', 'opencode-muse');
   const others = ['another-plugin'];
   put('opencode.json', JSON.stringify({ plugins: [checkout, ...others] }));
   const first = apply();
-  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, managedAntigravity(home), '@rasyid_rafi/opencode-muse']);
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others]);
   assert.deepEqual(apply(), first);
 });
 
-test('applying keeps a local checkout that is not a managed package', t => {
+test('applying keeps a local checkout that is not a retired package', t => {
   const { apply, put, read, home } = fixture(t);
   const checkout = path.join(home, 'projects', 'other-plugin');
   fs.mkdirSync(checkout, { recursive: true });
@@ -129,11 +120,11 @@ test('applying keeps a local checkout that is not a managed package', t => {
   const others = ['another-plugin'];
   put('opencode.json', JSON.stringify({ plugins: [checkout, ...others] }));
   const first = apply();
-  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [checkout, ...others, managedAntigravity(home), '@rasyid_rafi/opencode-muse']);
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [checkout, ...others]);
   assert.deepEqual(apply(), first);
 });
 
-test('applying retires object plugin entries for managed packages and managed local paths', t => {
+test('applying retires object plugin entries for retired packages and local paths', t => {
   const { apply, put, read, home } = fixture(t);
   const muse = path.join(home, 'projects', 'opencode-muse');
   fs.mkdirSync(muse, { recursive: true });
@@ -146,25 +137,15 @@ test('applying retires object plugin entries for managed packages and managed lo
   const first = apply();
   assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [
     'another-plugin',
-    managedAntigravity(home),
-    '@rasyid_rafi/opencode-muse',
   ]);
   assert.deepEqual(apply(), first);
 });
 
-test('workflow skills are installed and discoverable without changing configured instructions', t => {
+test('applying OpenCode configuration preserves configured instructions', t => {
   const { applyAll, put, read } = fixture(t);
   put('opencode.json', JSON.stringify({ instructions: ['~/existing.md'] }));
   applyAll();
   assert.deepEqual(JSON.parse(read('opencode.json')).instructions, ['~/existing.md']);
-  for (const name of ['coding-workflow', 'delegation-rule']) {
-    const skill = read(`skills/${name}/SKILL.md`);
-    const frontmatter = skill.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-    assert.ok(frontmatter, `${name} has frontmatter`);
-    assert.match(frontmatter[1], new RegExp(`^name: ${name}$`, 'm'));
-    assert.match(frontmatter[1], /^description: \S/m);
-    assert.doesNotMatch(frontmatter[1], /disable-model-invocation:\s*true|opencode\/autoinvoke:\s*false/);
-  }
 });
 
 test('chezmoi apply removes the stale renamed plugin file but preserves unrelated files', t => {
@@ -189,11 +170,11 @@ test('fresh installs generate agent policy without OpenAI provider overrides', t
   const first = apply();
   assert.deepEqual(apply(), first);
   const config = JSON.parse(read('opencode.json'));
-  assert.deepEqual(config.plugins, [managedAntigravity(home), '@rasyid_rafi/opencode-muse']);
-  for (const name of ['build', 'general', 'explore', 'reviewer', 'multi_reviewer']) {
+  assert.deepEqual(config.plugins, []);
+  for (const name of ['build', 'general', 'explore']) {
     assert.deepEqual(agent(name), expectedAgentFrontmatter(name));
   }
-  assert.deepEqual(agent('plan'), { disabled: true });
+  assert.deepEqual(agent('plan'), expectedAgentFrontmatter('plan'));
   assert.deepEqual(config.agents, { title: { model: 'rawroute/gpt-base' } });
   assert.equal(config.default_agent, 'build');
   assert.ok(!Object.hasOwn(config, 'provider'));
@@ -203,63 +184,50 @@ test('fresh installs generate agent policy without OpenAI provider overrides', t
 test('generated agent files expose the repo policy to the UI', t => {
   const { apply, agent, agentBody } = fixture(t);
   apply();
-  for (const name of ['build', 'general', 'explore', 'reviewer', 'multi_reviewer']) {
+  for (const name of ['build', 'general', 'explore']) {
     const expected = expectedAgentFrontmatter(name);
     assert.deepEqual(agent(name), expected);
-    assert.deepEqual(agent(name).permissions, expected.permissions);
     assert.equal(agent(name).description, agentPolicyData.agents[name].description);
     assert.equal(agentBody(name), agentPolicyData.agents[name].system ?? '');
   }
-  assert.deepEqual(agent('plan'), { disabled: true });
+  assert.deepEqual(agent('plan'), expectedAgentFrontmatter('plan'));
 });
 
-test('managed agents deny read and allow the independent read_media tool', t => {
+test('agent files remove existing permission overrides and leave defaults to OpenCode', t => {
+  const { apply, put, agent } = fixture(t);
+  for (const name of agents) put(`agents/${name}.md`, '---\npermissions:\n  - action: read\n    resource: "*"\n    effect: deny\n---\n');
+  const first = apply();
+  for (const name of agents) assert.equal(Object.hasOwn(agent(name), 'permissions'), false);
+  assert.deepEqual(apply(), first);
+});
+
+test('apply removes retired multi-reviewer files', t => {
+  const { applyAll, home } = fixture(t);
+  const paths = ['agents/reviewer.md', 'agents/multi_reviewer.md', 'plugins/my-opencode/fusion.js', 'plugins/my-opencode/fusion.json', 'plugins/my-opencode/simulated.js', 'plugins/my-opencode/read-media.js'];
+  for (const name of paths) {
+    const file = path.join(home, '.config/opencode', name);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, 'retired');
+  }
+  applyAll();
+  for (const name of paths) assert.equal(fs.existsSync(path.join(home, '.config/opencode', name)), false);
+  assert.equal(Object.hasOwn(agentPolicyData.agents, 'multi_reviewer'), false);
+  assert.equal(Object.hasOwn(agentPolicyData.agents, 'reviewer'), false);
+});
+
+test('general and explore agents are disabled', t => {
   const { apply, agent } = fixture(t);
   apply();
-  for (const name of ['build', 'general', 'explore', 'reviewer']) {
-    assert.deepEqual(agent(name).permissions.filter(rule => rule.action === 'read'), [
-      { action: 'read', resource: '*', effect: 'deny' },
-    ]);
-    assert.deepEqual(agent(name).permissions.filter(rule => rule.action === 'read_media'), [
-      { action: 'read_media', resource: '*', effect: 'allow' },
-    ]);
-  }
+  for (const name of ['general', 'explore']) assert.equal(agent(name).disabled, true);
 });
 
-test('multi_reviewer is a simulated subagent without tool access', t => {
-  const { apply, agent } = fixture(t);
-  apply();
-  const frontmatter = agent('multi_reviewer');
-  assert.equal(frontmatter.mode, 'subagent');
-  assert.equal(frontmatter.model, 'simulated/multi_reviewer');
-  for (const action of ['shell', 'skill', 'edit', 'patch', 'read', 'read_media', 'glob', 'grep', 'subagent', 'openchamber_secret']) {
-    assert.deepEqual(frontmatter.permissions.filter(rule => rule.action === action), [
-      { action, resource: '*', effect: 'deny' },
-    ]);
-  }
-  // Fusion is an internal engine, not a registered tool: no agent gets a fusion rule.
-  for (const name of agents) {
-    assert.deepEqual(agent(name).permissions?.filter(rule => rule.action === 'fusion') ?? [], []);
-  }
-});
-
-test('managed agents deny the OpenChamber agent control tool', t => {
-  const { apply, agent } = fixture(t);
-  apply();
-  for (const name of ['build', 'general', 'explore', 'reviewer']) {
-    assert.deepEqual(agent(name).permissions.filter(rule => rule.action === 'openchamber'), [
-      { action: 'openchamber', resource: '*', effect: 'deny' },
-    ]);
-  }
-});
-
-test('plan agent remains disabled and its stub rejects local policy overrides', t => {
+test('plan agent remains enabled and rejects local policy overrides', t => {
   const { apply, put, agent } = fixture(t);
   apply();
-  assert.equal(agent('plan').disabled, true);
-  put('agents/plan.md', '---\ndisabled: false\nmodel: custom/plan\n---\n');
+  assert.equal(agent('plan').disabled, false);
+  put('agents/plan.md', '---\ndisabled: true\nmodel: custom/plan\n---\n');
   const first = apply();
-  assert.equal(agent('plan').disabled, true);
+  assert.equal(agent('plan').disabled, false);
   assert.ok(!Object.hasOwn(agent('plan'), 'model'));
   assert.deepEqual(apply(), first);
 });
@@ -380,7 +348,7 @@ test('applying replaces local agent edits with the canonical repo policy', t => 
   for (const name of agents) put(`agents/${name}.md`, `---\r\nmodel: 'custom/${name}#high' # local selection\r\npermissions: []\r\n---\r\nOld instructions\r\n`);
   const first = apply();
   for (const name of agents) {
-    assert.deepEqual(agent(name), name === 'plan' ? { disabled: true } : expectedAgentFrontmatter(name));
+    assert.deepEqual(agent(name), expectedAgentFrontmatter(name));
     assert.equal(agentBody(name), agentPolicyData.agents[name].system ?? '');
   }
   assert.deepEqual(apply(), first);

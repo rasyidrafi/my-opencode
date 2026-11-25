@@ -2,10 +2,6 @@
 {{- $agentPolicy := includeTemplate "dot_config/opencode/plugins/my-opencode/agent-policy.json" . | mustFromJson -}}
 {
   "websearch": false,
-  "plugins": [
-    { "package": {{ joinPath .chezmoi.destDir "projects" "opencode-antigrvity" | toJson }} },
-    "@rasyid_rafi/opencode-muse"
-  ],
   "agents": {
     "title": {
       "model": "{{ $agentPolicy.titleModel }}"

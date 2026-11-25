@@ -7,9 +7,8 @@
 {{- /* Keep local model/agent selections and unrelated settings. The repo owns
       provider routing and model limits, and adds its disabled provider. */ -}}
 {{- $disabled := concat (get $config "disabled_providers" | default list) $managed.disabled_providers | uniq -}}
-{{- /* The local plugin is auto-discovered; retire redundant explicit paths and
-      stale local versions of repo-managed packages, then add the managed pins
-      while keeping other local entries. */ -}}
+{{- /* The local plugin is auto-discovered. Retire its redundant explicit paths
+      and the former Muse and Antigravity plugins, preserving unrelated entries. */ -}}
 {{- $localPlugins := get $config "plugins" | default list -}}
 {{- $managedPlugins := get $managed "plugins" | default list -}}
 {{- $oldPath := joinPath .chezmoi.destDir ".config" "opencode" "plugins" "openai-allowlist" | replace "\\" "/" -}}
@@ -19,7 +18,8 @@
 {{- $managedPackages := list -}}
 {{- $managedNames := list -}}
 {{- $managedPaths := list -}}
-{{- range $managedPlugins -}}
+{{- $retiredPlugins := list "@rasyid_rafi/opencode-muse" "@rasyid_rafi/opencode-antigravity" (joinPath .chezmoi.destDir "projects" "opencode-antigrvity") -}}
+{{- range concat $managedPlugins $retiredPlugins -}}
   {{- $specifier := . -}}
   {{- if kindIs "map" . -}}{{- $specifier = get . "package" | default "" -}}{{- end -}}
   {{- if kindIs "string" $specifier -}}

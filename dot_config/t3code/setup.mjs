@@ -1,27 +1,23 @@
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { requireTaskPlatform } from '../my-opencode/platform.mjs';
 
 export function setup({ platform = process.platform, env = process.env, execute = spawnSync } = {}) {
-  requireTaskPlatform('t3code:setup', ['linux', 'windows'], platform, env);
-  const windows = platform === 'win32';
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 't3code-install-'));
-  const installer = path.join(tempDir, windows ? 'install.ps1' : 'install.sh');
-  const run = (command, args, options = {}) => {
-    const result = execute(command, args, { stdio: 'inherit', env, ...options });
-    if (result.error) throw result.error;
-    if (result.status !== 0) throw new Error(`${command} failed with status ${result.status}.`);
+  requireTaskPlatform('t3code:setup', ['linux'], platform, env);
+  const run = (args) => {
+    const result = execute('systemctl', ['--user', ...args], { stdio: 'inherit', env });
+    if (result.error || result.status !== 0) throw new Error(`systemctl ${args.join(' ')} failed.`);
   };
-  try {
-    run('curl', ['--fail', '--location', '--silent', '--show-error', '--max-time', '120', `https://t3.codes/install.${windows ? 'ps1' : 'sh'}`, '--output', installer]);
-    if (windows) run('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', installer], { timeout: 900_000 });
-    else run('sh', [installer], { timeout: 900_000 });
-  } finally {
-    fs.rmSync(tempDir, { recursive: true, force: true });
-  }
+  const unit = path.join(env.HOME, '.config/systemd/user/t3code.service');
+  if (!fs.existsSync(unit)) throw new Error('T3 service is not installed. Run t3 up first to configure access and install it.');
+  const directory = `${unit}.d`;
+  fs.mkdirSync(directory, { recursive: true });
+  fs.writeFileSync(path.join(directory, 'my-opencode.conf'), '[Service]\nExecStart=\nExecStart=/bin/sh %h/.config/t3code/service.sh\n');
+  run(['daemon-reload']);
+  run(['restart', 't3code.service']);
+  console.log('T3 service restarted with the managed shell environment. Run t3 pair separately when needed.');
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

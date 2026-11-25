@@ -11,7 +11,7 @@ test('normalizes platform and detects Termux reported as Linux', () => {
   assert.equal(currentPlatform('linux', {}), 'linux');
   assert.throws(() => requireTaskPlatform('docker:setup', ['linux'], 'linux', { TERMUX_VERSION: 'test' }), /Android\/Termux/);
 });
-for (const app of ['codex', 'openchamber']) {
+for (const app of ['codex']) {
   test(app + ' setup rejects Android before invoking the CLI', () => {
     let calls = 0;
     assert.throws(() => setup(app, { platform: 'android', execute: () => { calls++; } }), /Android\/Termux/);

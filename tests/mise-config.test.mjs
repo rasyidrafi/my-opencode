@@ -22,7 +22,7 @@ for (const [platform, env] of [['android', {}], ['linux', { TERMUX_VERSION: '0.1
     const config = render(platform, env);
     assert.equal(tools(config).length, 5);
     assert.ok(config.includes('"http:codex" = '));
-    assert.deepEqual(tools(config).slice(0, 2), ['"npm:@bitwarden/cli" = "2026.11.0"', '"chezmoi" = "2.74.1"']);
+    assert.deepEqual(tools(config).slice(0, 2), ['"npm:@bitwarden/cli" = "2026.11.0"', '"chezmoi" = "2.74.2"']);
     assert.match(tools(config)[2], /^"http:gh" = /);
     const gh = catalog.tools.find(tool => tool.package === 'gh');
     assert.ok(config.includes(`gh_${gh.version}_aarch64.deb`));
@@ -40,13 +40,19 @@ for (const [platform, env] of [['android', {}], ['linux', { TERMUX_VERSION: '0.1
 test('Linux and Windows use the shared desktop tool defaults', { skip: !available }, () => {
   const linux = render('linux');
   const windows = tools(render('windows'));
-  assert.deepEqual(tools(linux), windows);
+  const t3 = '"github:pingdotgg/t3code" = { version = "0.1.11", matching = "t3-" }';
+  assert.ok(tools(linux).includes(t3));
+  assert.ok(!windows.includes(t3));
+  assert.ok(!tools(render('android')).includes(t3));
+  assert.deepEqual(tools(linux).filter(line => line !== t3), windows);
   assert.ok(!tools(linux).some(line => line.startsWith('\"npm:t3\"')));
   assert.ok(!windows.some(line => line.startsWith('\"npm:t3\"')));
   assert.ok(!tools(render('android')).some(line => line.startsWith('\"npm:t3\"')));
   assert.ok(tools(linux).includes('"npm:@bitwarden/cli" = "2026.11.0"'));
   assert.ok(tools(linux).includes('"node" = "26.13.1"'));
   assert.equal(tools(linux).length, 20);
+  assert.ok(!tools(linux).some(line => line.includes('npm:@openchamber/web')));
+  assert.ok(!windows.some(line => line.includes('npm:@openchamber/web')));
   assert.ok(linux.includes('[settings.npm]\nshell_out = true'));
 });
 
@@ -66,7 +72,7 @@ for (const platform of ['linux', 'windows', 'android']) {
     const config = render(platform);
     const names = [...config.matchAll(/\[tasks\."([^"]+)"\]/g)].map(match => match[1]);
     assert.deepEqual(names, catalog.tasks.filter(task => task.platforms.includes(platform)).map(task => task.name));
-    assert.equal(names.length, { linux: 30, windows: 17, android: 12 }[platform]);
+    assert.equal(names.length, { linux: 30, windows: 16, android: 12 }[platform]);
     assert.equal(names.includes('crd:uninstall'), platform === 'linux');
     assert.equal(names.includes('desktop:setup'), platform === 'linux');
     assert.equal(names.includes('selkies:setup'), platform !== 'windows');
@@ -74,13 +80,14 @@ for (const platform of ['linux', 'windows', 'android']) {
     assert.equal(names.includes('termux:xfce:setup'), platform === 'android');
     assert.equal(names.includes('mpv:setup'), platform === 'linux');
     assert.equal(names.includes('muse:setup'), platform !== 'android');
-    assert.equal(names.includes('t3code:setup'), platform !== 'android');
+    assert.equal(names.includes('t3code:setup'), platform === 'linux');
     assert.equal(names.includes('cua:setup'), platform === 'linux');
     assert.equal(names.includes('cua:startup'), false);
     assert.equal(names.includes('crd:setup'), platform === 'linux');
     assert.equal(names.includes('codex:setup'), platform !== 'android');
     assert.equal(names.includes('playwriter:setup'), platform !== 'android');
-    assert.equal(names.includes('openchamber:setup'), platform !== 'android');
+    assert.equal(names.includes('openchamber:setup'), false);
+    assert.equal(names.includes('openchamber:uninstall'), platform !== 'android');
     assert.equal(names.includes('openchamber:restart'), false);
   });
 }
