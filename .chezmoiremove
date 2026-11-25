@@ -1,11 +1,8 @@
 # Targets retired from the source. chezmoi removes them on apply.
-.config/openchamber/settings.json
-.config/openchamber/preferences.json
 .config/opencode/plugins/openai-allowlist/index.js
 .config/chrome-remote-desktop/install-docklike-fork.sh
 .config/chrome-remote-desktop/mint-preset/panel/docklike-6.rc
 .config/opencode/plugins/my-opencode/agents.js
-.config/opencode/plugins/my-opencode/read-media.js
 .config/opencode/agents/multi_reviewer.md
 .config/opencode/agents/reviewer.md
 .config/opencode/plugins/my-opencode/fusion.js

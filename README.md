@@ -197,10 +197,17 @@ printed. Cleanup remains a separate, explicit operation.
 
 Test without restarting anything: `node --test dot_config/cloudflared/restart.test.mjs`.
 
+## OpenCode and OpenChamber
+
+On Linux and Windows, `chezmoi apply` followed by `mise install` installs the
+pinned OpenCode CLI and OpenChamber Web. Run `opencode` for the CLI or
+`openchamber --port 3000` for the web interface.
+
 ## OpenCode plugin
 
 The managed OpenCode V2 plugin `local.my-opencode` lives at
-`dot_config/opencode/plugins/my-opencode/`. It remains installed as a no-op;
+`dot_config/opencode/plugins/my-opencode/`. It registers `read_media` for images and PDFs and removes
+`opencode_worktree_remove` from the tool registry;
 it does not transform tools, agents, models, or providers.
 
 Plugin code changes require an OpenCode server restart to take effect.
@@ -211,12 +218,14 @@ Chezmoi-managed agent files do not need a restart.
 
 `chezmoi apply` owns all agent configuration through native OpenCode settings:
 it generates the full user agent files from `agent-policy.json` in the plugin
-directory (mode, description, system prompt and model), and writes
-the title model plus `default_agent: build` into `opencode.json`. The plugin
+directory and writes the title model plus `default_agent: build` into
+`opencode.json`. The `general`, `explore`, and `plan` agent files contain only
+`disabled: true` and inherit their other defaults from OpenCode. Build denies
+tools by default and allows `shell`, `edit`, `patch`, `skill`,
+`external_directory`, `openchamber_render`, `openchamber_secret`, and `read_media`. The plugin
 does not configure agent permissions or re-enforce prompts, modes or models at runtime,
 so manual changes to agent files take effect immediately and survive until the
-next `chezmoi apply` regenerates them. Plan is enabled by its
-`disabled: false` file setting. To change policy, edit
+next `chezmoi apply` regenerates them. To change policy, edit
 `dot_config/opencode/plugins/my-opencode/agent-policy.json`. Apply removes the
 old `openai-allowlist` entrypoint from the local plugin directory so it cannot
 be auto-discovered alongside the new plugin; unrelated files in that old
@@ -869,6 +878,9 @@ This briefly interrupts an existing daemon. Check its status and versions with
 The Codex startup task supports Windows npm `.ps1` and `.cmd` launchers.
 It requires the CLI on PATH; run `mise install` and `mise reshim` first.
 
+Run `mise run openchamber:setup` to enable and start the native startup service
+on port 3000.
+
 Run `mise run openchamber:uninstall` to disable and remove the native startup
 service and stop the OpenChamber instance on port 3000. Run it from a terminal
 outside OpenChamber, as the user who started the service and within the same
@@ -900,7 +912,7 @@ it at runtime: manual changes survive until the next apply regenerates the
 files. The title model and `default_agent` in `opencode.json` are generated
 from that file too. Title uses
 `rawroute/gpt-base`. Explore and General default to `rawroute/gpt-core`;
-Build and Plan inherit the session model. Build is the default primary agent, and Plan is enabled.
+Build is the default primary agent and inherits the session model. Plan is disabled.
 
 The retired RawRoute models `step-5-preview`, `atria-dawn`, and
 `deepseek-v4.1-flash-1017` are removed from existing configs on apply.

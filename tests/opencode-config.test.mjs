@@ -193,17 +193,22 @@ test('generated agent files expose the repo policy to the UI', t => {
   assert.deepEqual(agent('plan'), expectedAgentFrontmatter('plan'));
 });
 
-test('agent files remove existing permission overrides and leave defaults to OpenCode', t => {
+test('agent files replace local permission overrides with the managed policy', t => {
   const { apply, put, agent } = fixture(t);
   for (const name of agents) put(`agents/${name}.md`, '---\npermissions:\n  - action: read\n    resource: "*"\n    effect: deny\n---\n');
   const first = apply();
-  for (const name of agents) assert.equal(Object.hasOwn(agent(name), 'permissions'), false);
+  assert.deepEqual(agent('build').permissions, [
+    { action: '*', resource: '*', effect: 'deny' },
+    ...['shell', 'edit', 'patch', 'skill', 'external_directory', 'openchamber_render', 'openchamber_secret', 'read_media']
+      .map(action => ({ action, resource: '*', effect: 'allow' })),
+  ]);
+  for (const name of ['general', 'explore', 'plan']) assert.equal(Object.hasOwn(agent(name), 'permissions'), false);
   assert.deepEqual(apply(), first);
 });
 
 test('apply removes retired multi-reviewer files', t => {
   const { applyAll, home } = fixture(t);
-  const paths = ['agents/reviewer.md', 'agents/multi_reviewer.md', 'plugins/my-opencode/fusion.js', 'plugins/my-opencode/fusion.json', 'plugins/my-opencode/simulated.js', 'plugins/my-opencode/read-media.js'];
+  const paths = ['agents/reviewer.md', 'agents/multi_reviewer.md', 'plugins/my-opencode/fusion.js', 'plugins/my-opencode/fusion.json', 'plugins/my-opencode/simulated.js'];
   for (const name of paths) {
     const file = path.join(home, '.config/opencode', name);
     fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -215,19 +220,28 @@ test('apply removes retired multi-reviewer files', t => {
   assert.equal(Object.hasOwn(agentPolicyData.agents, 'reviewer'), false);
 });
 
-test('general and explore agents are disabled', t => {
-  const { apply, agent } = fixture(t);
-  apply();
-  for (const name of ['general', 'explore']) assert.equal(agent(name).disabled, true);
+test('general, explore, and plan only have a disable flag and inherit built-in defaults', t => {
+  const { apply, put, read, agent, agentBody } = fixture(t);
+  const overrides = { general: { model: 'custom/general' }, explore: { permissions: [] }, plan: { model: 'custom/plan', disabled: false } };
+  put('opencode.json', JSON.stringify({ agents: overrides, agent: overrides }));
+  const first = apply();
+  for (const name of ['general', 'explore', 'plan']) {
+    assert.deepEqual(agent(name), { disabled: true });
+    assert.equal(agentBody(name), '');
+  }
+  const config = JSON.parse(read('opencode.json'));
+  assert.deepEqual(config.agents, { title: { model: 'rawroute/gpt-base' } });
+  assert.ok(!Object.hasOwn(config, 'agent'));
+  assert.deepEqual(apply(), first);
 });
 
-test('plan agent remains enabled and rejects local policy overrides', t => {
+test('plan agent remains disabled and rejects local policy overrides', t => {
   const { apply, put, agent } = fixture(t);
   apply();
-  assert.equal(agent('plan').disabled, false);
-  put('agents/plan.md', '---\ndisabled: true\nmodel: custom/plan\n---\n');
+  assert.equal(agent('plan').disabled, true);
+  put('agents/plan.md', '---\ndisabled: false\nmodel: custom/plan\n---\n');
   const first = apply();
-  assert.equal(agent('plan').disabled, false);
+  assert.equal(agent('plan').disabled, true);
   assert.ok(!Object.hasOwn(agent('plan'), 'model'));
   assert.deepEqual(apply(), first);
 });
@@ -319,7 +333,7 @@ test('applying migrates retired RawRoute OAI selections without changing unrelat
     model: 'rawroute/oai-base#high',
     small_model: 'rawroute/oai-core',
     agents: {
-      general: { model: 'rawroute/oai-peak#low', description: 'rawroute/oai-core is mentioned here' },
+      customRawroute: { model: 'rawroute/oai-peak#low', description: 'rawroute/oai-core is mentioned here' },
       custom: { model: 'custom/provider-model' },
       unrelated: { model: 'custom/rawroute/oai-core' },
     },
@@ -333,8 +347,8 @@ test('applying migrates retired RawRoute OAI selections without changing unrelat
   const config = JSON.parse(read('opencode.json'));
   assert.equal(config.model, 'rawroute/gpt-base#high');
   assert.equal(config.small_model, 'rawroute/gpt-core');
-  assert.equal(config.agents.general.model, 'rawroute/gpt-peak#low');
-  assert.equal(config.agents.general.description, local.agents.general.description);
+  assert.equal(config.agents.customRawroute.model, 'rawroute/gpt-peak#low');
+  assert.equal(config.agents.customRawroute.description, local.agents.customRawroute.description);
   assert.equal(config.agents.custom.model, 'custom/provider-model');
   assert.equal(config.agents.unrelated.model, 'custom/rawroute/oai-core');
   assert.equal(config.agent.legacy.model, 'rawroute/gpt-core#medium');
@@ -355,12 +369,12 @@ test('applying replaces local agent edits with the canonical repo policy', t => 
   put('agents/general.md', '---\nmodel: custom/another-model#low\npermissions: []\n---\nLocal prompt');
   apply();
   assert.deepEqual(agent('general'), expectedAgentFrontmatter('general'));
-  assert.equal(agentBody('general'), agentPolicyData.agents.general.system);
+  assert.equal(agentBody('general'), '');
 });
 
 test('OpenCode retires OpenAI overrides in both shapes while preserving unrelated settings', t => {
   const { apply, put, read } = fixture(t);
-  const selections = { general: { model: 'custom/general#high' }, personal: { model: 'custom/personal' } };
+  const selections = { custom: { model: 'custom/custom#high' }, personal: { model: 'custom/personal' } };
   put('opencode.json', JSON.stringify({
     model: 'custom/main', agents: selections, disabled_providers: ['other'],
     providers: { openai: { settings: { baseURL: 'https://old.example', apiKey: 'old-key-reference' }, models: { personal: {} } }, custom: { name: 'Keep' } },

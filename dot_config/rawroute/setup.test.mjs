@@ -87,7 +87,7 @@ test('symlink targets and concurrent switches are refused', () => fixture(({ put
 
 test('real chezmoi renders both modes, survives reapply and preserves local Codex/OpenCode choices', { skip: !chezmoi && 'Set CHEZMOI_TEST_BINARY to a real chezmoi executable.' }, () => fixture(({ put, ...args }) => {
   put('.codex/config.toml', 'custom_setting = "keep-me"\n[projects."/example"]\ntrust_level = "trusted"\n');
-  put('.config/opencode/opencode.json', JSON.stringify({ model: 'custom/main', agents: { general: { model: 'custom/general#high' } } }));
+  put('.config/opencode/opencode.json', JSON.stringify({ model: 'custom/main', agents: { custom: { model: 'custom/general#high' } } }));
   put('.config/rawroute/rawroute-local-enabled', '1\n');
   put('.config/unrelated-file', 'must stay untouched\n');
   let expectedModel = 'gpt-6-luna';
@@ -95,7 +95,7 @@ test('real chezmoi renders both modes, survives reapply and preserves local Code
     const json = JSON.parse(fs.readFileSync(path.join(args.home, '.config/opencode/opencode.json'), 'utf8'));
     assert.ok(!Object.hasOwn(json.provider ?? {}, 'openai'));
     assert.equal(json.model, 'custom/main');
-    assert.equal(json.agents.general.model, 'custom/general#high');
+    assert.equal(json.agents.custom.model, 'custom/general#high');
     const toml = fs.readFileSync(path.join(args.home, '.codex/config.toml'), 'utf8');
     assert.match(toml, new RegExp(`^model = ['"]${expectedModel}['"]$`, 'm'));
     assert.match(toml, new RegExp(`^model_reasoning_effort = ['"]${expectedEffort}['"]$`, 'm'));

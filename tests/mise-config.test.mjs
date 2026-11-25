@@ -50,10 +50,10 @@ test('Linux and Windows use the shared desktop tool defaults', { skip: !availabl
   assert.ok(!tools(linux).some(line => line.includes('pi-coding-agent')));
   assert.ok(!tools(render('android')).some(line => line.includes('npm:@earendil-works/pi-coding-agent')));
   assert.ok(tools(linux).includes('"node" = "26.13.1"'));
-  assert.equal(tools(linux).length, 18);
-  assert.ok(!tools(linux).some(line => line.startsWith('"opencode"')));
-  assert.ok(!tools(linux).some(line => line.includes('npm:@openchamber/web')));
-  assert.ok(!windows.some(line => line.includes('npm:@openchamber/web')));
+  assert.equal(tools(linux).length, 20);
+  assert.ok(tools(linux).includes('"opencode" = { version = "2.4.1", allow_builds = ["@opencode/cli"], allow_low_downloads = true }'));
+  assert.ok(tools(linux).includes('"npm:@openchamber/web" = "2.8.0"'));
+  assert.ok(!tools(render('android')).some(line => /^"(opencode|npm:@openchamber\/web)"/.test(line)));
   assert.ok(linux.includes('[settings.npm]\nshell_out = true'));
 });
 
@@ -73,7 +73,7 @@ for (const platform of ['linux', 'windows', 'android']) {
     const config = render(platform);
     const names = [...config.matchAll(/\[tasks\."([^"]+)"\]/g)].map(match => match[1]);
     assert.deepEqual(names, catalog.tasks.filter(task => task.platforms.includes(platform)).map(task => task.name));
-    assert.equal(names.length, { linux: 29, windows: 14, android: 10 }[platform]);
+    assert.equal(names.length, { linux: 30, windows: 15, android: 10 }[platform]);
     assert.ok(names.includes('provider:default'));
     assert.ok(names.includes('provider:local'));
     assert.ok(!names.includes('rawroute:default'));
@@ -92,7 +92,7 @@ for (const platform of ['linux', 'windows', 'android']) {
     assert.equal(names.includes('crd:setup'), platform === 'linux');
     assert.equal(names.includes('codex:setup'), platform !== 'android');
     assert.equal(names.includes('playwriter:setup'), platform !== 'android');
-    assert.equal(names.includes('openchamber:setup'), false);
+    assert.equal(names.includes('openchamber:setup'), platform !== 'android');
     assert.equal(names.includes('openchamber:uninstall'), platform !== 'android');
     assert.equal(names.includes('openchamber:restart'), false);
   });

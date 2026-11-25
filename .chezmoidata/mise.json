@@ -124,6 +124,15 @@
         }
       },
       {
+        "package": "opencode",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "version": "2.4.1",
+        "options": "allow_builds = [\"@opencode/cli\"], allow_low_downloads = true"
+      },
+      {
         "package": "uv",
         "platforms": [
           "linux",
@@ -146,6 +155,14 @@
           "windows"
         ],
         "version": "1.0.163"
+      },
+      {
+        "package": "npm:@openchamber/web",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "version": "2.8.0"
       },
       {
         "package": "npm:@openai/codex",
@@ -457,6 +474,17 @@
         "description": "Start the Playwriter relay daemon, or restart it if already running",
         "script": "services/playwriter-setup.mjs",
         "args": "",
+        "platforms": [
+          "linux",
+          "windows"
+        ],
+        "androidCleanEnv": false
+      },
+      {
+        "name": "openchamber:setup",
+        "description": "Replace OpenChamber on port 3000 with its native user startup service",
+        "script": "services/setup.mjs",
+        "args": " openchamber",
         "platforms": [
           "linux",
           "windows"

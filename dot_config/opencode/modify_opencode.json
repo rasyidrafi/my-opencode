@@ -119,6 +119,17 @@
     {{- end -}}
   {{- end -}}
 {{- end -}}
+{{- /* The managed agent files carry the disable flags. Drop older JSON overrides
+      for those built-ins so other fields inherit OpenCode defaults. */ -}}
+{{- range $scope := list "agents" "agent" -}}
+  {{- $agents := get $config $scope -}}
+  {{- if kindIs "map" $agents -}}
+    {{- range $name := list "general" "explore" "plan" -}}
+      {{- $_ := unset $agents $name -}}
+    {{- end -}}
+    {{- if eq (len $agents) 0 -}}{{- $_ := unset $config $scope -}}{{- end -}}
+  {{- end -}}
+{{- end -}}
 {{- /* Retired RawRoute models must be removed: a merge alone retains old entries. */ -}}
 {{- range $retired := list "step-5-preview" "atria-dawn" "deepseek-v4.1-flash-1017" "spark" "cipher" "oai-base" "oai-core" "oai-peak" "base-dawn" "base-flash" "base-cat" -}}
   {{- $_ := unset $config.providers.rawroute.models $retired -}}
