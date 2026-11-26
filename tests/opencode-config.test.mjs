@@ -10,7 +10,7 @@ import agentPolicyData from '../dot_config/opencode/plugins/my-opencode/agent-po
 const repository = fileURLToPath(new URL('../', import.meta.url));
 const located = spawnSync('mise', ['which', 'chezmoi'], { encoding: 'utf8' });
 const chezmoi = process.env.CHEZMOI_TEST_BINARY || (located.status === 0 ? located.stdout.trim() : 'chezmoi');
-const agents = ['build', 'plan', 'general', 'explore'];
+const agents = ['build', 'plan', 'general', 'explore', 'reviewer'];
 const managedAntigravity = home => ({ package: path.join(home, 'projects', 'opencode-antigrvity') });
 
 function fixture(t) {
@@ -58,15 +58,19 @@ function expectedAgentFrontmatter(name) {
   return frontmatter;
 }
 
-test('managed OpenChamber delegation skill and model guidance are installed', t => {
+test('managed OpenChamber delegation skill replaces the old two-file installation', t => {
   const { applyAll, home } = fixture(t);
-  applyAll();
   const source = path.join(repository, 'dot_agents/skills/openchamber-delegation');
   const target = path.join(home, '.agents/skills/openchamber-delegation');
-  for (const name of ['SKILL.md', 'model-routing.md']) {
-    assert.equal(fs.readFileSync(path.join(target, name), 'utf8'), fs.readFileSync(path.join(source, name), 'utf8'));
-  }
+  fs.mkdirSync(target, { recursive: true });
+  fs.writeFileSync(path.join(target, 'model-routing.md'), 'retired');
+  applyAll();
+  assert.deepEqual(fs.readdirSync(target), ['SKILL.md']);
+  const coding = fs.readFileSync(path.join(home, '.config/opencode/skills/coding-workflow/SKILL.md'), 'utf8');
+  assert.match(coding, /`openchamber-delegation`/);
+  assert.equal(fs.existsSync(path.join(home, '.config/opencode/skills/delegation-rule')), false);
   const skill = fs.readFileSync(path.join(target, 'SKILL.md'), 'utf8');
+  assert.equal(skill, fs.readFileSync(path.join(source, 'SKILL.md'), 'utf8'));
   assert.match(skill, /ownWork: true/);
   assert.match(skill, /returnResult: true/);
   assert.match(skill, /not a permission sandbox/);
@@ -185,7 +189,7 @@ test('fresh installs generate agent policy without OpenAI provider overrides', t
   assert.deepEqual(apply(), first);
   const config = JSON.parse(read('opencode.json'));
   assert.deepEqual(config.plugins, []);
-  for (const name of ['build', 'general', 'explore']) {
+  for (const name of agents) {
     assert.deepEqual(agent(name), expectedAgentFrontmatter(name));
   }
   assert.deepEqual(agent('plan'), expectedAgentFrontmatter('plan'));
@@ -198,7 +202,7 @@ test('fresh installs generate agent policy without OpenAI provider overrides', t
 test('generated agent files expose the repo policy to the UI', t => {
   const { apply, agent, agentBody } = fixture(t);
   apply();
-  for (const name of ['build', 'general', 'explore']) {
+  for (const name of agents) {
     const expected = expectedAgentFrontmatter(name);
     assert.deepEqual(agent(name), expected);
     assert.equal(agent(name).description, agentPolicyData.agents[name].description);
@@ -216,13 +220,20 @@ test('agent files replace local permission overrides with the managed policy', t
     ...['shell', 'edit', 'patch', 'skill', 'external_directory', 'openchamber', 'openchamber_render', 'openchamber_secret', 'read_media']
       .map(action => ({ action, resource: '*', effect: 'allow' })),
   ]);
-  for (const name of ['general', 'explore', 'plan']) assert.equal(Object.hasOwn(agent(name), 'permissions'), false);
+  for (const name of ['general', 'explore', 'reviewer']) {
+    assert.equal(agent(name).mode, 'primary');
+    const actions = name === 'general' ? ['shell', 'patch', 'edit', 'skill', 'read_media', 'external_directory'] : ['read_media', 'shell', 'skill', 'external_directory'];
+    assert.deepEqual(agent(name).permissions, [
+      { action: '*', resource: '*', effect: 'deny' },
+      ...actions.map(action => ({ action, resource: '*', effect: 'allow' })),
+    ]);
+  }
   assert.deepEqual(apply(), first);
 });
 
 test('apply removes retired multi-reviewer files', t => {
   const { applyAll, home } = fixture(t);
-  const paths = ['agents/reviewer.md', 'agents/multi_reviewer.md', 'plugins/my-opencode/fusion.js', 'plugins/my-opencode/fusion.json', 'plugins/my-opencode/simulated.js'];
+  const paths = ['agents/multi_reviewer.md', 'plugins/my-opencode/fusion.js', 'plugins/my-opencode/fusion.json', 'plugins/my-opencode/simulated.js'];
   for (const name of paths) {
     const file = path.join(home, '.config/opencode', name);
     fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -231,17 +242,16 @@ test('apply removes retired multi-reviewer files', t => {
   applyAll();
   for (const name of paths) assert.equal(fs.existsSync(path.join(home, '.config/opencode', name)), false);
   assert.equal(Object.hasOwn(agentPolicyData.agents, 'multi_reviewer'), false);
-  assert.equal(Object.hasOwn(agentPolicyData.agents, 'reviewer'), false);
 });
 
-test('general, explore, and plan only have a disable flag and inherit built-in defaults', t => {
+test('managed role profiles and disabled plan replace local overrides', t => {
   const { apply, put, read, agent, agentBody } = fixture(t);
-  const overrides = { general: { model: 'custom/general' }, explore: { permissions: [] }, plan: { model: 'custom/plan', disabled: false } };
+  const overrides = { general: { model: 'custom/general' }, explore: { permissions: [] }, reviewer: { disabled: true }, plan: { model: 'custom/plan', disabled: false } };
   put('opencode.json', JSON.stringify({ agents: overrides, agent: overrides }));
   const first = apply();
-  for (const name of ['general', 'explore', 'plan']) {
-    assert.deepEqual(agent(name), { disabled: true });
-    assert.equal(agentBody(name), '');
+  for (const name of Object.keys(overrides)) {
+    assert.deepEqual(agent(name), expectedAgentFrontmatter(name));
+    assert.equal(agentBody(name), agentPolicyData.agents[name].system ?? '');
   }
   const config = JSON.parse(read('opencode.json'));
   assert.deepEqual(config.agents, { title: { model: 'rawroute/gpt-base' } });
@@ -383,7 +393,7 @@ test('applying replaces local agent edits with the canonical repo policy', t => 
   put('agents/general.md', '---\nmodel: custom/another-model#low\npermissions: []\n---\nLocal prompt');
   apply();
   assert.deepEqual(agent('general'), expectedAgentFrontmatter('general'));
-  assert.equal(agentBody('general'), '');
+  assert.equal(agentBody('general'), agentPolicyData.agents.general.system);
 });
 
 test('OpenCode retires OpenAI overrides in both shapes while preserving unrelated settings', t => {

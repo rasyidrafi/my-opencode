@@ -1,13 +1,12 @@
 # Targets retired from the source. chezmoi removes them on apply.
 .config/opencode/skills/session-read/SKILL.md
-.config/opencode/skills/coding-workflow
 .config/opencode/skills/delegation-rule
 .config/opencode/plugins/openai-allowlist/index.js
 .config/chrome-remote-desktop/install-docklike-fork.sh
 .config/chrome-remote-desktop/mint-preset/panel/docklike-6.rc
 .config/opencode/plugins/my-opencode/agents.js
 .config/opencode/agents/multi_reviewer.md
-.config/opencode/agents/reviewer.md
+.agents/skills/openchamber-delegation/model-routing.md
 .config/opencode/plugins/my-opencode/fusion.js
 .config/opencode/plugins/my-opencode/fusion.json
 .config/opencode/plugins/my-opencode/simulated.js

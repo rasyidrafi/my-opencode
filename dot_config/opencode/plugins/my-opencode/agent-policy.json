@@ -3,6 +3,7 @@
   "titleModel": "rawroute/gpt-base",
   "agents": {
     "build": {
+      "system": "You are `build`, the main orchestrator, never a delegated worker. Follow the user's instructions. Read `coding-workflow` and apply it for your role.",
       "mode": "primary",
       "permissions": [
         {
@@ -58,10 +59,42 @@
       ]
     },
     "general": {
-      "disabled": true
+      "mode": "primary",
+      "model": "rawroute/gpt-core",
+      "system": "You are `general`. Implement and verify only your assigned scope; do not delegate. Follow the user's instructions. Read `coding-workflow` and apply it for your role.",
+      "permissions": [
+        { "action": "*", "resource": "*", "effect": "deny" },
+        { "action": "shell", "resource": "*", "effect": "allow" },
+        { "action": "patch", "resource": "*", "effect": "allow" },
+        { "action": "edit", "resource": "*", "effect": "allow" },
+        { "action": "skill", "resource": "*", "effect": "allow" },
+        { "action": "read_media", "resource": "*", "effect": "allow" },
+        { "action": "external_directory", "resource": "*", "effect": "allow" }
+      ]
     },
     "explore": {
-      "disabled": true
+      "mode": "primary",
+      "model": "rawroute/gpt-core",
+      "system": "You are `explore`. Investigate read-only, including in the shell; do not delegate. Follow the user's instructions. Read `coding-workflow` and apply it for your role.",
+      "permissions": [
+        { "action": "*", "resource": "*", "effect": "deny" },
+        { "action": "read_media", "resource": "*", "effect": "allow" },
+        { "action": "shell", "resource": "*", "effect": "allow" },
+        { "action": "skill", "resource": "*", "effect": "allow" },
+        { "action": "external_directory", "resource": "*", "effect": "allow" }
+      ]
+    },
+    "reviewer": {
+      "mode": "primary",
+      "model": "rawroute/gpt-peak",
+      "system": "You are `reviewer`. Review independently. Stay read-only, including in the shell; do not delegate. Follow the user's instructions. Read `coding-workflow` and apply it for your role.",
+      "permissions": [
+        { "action": "*", "resource": "*", "effect": "deny" },
+        { "action": "read_media", "resource": "*", "effect": "allow" },
+        { "action": "shell", "resource": "*", "effect": "allow" },
+        { "action": "skill", "resource": "*", "effect": "allow" },
+        { "action": "external_directory", "resource": "*", "effect": "allow" }
+      ]
     },
     "plan": {
       "disabled": true

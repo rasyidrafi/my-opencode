@@ -124,7 +124,7 @@
 {{- range $scope := list "agents" "agent" -}}
   {{- $agents := get $config $scope -}}
   {{- if kindIs "map" $agents -}}
-    {{- range $name := list "general" "explore" "plan" -}}
+    {{- range $name := list "general" "explore" "reviewer" "plan" -}}
       {{- $_ := unset $agents $name -}}
     {{- end -}}
     {{- if eq (len $agents) 0 -}}{{- $_ := unset $config $scope -}}{{- end -}}

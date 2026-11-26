@@ -220,8 +220,8 @@ Chezmoi-managed agent files do not need a restart.
 `chezmoi apply` owns all agent configuration through native OpenCode settings:
 it generates the full user agent files from `agent-policy.json` in the plugin
 directory and writes the title model plus `default_agent: build` into
-`opencode.json`. The `general`, `explore`, and `plan` agent files contain only
-`disabled: true` and inherit their other defaults from OpenCode. Build denies
+`opencode.json`. The `general`, `explore`, and `reviewer` profiles are selectable
+session agents; only `plan` remains disabled. Build denies
 tools by default and allows `shell`, `edit`, `patch`, `skill`,
 `external_directory`, `openchamber`, `openchamber_render`, `openchamber_secret`, and `read_media`. The plugin
 does not configure agent permissions or re-enforce prompts, modes or models at runtime,
@@ -241,11 +241,12 @@ Test: `node --test tests/my-opencode-plugin.test.mjs tests/opencode-config.test.
 ### Delegation through OpenChamber
 
 The managed `openchamber-delegation` skill describes bounded handoffs, callback
-delivery, and review using the Build agent. Its `model-routing.md` contains
-provisional model choices, not enforced settings or benchmark results. The
-current RawRoute models expose no selectable variants. Delegation and optional
-tool parameters remain subject to the user's instructions and tool rules.
-Review prompts requesting read-only work do not restrict Build's permissions.
+delivery, and independent review. Request `explore` for discovery, `general`
+for implementation, or `reviewer` for assessment. Each is a session agent
+with model and permissions in `dot_config/opencode/plugins/my-opencode/agent-policy.json`.
+Build orchestrates; it is never the delegated worker. Create each worker session
+with the authorized named profile. If profile selection needs clarification,
+ask before dispatch; if the profile is unavailable, report the blocker.
 
 ## Tool version cleanup
 
@@ -919,7 +920,7 @@ it at runtime: manual changes survive until the next apply regenerates the
 files. The title model and `default_agent` in `opencode.json` are generated
 from that file too. Title uses
 `rawroute/gpt-base`. Build is the default primary agent and inherits the session
-model. Explore, General, and Plan are disabled.
+model. Explore, General, and Reviewer use their profile models. Plan is disabled.
 
 The retired RawRoute models `step-5-preview`, `atria-dawn`, and
 `deepseek-v4.1-flash-1017` are removed from existing configs on apply.
