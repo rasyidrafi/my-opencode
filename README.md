@@ -143,7 +143,8 @@ Local IdentityAgent settings (including Bitwarden sockets), IdentityFile and
 other options survive `chezmoi apply`, whether in individual or shared Host
 blocks. Old endpoint fields in single-alias blocks are removed; shared and
 wildcard blocks remain intact, with managed endpoints taking precedence.
-The ordinary host ports are explicitly 22; workbox ports are 2222.
+All managed endpoints use port 22; `soy-wb` connects directly to its own
+Tailscale node rather than forwarding through `soy`.
 Edit the modifier to change these managed endpoints. Test with
 `node --test tests/ssh-config.test.mjs` (chezmoi and OpenSSH required).
 
