@@ -7,7 +7,7 @@
           "linux",
           "windows"
         ],
-        "version": "1.5.15"
+        "version": "1.5.18"
       },
       {
         "package": "azure",
@@ -24,7 +24,7 @@
           "windows",
           "android"
         ],
-        "version": "2026.11.0"
+        "version": "2026.11.1"
       },
       {
         "package": "bun",
@@ -76,6 +76,7 @@
         ],
         "android": {
           "template": "mise/termux-gh",
+          "version": "2.105.0",
           "checksums": {
             "386": "658a95c8fad418c3127447d7a41bfed10580ec3b4a9aac6ad950f9f1145fdfc5",
             "arm64": "73a364d6afeb91f0a51fc0507c29f161dee7fff0fc060383f7d556216ce31eb7",
@@ -83,7 +84,7 @@
             "amd64": "521e8949289b00159a310ffa9fb54afa4de47a4dbca6abd6494c47105c732154"
           }
         },
-        "version": "2.105.0"
+        "version": "2.106.0"
       },
       {
         "package": "kubectl",
@@ -91,7 +92,7 @@
           "linux",
           "windows"
         ],
-        "version": "1.37.2"
+        "version": "1.37.3"
       },
       {
         "package": "mysql-client",
@@ -129,7 +130,7 @@
           "linux",
           "windows"
         ],
-        "version": "2.4.1",
+        "version": "2.4.2",
         "options": "allow_builds = [\"@opencode/cli\"], allow_low_downloads = true"
       },
       {
@@ -138,7 +139,7 @@
           "linux",
           "windows"
         ],
-        "version": "0.13.9"
+        "version": "0.13.10"
       },
       {
         "package": "yarn",
@@ -162,7 +163,7 @@
           "linux",
           "windows"
         ],
-        "version": "2.8.0"
+        "version": "2.8.1"
       },
       {
         "package": "npm:@openai/codex",
