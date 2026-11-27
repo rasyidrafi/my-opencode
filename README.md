@@ -233,9 +233,9 @@ be auto-discovered alongside the new plugin; unrelated files in that old
 directory are left untouched.
 
 The auto-discovered `my-opencode` plugin stays implicit. Apply manages the
-Muse plugin (`@rasyid_rafi/opencode-muse`), retires the Antigravity plugin
-entries from `opencode.json`, and preserves unrelated plugins and other local
-checkouts.
+Muse plugin (`@rasyid_rafi/opencode-muse`) and Antigravity plugin
+(`@rasyid_rafi/opencode-antigravity@0.6.6`), replaces older managed entries,
+and preserves unrelated plugins and other local checkouts.
 
 Test: `node --test tests/my-opencode-plugin.test.mjs tests/opencode-config.test.mjs`.
 
