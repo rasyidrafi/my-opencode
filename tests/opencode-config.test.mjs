@@ -86,7 +86,7 @@ test('applying retires explicit local plugin paths without changing other plugin
     others[1],
   ] }));
   const first = apply();
-  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, '@rasyid_rafi/opencode-muse@0.1.12', '@rasyid_rafi/opencode-antigravity@0.7.0']);
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, '@rasyid_rafi/opencode-muse@0.1.12', '@rasyid_rafi/opencode-antigravity@0.8.0']);
   assert.deepEqual(apply(), first);
 });
 
@@ -102,7 +102,7 @@ test('applying replaces older Antigravity packages and paths', t => {
   assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [
     'another-plugin',
     { package: 'custom-plugin', options: { keep: true } },
-    '@rasyid_rafi/opencode-muse@0.1.12', '@rasyid_rafi/opencode-antigravity@0.7.0',
+    '@rasyid_rafi/opencode-muse@0.1.12', '@rasyid_rafi/opencode-antigravity@0.8.0',
   ]);
   assert.deepEqual(apply(), first);
 });
@@ -115,7 +115,7 @@ test('applying manages Muse and retires its local checkout duplicates', t => {
   const others = ['another-plugin', { package: 'custom-plugin', options: { keep: true } }];
   put('opencode.json', JSON.stringify({ plugins: [checkout, '@rasyid_rafi/opencode-muse@0.1.2', ...others] }));
   const first = apply();
-  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, '@rasyid_rafi/opencode-muse@0.1.12', '@rasyid_rafi/opencode-antigravity@0.7.0']);
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, '@rasyid_rafi/opencode-muse@0.1.12', '@rasyid_rafi/opencode-antigravity@0.8.0']);
   assert.deepEqual(apply(), first);
 });
 
@@ -125,7 +125,7 @@ test('applying replaces a missing managed checkout by directory name', t => {
   const others = ['another-plugin'];
   put('opencode.json', JSON.stringify({ plugins: [checkout, ...others] }));
   const first = apply();
-  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, '@rasyid_rafi/opencode-muse@0.1.12', '@rasyid_rafi/opencode-antigravity@0.7.0']);
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, '@rasyid_rafi/opencode-muse@0.1.12', '@rasyid_rafi/opencode-antigravity@0.8.0']);
   assert.deepEqual(apply(), first);
 });
 
@@ -137,7 +137,7 @@ test('applying keeps a local checkout that is not a retired package', t => {
   const others = ['another-plugin'];
   put('opencode.json', JSON.stringify({ plugins: [checkout, ...others] }));
   const first = apply();
-  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [checkout, ...others, '@rasyid_rafi/opencode-muse@0.1.12', '@rasyid_rafi/opencode-antigravity@0.7.0']);
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [checkout, ...others, '@rasyid_rafi/opencode-muse@0.1.12', '@rasyid_rafi/opencode-antigravity@0.8.0']);
   assert.deepEqual(apply(), first);
 });
 
@@ -150,7 +150,7 @@ test('applying replaces object plugin entries for managed local paths', t => {
   const first = apply();
   assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [
     'another-plugin',
-    '@rasyid_rafi/opencode-muse@0.1.12', '@rasyid_rafi/opencode-antigravity@0.7.0',
+    '@rasyid_rafi/opencode-muse@0.1.12', '@rasyid_rafi/opencode-antigravity@0.8.0',
   ]);
   assert.deepEqual(apply(), first);
 });
@@ -184,7 +184,7 @@ test('fresh installs generate agent policy without OpenAI provider overrides', t
   const first = apply();
   assert.deepEqual(apply(), first);
   const config = JSON.parse(read('opencode.json'));
-  assert.deepEqual(config.plugins, ['@rasyid_rafi/opencode-muse@0.1.12', '@rasyid_rafi/opencode-antigravity@0.7.0']);
+  assert.deepEqual(config.plugins, ['@rasyid_rafi/opencode-muse@0.1.12', '@rasyid_rafi/opencode-antigravity@0.8.0']);
   for (const name of agents) {
     assert.deepEqual(agent(name), expectedAgentFrontmatter(name));
   }
