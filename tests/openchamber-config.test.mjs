@@ -31,6 +31,20 @@ test('OpenChamber saves pasted images as files', () => {
   assert.equal(preferences.savePastedImagesAsFiles, true);
 });
 
+test('portable chat, display and notification preferences match the desired defaults', () => {
+  assert.deepEqual(Object.fromEntries(Object.keys({
+    activityRenderMode: 0, chatRenderMode: 0, keepEarlierReplies: 0,
+    diffLayoutPreference: 0, toolJsonViewMode: 0, usageDisplayMode: 0,
+    tableCellWrap: 0, filesViewShowGitignored: 0, workStatusPanelEnabled: 0, sidebarProjectDisplayMode: 0,
+    notifyOnCompletion: 0, notifyOnError: 0, notifyOnPullRequests: 0, notifyOnQuestion: 0,
+  }).map(key => [key, preferences[key]])), {
+    activityRenderMode: 'collapsed', chatRenderMode: 'live', keepEarlierReplies: false,
+    diffLayoutPreference: 'side-by-side', toolJsonViewMode: 'summary', usageDisplayMode: 'usage',
+    tableCellWrap: true, filesViewShowGitignored: true, workStatusPanelEnabled: true, sidebarProjectDisplayMode: 'all',
+    notifyOnCompletion: true, notifyOnError: true, notifyOnPullRequests: true, notifyOnQuestion: true,
+  });
+});
+
 test('OpenChamber control, secret and render tools are enabled while workflow is disabled', () => {
   assert.equal(settings.agentControlToolEnabled, true);
   assert.equal(settings.agentSecretToolEnabled, true);

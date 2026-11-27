@@ -86,15 +86,13 @@ test('applying retires explicit local plugin paths without changing other plugin
     others[1],
   ] }));
   const first = apply();
-  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others]);
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, '@rasyid_rafi/opencode-muse@0.1.12']);
   assert.deepEqual(apply(), first);
 });
 
 test('applying retires retired plugin packages and paths', t => {
   const { apply, put, read, home } = fixture(t);
   put('opencode.json', JSON.stringify({ plugins: [
-    '@rasyid_rafi/opencode-muse',
-    '@rasyid_rafi/opencode-muse@0.1.2',
     '@rasyid_rafi/opencode-antigravity@1.0.0',
     managedAntigravity(home),
     'another-plugin',
@@ -104,29 +102,30 @@ test('applying retires retired plugin packages and paths', t => {
   assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [
     'another-plugin',
     { package: 'custom-plugin', options: { keep: true } },
+    '@rasyid_rafi/opencode-muse@0.1.12',
   ]);
   assert.deepEqual(apply(), first);
 });
 
-test('applying retires a local checkout of a retired plugin without changing other plugins', t => {
+test('applying manages Muse and retires its local checkout duplicates', t => {
   const { apply, put, read, home } = fixture(t);
   const checkout = path.join(home, 'projects', 'opencode-muse');
   fs.mkdirSync(checkout, { recursive: true });
   fs.writeFileSync(path.join(checkout, 'package.json'), JSON.stringify({ name: '@rasyid_rafi/opencode-muse', version: '0.1.4' }));
   const others = ['another-plugin', { package: 'custom-plugin', options: { keep: true } }];
-  put('opencode.json', JSON.stringify({ plugins: [checkout, ...others] }));
+  put('opencode.json', JSON.stringify({ plugins: [checkout, '@rasyid_rafi/opencode-muse@0.1.2', ...others] }));
   const first = apply();
-  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others]);
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, '@rasyid_rafi/opencode-muse@0.1.12']);
   assert.deepEqual(apply(), first);
 });
 
 test('applying retires a missing local checkout of a retired plugin by directory name', t => {
   const { apply, put, read, home } = fixture(t);
-  const checkout = path.join(home, 'projects', 'opencode-muse');
+  const checkout = path.join(home, 'projects', 'opencode-antigravity');
   const others = ['another-plugin'];
   put('opencode.json', JSON.stringify({ plugins: [checkout, ...others] }));
   const first = apply();
-  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others]);
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [...others, '@rasyid_rafi/opencode-muse@0.1.12']);
   assert.deepEqual(apply(), first);
 });
 
@@ -138,23 +137,20 @@ test('applying keeps a local checkout that is not a retired package', t => {
   const others = ['another-plugin'];
   put('opencode.json', JSON.stringify({ plugins: [checkout, ...others] }));
   const first = apply();
-  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [checkout, ...others]);
+  assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [checkout, ...others, '@rasyid_rafi/opencode-muse@0.1.12']);
   assert.deepEqual(apply(), first);
 });
 
 test('applying retires object plugin entries for retired packages and local paths', t => {
   const { apply, put, read, home } = fixture(t);
-  const muse = path.join(home, 'projects', 'opencode-muse');
-  fs.mkdirSync(muse, { recursive: true });
-  fs.writeFileSync(path.join(muse, 'package.json'), JSON.stringify({ name: '@rasyid_rafi/opencode-muse', version: '0.1.4' }));
   put('opencode.json', JSON.stringify({ plugins: [
-    { package: muse },
     managedAntigravity(home),
     'another-plugin',
   ] }));
   const first = apply();
   assert.deepEqual(JSON.parse(read('opencode.json')).plugins, [
     'another-plugin',
+    '@rasyid_rafi/opencode-muse@0.1.12',
   ]);
   assert.deepEqual(apply(), first);
 });
@@ -188,7 +184,7 @@ test('fresh installs generate agent policy without OpenAI provider overrides', t
   const first = apply();
   assert.deepEqual(apply(), first);
   const config = JSON.parse(read('opencode.json'));
-  assert.deepEqual(config.plugins, []);
+  assert.deepEqual(config.plugins, ['@rasyid_rafi/opencode-muse@0.1.12']);
   for (const name of agents) {
     assert.deepEqual(agent(name), expectedAgentFrontmatter(name));
   }

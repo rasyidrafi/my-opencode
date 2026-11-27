@@ -232,9 +232,10 @@ old `openai-allowlist` entrypoint from the local plugin directory so it cannot
 be auto-discovered alongside the new plugin; unrelated files in that old
 directory are left untouched.
 
-The auto-discovered `my-opencode` plugin stays implicit. Apply removes the
-retired Muse and Antigravity plugin entries from `opencode.json`, while
-preserving unrelated plugins and leaving local checkouts untouched.
+The auto-discovered `my-opencode` plugin stays implicit. Apply manages the
+Muse plugin (`@rasyid_rafi/opencode-muse`), retires the Antigravity plugin
+entries from `opencode.json`, and preserves unrelated plugins and other local
+checkouts.
 
 Test: `node --test tests/my-opencode-plugin.test.mjs tests/opencode-config.test.mjs`.
 
