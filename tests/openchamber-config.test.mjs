@@ -31,6 +31,10 @@ test('OpenChamber saves pasted images as files', () => {
   assert.equal(preferences.savePastedImagesAsFiles, true);
 });
 
+test('OpenChamber favorites the build agent', () => {
+  assert.deepEqual(preferences.favoriteAgents, ['build']);
+});
+
 test('portable chat, display and notification preferences match the desired defaults', () => {
   assert.deepEqual(Object.fromEntries(Object.keys({
     activityRenderMode: 0, chatRenderMode: 0, keepEarlierReplies: 0,
@@ -184,7 +188,8 @@ test('applying clears a local default agent so OpenChamber chooses its built-in 
   const config = JSON.parse(read('settings.json'));
   assert.ok(!Object.hasOwn(fields, 'defaultAgent'));
   assert.ok(!Object.hasOwn(config, 'defaultAgent'));
-  assert.deepEqual(fields.favoriteAgents, { value: ['reviewer'], updatedAt: 2 });
+  assert.deepEqual(fields.favoriteAgents.value, ['build']);
+  assert.ok(fields.favoriteAgents.updatedAt > 2);
   assert.equal(config.keepLocal, true);
   assert.deepEqual(apply(), first);
 });

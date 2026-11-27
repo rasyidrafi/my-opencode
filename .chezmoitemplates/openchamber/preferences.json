@@ -1,5 +1,6 @@
 {
   "defaultModel": "rawroute/gpt-core",
+  "favoriteAgents": ["build"],
   "sessionTabsEnabled": true,
   "showReasoningTraces": true,
   "activityRenderMode": "collapsed",

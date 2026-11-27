@@ -234,7 +234,7 @@ directory are left untouched.
 
 The auto-discovered `my-opencode` plugin stays implicit. Apply manages the
 Muse plugin (`@rasyid_rafi/opencode-muse`) and Antigravity plugin
-(`@rasyid_rafi/opencode-antigravity@0.6.6`), replaces older managed entries,
+(`@rasyid_rafi/opencode-antigravity@0.7.0`), replaces older managed entries,
 and preserves unrelated plugins and other local checkouts.
 
 Test: `node --test tests/my-opencode-plugin.test.mjs tests/opencode-config.test.mjs`.
