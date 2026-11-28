@@ -927,8 +927,8 @@ The retired RawRoute models `step-5-preview`, `atria-dawn`, and
 `deepseek-v4.1-flash-1017` are removed from existing configs on apply.
 
 RawRoute also exposes three stable GPT gateway aliases: `gpt-base` (GPT Base,
-1,000,000 context), `gpt-core` (GPT Core, 640,000 context), and `gpt-peak`
-(GPT Peak, 400,000 context). Each has a 128,000-token output limit. The backend
+1,050,000 context), `gpt-core` (GPT Core, 272,000 context), and `gpt-peak`
+(GPT Peak, 272,000 context). Each has a 128,000-token output limit. The backend
 can change which OpenAI model each alias resolves to without changing the
 OpenCode model IDs. RawRoute also exposes `base-alpha` (Base Alpha), `base-beta`
 (Base Beta), and `base-charlie` (Base Charlie), each with a 1,000,000-token

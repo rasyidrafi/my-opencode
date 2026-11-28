@@ -61,7 +61,7 @@
         "tools": true,
         "temperature": true,
         "reasoning": true,
-        "context": 1000000,
+        "context": 1050000,
         "maxOutput": 128000
       },
       "gpt-core": {
@@ -76,7 +76,7 @@
         "tools": true,
         "temperature": true,
         "reasoning": true,
-        "context": 640000,
+        "context": 272000,
         "maxOutput": 128000
       },
       "gpt-peak": {
@@ -91,7 +91,7 @@
         "tools": true,
         "temperature": true,
         "reasoning": true,
-        "context": 400000,
+        "context": 272000,
         "maxOutput": 128000
       }
     }

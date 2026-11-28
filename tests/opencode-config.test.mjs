@@ -292,9 +292,9 @@ test('RawRoute includes managed models with configured names and limits, without
     ['base-alpha', 'Base Alpha', 1000000, 128000, ['text', 'image', 'pdf']],
     ['base-beta', 'Base Beta', 1000000, 128000, ['text', 'image', 'pdf']],
     ['base-charlie', 'Base Charlie', 1000000, 128000, ['text', 'image', 'pdf']],
-    ['gpt-base', 'GPT Base', 1000000, 128000, ['text', 'image']],
-    ['gpt-core', 'GPT Core', 640000, 128000, ['text', 'image']],
-    ['gpt-peak', 'GPT Peak', 400000, 128000, ['text', 'image']],
+    ['gpt-base', 'GPT Base', 1050000, 128000, ['text', 'image']],
+    ['gpt-core', 'GPT Core', 272000, 128000, ['text', 'image']],
+    ['gpt-peak', 'GPT Peak', 272000, 128000, ['text', 'image']],
   ]) {
     assert.equal(models[id].name, name);
     assert.deepEqual(models[id].limit, { context, output });
